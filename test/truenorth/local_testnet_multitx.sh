@@ -55,6 +55,22 @@ echo
 
 echo "[1/5] start bitcoind"
 "$BITCOIND" -regtest -datadir="$DD" -daemon -fallbackfee=0.0002
+
+# bitcoind -daemon hides startup errors. Poll for the cookie file and bail with
+# debug.log if it never appears, so CI surfaces the real failure.
+COOKIE="$DD/regtest/.cookie"
+for _ in $(seq 1 60); do
+    [ -f "$COOKIE" ] && break
+    sleep 1
+done
+if [ ! -f "$COOKIE" ]; then
+    echo "FAIL: bitcoind did not create the cookie file within 60 seconds"
+    echo "---- debug.log (last 100 lines) ----"
+    tail -100 "$DD/regtest/debug.log" 2>/dev/null || echo "(no debug.log)"
+    echo "---- end debug.log ----"
+    exit 1
+fi
+
 cli -rpcwait createwallet ci >/dev/null
 
 echo "[2/5] mine 101 blocks (mature first coinbase)"
