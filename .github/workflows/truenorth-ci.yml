@@ -1,0 +1,130 @@
+name: TrueNorth CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+# Cancel in-progress runs on the same ref when a new commit lands -- avoids
+# burning Actions minutes on stacked pushes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint -- clang-format on src/truenorth/
+    # Ubuntu runners are the 1x billing tier; macos-latest is 10x. Lint has
+    # no platform-specific reason to live on macOS.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq clang-format
+          clang-format --version | head -1
+
+      - name: clang-format dry-run on src/truenorth/*
+        # Strict check on our additions only; inherited Bitcoin Core code is
+        # out of scope for this job. Additional upstream lint scripts
+        # (lint-include-guards.py, lint-files.py, lint-spelling.py, ...) can
+        # be wired in later as we conform our additions to those
+        # conventions; tracked separately.
+        run: |
+          clang-format --dry-run --Werror \
+            src/truenorth/randomx_wrapper.h \
+            src/truenorth/randomx_wrapper.cpp \
+            src/truenorth/seed_key.h \
+            src/truenorth/seed_key.cpp \
+            src/truenorth/mine_genesis.cpp \
+            src/truenorth/miner.cpp
+
+  build-and-smoke-test:
+    name: Linux x86_64 -- build + regtest smoke test
+    # Ubuntu runners are 1x billing; macOS is 10x. "Does the chain build and
+    # mine a regtest block?" has no macOS-specific reason to live there. If
+    # we ever want belt-and-suspenders cross-platform coverage, add a
+    # separate scheduled macOS build (weekly, on a cron) rather than burning
+    # 10x minutes on every push.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install apt dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            build-essential cmake pkg-config \
+            libboost-dev libevent-dev libsqlite3-dev \
+            ccache
+          cmake --version | head -1
+          cc --version | head -1
+
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Configure
+        env:
+          CCACHE_DIR: ${{ github.workspace }}/../.ccache
+        # No explicit compiler paths -- let CMake pick the system default
+        # (g++ on Ubuntu). ENABLE_IPC=OFF skips Cap'n Proto, which we don't
+        # need for the smoke test.
+        run: |
+          cmake -B build \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DENABLE_IPC=OFF
+
+      - name: Build bitcoind + bitcoin-cli + truenorth-miner + test_bitcoin
+        # truenorth-miner is needed for the regression scripts below.
+        # test_bitcoin is the Boost.Test runner for the unit suite.
+        run: cmake --build build --parallel 4 --target bitcoind bitcoin-cli truenorth-miner test_bitcoin
+
+      - name: Run truenorth_tests unit suite
+        timeout-minutes: 5
+        # Runs only the TrueNorth-specific cases (LWMA, seed_key, tail
+        # emission, GetPoWHash, RandomX wrapper). The full bitcoin-core
+        # test suite is too slow + has too many unrelated Heisenbugs to
+        # gate every push on; we narrow to the suite we own.
+        run: ./build/bin/test_bitcoin --run_test=truenorth_tests --log_level=test_suite
+
+      - name: Regression -- 2-node sync
+        timeout-minutes: 5
+        run: bash test/truenorth/local_testnet_sync.sh
+
+      - name: Regression -- multi-tx mining (template-tx inclusion + BIP141 commitment)
+        timeout-minutes: 5
+        run: bash test/truenorth/local_testnet_multitx.sh
+
+      - name: Regression -- reorg + fork-choice
+        timeout-minutes: 5
+        run: bash test/truenorth/local_testnet_reorg.sh
+
+      - name: Regression -- IBD (cold-cache sync)
+        timeout-minutes: 5
+        run: bash test/truenorth/local_testnet_ibd.sh
+        # Note: local_testnet_seed_rotation.sh is intentionally NOT in CI --
+        # it mines 2122 blocks to cross the epoch boundary, which takes
+        # ~2 minutes per push. The seed_key code path is well-covered by
+        # the four `seed_key_*` cases in truenorth_tests above; this is a
+        # belt-and-suspenders manual check, run from `test/truenorth/all.sh`
+        # or directly before a release tag.
