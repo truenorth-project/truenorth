@@ -133,13 +133,17 @@ jobs:
           cat "${STAGE}.tar.gz.sha256"
 
       - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v2
+        # ncipollo/release-action handles existing releases via allowUpdates,
+        # avoiding the "tag_name already_exists" PATCH failure that
+        # softprops/action-gh-release@v2 hits on re-runs against an existing
+        # tag.
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: ${{ steps.tag.outputs.tag }}
+          tag: ${{ steps.tag.outputs.tag }}
           name: ${{ steps.tag.outputs.tag }}
-          generate_release_notes: true
-          fail_on_unmatched_files: true
+          generateReleaseNotes: true
+          allowUpdates: true
+          artifactErrorsFailBuild: true
+          replacesArtifacts: true
           prerelease: ${{ contains(steps.tag.outputs.tag, 'tn3') || contains(steps.tag.outputs.tag, 'soft') || contains(steps.tag.outputs.tag, 'pre') || contains(steps.tag.outputs.tag, 'rc') }}
-          files: |
-            truenorth-*-${{ matrix.platform }}.tar.gz
-            truenorth-*-${{ matrix.platform }}.tar.gz.sha256
+          artifacts: "truenorth-*-${{ matrix.platform }}.tar.gz,truenorth-*-${{ matrix.platform }}.tar.gz.sha256"
