@@ -27,17 +27,17 @@ jobs:
           - os: ubuntu-latest
             platform: linux-x86_64
             jobs: 4
-          # macOS (arm64) is DISABLED by default: macos-latest is the 10x
-          # billing tier, and a full from-scratch build runs long enough that
-          # a single build can cost more than the whole Actions budget. To
-          # ship macOS binaries, uncomment the block below AND make sure the
-          # ccache cache is warm first (run the workflow once via
-          # workflow_dispatch, let it populate the cache, then real tags
-          # build in a few minutes). Keep -j bounded (3) -- unbounded -j on
-          # a from-scratch build OOMs/thrashes the runner.
-          # - os: macos-latest
-          #   platform: macos-arm64
-          #   jobs: 3
+          # macOS arm64 (Apple Silicon). GitHub Actions is free for public
+          # repos at all runner tiers, so the 10x billing tier on
+          # macos-latest is not a cost concern here. Bounded -j (3) keeps
+          # a from-scratch build inside the runner's memory budget.
+          - os: macos-latest
+            platform: macos-arm64
+            jobs: 3
+          # Windows: not built. WSL2 users run the linux-x86_64 binary.
+          # Native Windows would need either cross-compilation via depends/
+          # or a windows-latest matrix entry with mingw-w64; defer until
+          # there's tester demand.
     name: Build ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45

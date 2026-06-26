@@ -5,10 +5,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        ## This issue tracker is only for technical issues related to Bitcoin Core.
+        ## This issue tracker is only for technical issues related to TrueNorth Core.
 
-        * General bitcoin questions and/or support requests should use Bitcoin StackExchange at https://bitcoin.stackexchange.com.
-        * For reporting security issues, please read instructions at https://bitcoincore.org/en/contact/.
+        * For reporting security issues, see [SECURITY.md](https://github.com/truenorth-project/truenorth/blob/master/SECURITY.md).
         * If the node is "stuck" during sync or giving "block checksum mismatch" errors, please ensure your hardware is stable by running `memtest` and observe CPU temperature with a load-test tool such as `linpack` before creating an issue.
 
         ----
@@ -50,35 +49,36 @@ body:
       description: |
         Please copy and paste any relevant log output or attach a debug log file.
 
-        You can find the debug.log in your [data dir.](https://github.com/bitcoin/bitcoin/blob/master/doc/files.md#data-directory-location)
+        The debug.log lives in your data directory under the chain subfolder, e.g.:
+          * Linux: `~/.truenorth/testnet3/debug.log`, `~/.truenorth/debug.log` (mainnet)
+          * macOS: `~/Library/Application Support/TrueNorth/...`
 
         Please be aware that the debug log might contain personally identifying information.
     validations:
       required: false
   - type: dropdown
     attributes:
-      label: How did you obtain Bitcoin Core
+      label: How did you obtain TrueNorth Core
       multiple: false
       options:
         - Compiled from source
-        - Pre-built binaries
-        - Package manager
+        - Pre-built binary (GitHub release)
         - Other
     validations:
       required: true
   - type: input
     id: core-version
     attributes:
-      label: What version of Bitcoin Core are you using?
-      description: Run `bitcoind --version` or in Bitcoin-QT use `Help > About Bitcoin Core`
-      placeholder: e.g. v24.0.1 or master@e1bf547
+      label: What version of TrueNorth Core are you using?
+      description: Run `bitcoind --version`
+      placeholder: e.g. v30.2.0 or master@529032f
     validations:
       required: true
   - type: input
     id: os
     attributes:
       label: Operating system and version
-      placeholder: e.g. "MacOS Ventura 13.2" or "Ubuntu 22.04 LTS"
+      placeholder: e.g. "Ubuntu 24.04 LTS" or "macOS 14"
     validations:
       required: true
   - type: textarea
