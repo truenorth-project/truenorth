@@ -27,7 +27,7 @@ e.g. for `-onlynet=onion`.
 
 You can use the `getnodeaddresses` RPC to fetch a number of onion peers known to your node; run `bitcoin-cli help getnodeaddresses` for details.
 
-`bitcoin rpc` can also be substituted for `bitcoin-cli`.
+`bitcoin rpc` can also be substituted for `truenorth-cli`.
 
 ## 1. Run Bitcoin Core behind a Tor proxy
 
@@ -84,9 +84,9 @@ with the prefix `unix:` (e.g. `-onion=unix:/home/me/torsocket`).
 
 In a typical situation, this suffices to run behind a Tor proxy:
 
-    bitcoind -proxy=127.0.0.1:9050
+    truenorthd -proxy=127.0.0.1:9050
 
-`bitcoin node` or `bitcoin gui` can also be substituted for `bitcoind`.
+`bitcoin node` or `bitcoin gui` can also be substituted for `truenorthd`.
 
 ## 2. Automatically create a Bitcoin Core onion service
 
@@ -101,7 +101,7 @@ it requires a Tor connection to work. It can be explicitly disabled with
 `-listenonion=0`. If it is not disabled, it can be configured using the
 `-torcontrol` and `-torpassword` settings.
 
-To see verbose Tor information in the bitcoind debug log, pass `-debug=tor`.
+To see verbose Tor information in the truenorthd debug log, pass `-debug=tor`.
 
 ### Control Port
 
@@ -128,15 +128,15 @@ configuration option.
 
 #### Cookie authentication
 
-For cookie authentication, the user running bitcoind must have read access to
+For cookie authentication, the user running truenorthd must have read access to
 the `CookieAuthFile` specified in the Tor configuration. In some cases this is
 preconfigured and the creation of an onion service is automatic. Don't forget to
-use the `-debug=tor` bitcoind configuration option to enable Tor debug logging.
+use the `-debug=tor` truenorthd configuration option to enable Tor debug logging.
 
 If a permissions problem is seen in the debug log, e.g. `tor: Authentication
 cookie /run/tor/control.authcookie could not be opened (check permissions)`, it
 can be resolved by adding both the user running Tor and the user running
-bitcoind to the same Tor group and setting permissions appropriately.
+truenorthd to the same Tor group and setting permissions appropriately.
 
 On Debian-derived systems, the Tor group will likely be `debian-tor` and one way
 to verify could be to list the groups and grep for a "tor" group name:
@@ -160,7 +160,7 @@ usermod -a -G ${TORGROUP} ${USER}
 ```
 
 Then restart the computer (or log out) and log in as the `${USER}` that will run
-bitcoind.
+truenorthd.
 
 #### `torpassword` authentication
 
@@ -211,25 +211,25 @@ should be equal to binding address and port for inbound Tor connections (127.0.0
 
 In a typical situation, where you're only reachable via Tor, this should suffice:
 
-    bitcoind -proxy=127.0.0.1:9050 -externalip=7zvj7a2imdgkdbg4f2dryd5rgtrn7upivr5eeij4cicjh65pooxeshid.onion -listen
+    truenorthd -proxy=127.0.0.1:9050 -externalip=7zvj7a2imdgkdbg4f2dryd5rgtrn7upivr5eeij4cicjh65pooxeshid.onion -listen
 
 (obviously, replace the .onion address with your own). It should be noted that you still
 listen on all devices and another node could establish a clearnet connection, when knowing
 your address. To mitigate this, additionally bind the address of your Tor proxy:
 
-    bitcoind ... -bind=127.0.0.1:8334=onion
+    truenorthd ... -bind=127.0.0.1:8334=onion
 
 If you don't care too much about hiding your node, and want to be reachable on IPv4
 as well, use `discover` instead:
 
-    bitcoind ... -discover
+    truenorthd ... -discover
 
 and open port 8333 on your firewall (or use port mapping, i.e., `-natpmp`).
 
 If you only want to use Tor to reach .onion addresses, but not use it as a proxy
 for normal IPv4/IPv6 communication, use:
 
-    bitcoind -onion=127.0.0.1:9050 -externalip=7zvj7a2imdgkdbg4f2dryd5rgtrn7upivr5eeij4cicjh65pooxeshid.onion -discover
+    truenorthd -onion=127.0.0.1:9050 -externalip=7zvj7a2imdgkdbg4f2dryd5rgtrn7upivr5eeij4cicjh65pooxeshid.onion -discover
 
 ## 4. Privacy recommendations
 

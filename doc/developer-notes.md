@@ -342,8 +342,8 @@ If the code is behaving strangely, take a look in the `debug.log` file in the da
 error and debugging messages are written there.
 
 Debug logging can be enabled on startup with the `-debug` and `-loglevel`
-configuration options and toggled while bitcoind is running with the `logging`
-RPC.  For instance, launching bitcoind with `-debug` or `-debug=1` will turn on
+configuration options and toggled while truenorthd is running with the `logging`
+RPC.  For instance, launching truenorthd with `-debug` or `-debug=1` will turn on
 all log categories and `-loglevel=trace` will turn on all log severity levels.
 
 The Qt code routes `qDebug()` output to `debug.log` under category "qt": run with `-debug=qt`
@@ -377,7 +377,7 @@ The `-DCMAKE_BUILD_TYPE=Debug` build option adds `-DDEBUG_LOCKCONTENTION` to the
 compiler flags. You may also enable it manually by building with `-DDEBUG_LOCKCONTENTION`
 added to your CPPFLAGS, i.e. `-DAPPEND_CPPFLAGS="-DDEBUG_LOCKCONTENTION"`.
 
-You can then use the `-debug=lock` configuration option at bitcoind startup or
+You can then use the `-debug=lock` configuration option at truenorthd startup or
 `bitcoin-cli logging '["lock"]'` at runtime to turn on lock contention logging.
 It can be toggled off again with `bitcoin-cli logging [] '["lock"]'`.
 
@@ -582,7 +582,7 @@ Make sure you [understand the security
 trade-offs](https://lwn.net/Articles/420403/) of setting these kernel
 parameters.
 
-To profile a running bitcoind process for 60 seconds, you could use an
+To profile a running truenorthd process for 60 seconds, you could use an
 invocation of `perf record` like this:
 
 ```sh
@@ -674,7 +674,7 @@ and its `cs_KeyStore` lock for example).
 
 ## Threads
 
-- [Main thread (`bitcoind`)](https://doxygen.bitcoincore.org/bitcoind_8cpp.html#a0ddf1224851353fc92bfbff6f499fa97)
+- [Main thread (`truenorthd`)](https://doxygen.bitcoincore.org/bitcoind_8cpp.html#a0ddf1224851353fc92bfbff6f499fa97)
   : Started from `main()` in `bitcoind.cpp`. Responsible for starting up and
   shutting down the application.
 
@@ -1288,7 +1288,7 @@ A few guidelines for introducing and reviewing new RPC interfaces:
 - Try not to overload methods on argument type. E.g. don't make `getblock(true)` and `getblock("hash")`
   do different things.
 
-  - *Rationale*: This is impossible to use with `bitcoin-cli`, and can be surprising to users.
+  - *Rationale*: This is impossible to use with `truenorth-cli`, and can be surprising to users.
 
   - *Exception*: Some RPC calls can take both an `int` and `bool`, most notably when a bool was switched
     to a multi-value, or due to other historical reasons. **Always** have false map to 0 and
@@ -1302,7 +1302,7 @@ A few guidelines for introducing and reviewing new RPC interfaces:
 
 - Add every non-string RPC argument `(method, idx, name)` to the table `vRPCConvertParams` in `rpc/client.cpp`.
 
-  - *Rationale*: `bitcoin-cli` and the GUI debug console use this table to determine how to
+  - *Rationale*: `truenorth-cli` and the GUI debug console use this table to determine how to
     convert a plaintext command line to JSON. If the types don't match, the method can be unusable
     from there.
 

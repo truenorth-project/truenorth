@@ -53,7 +53,7 @@ Build:
 
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j --target truenorthd bitcoin-cli truenorth-miner
+cmake --build build -j --target truenorthd truenorth-cli truenorth-miner
 ```
 
 This produces three binaries:
@@ -106,7 +106,7 @@ Used by the regression scripts under [`test/truenorth/`](test/truenorth/).
 
 ```bash
 ./build/bin/truenorth-miner \
-    -chain=test -datadir=<path-to-bitcoind-datadir> \
+    -chain=test -datadir=<path-to-truenorthd-datadir> \
     -address=<your-tnorth1-address> \
     -threads=<N>
 ```

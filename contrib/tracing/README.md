@@ -30,12 +30,12 @@ information. For development there exist a [bpftrace Reference Guide], a
 
 ## Examples
 
-The bpftrace examples contain a relative path to the `bitcoind` binary. By
+The bpftrace examples contain a relative path to the `truenorthd` binary. By
 default, the scripts should be run from the repository-root and assume a
-self-compiled `bitcoind` binary. The paths in the examples can be changed, for
+self-compiled `truenorthd` binary. The paths in the examples can be changed, for
 example, to point to release builds if needed. See the
 [Bitcoin Core USDT documentation] on how to list available tracepoints in your
-`bitcoind` binary.
+`truenorthd` binary.
 
 [Bitcoin Core USDT documentation]: ../../doc/tracing.md#listing-available-tracepoints
 

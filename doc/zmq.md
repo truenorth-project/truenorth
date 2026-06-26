@@ -81,13 +81,13 @@ The high water mark value must be an integer greater than or equal to 0.
 
 For instance:
 
-    $ bitcoind -zmqpubhashtx=tcp://127.0.0.1:28332 \
+    $ truenorthd -zmqpubhashtx=tcp://127.0.0.1:28332 \
                -zmqpubhashtx=tcp://192.168.1.2:28332 \
                -zmqpubhashblock="tcp://[::1]:28333" \
                -zmqpubrawtx=unix:/tmp/bitcoind.tx.raw \
                -zmqpubhashtxhwm=10000
 
-`bitcoin node` or `bitcoin gui` can also be substituted for `bitcoind`.
+`bitcoin node` or `bitcoin gui` can also be substituted for `truenorthd`.
 
 Notification types correspond to message topics (details in next section). For instance,
 for the notification `-zmqpubhashtx` the topic is `hashtx`. These options can also be
@@ -182,7 +182,7 @@ hosts as well. If needed, this option has to be set on the client side too.
 
 From the perspective of bitcoind, the ZeroMQ socket is write-only; PUB
 sockets don't even have a read function. Thus, there is no state
-introduced into bitcoind directly. Furthermore, no information is
+introduced into truenorthd directly. Furthermore, no information is
 broadcast that wasn't already received from the public P2P network.
 
 No authentication or authorization is done on connecting clients; it

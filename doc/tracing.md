@@ -11,7 +11,7 @@ eBPF and USDT Overview
 ======================
 
                 ┌──────────────────┐            ┌──────────────┐
-                │ tracing script   │            │ bitcoind     │
+                │ tracing script   │            │ truenorthd     │
                 │==================│      2.    │==============│
                 │  eBPF  │ tracing │      hooks │              │
                 │  code  │ logic   │      into┌─┤►tracepoint 1─┼───┐ 3.
@@ -422,7 +422,7 @@ maximum expected string size if known.
 
 ## Listing available tracepoints
 
-Multiple tools can list the available tracepoints in a `bitcoind` binary with
+Multiple tools can list the available tracepoints in a `truenorthd` binary with
 USDT support.
 
 ### GDB - GNU Project Debugger

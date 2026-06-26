@@ -18,21 +18,21 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-ExecStart=/usr/bin/truenorthd -pid=/run/bitcoind/bitcoind.pid \
+ExecStart=/usr/bin/truenorthd -pid=/run/truenorthd/truenorthd.pid \
                             -conf=/etc/truenorth/truenorth.conf \
-                            -datadir=/var/lib/bitcoind \
+                            -datadir=/var/lib/truenorthd \
                             -startupnotify='systemd-notify --ready' \
                             -shutdownnotify='systemd-notify --stopping'
 
 # Make sure the config directory is readable by the service user
-ExecStartPre=!/bin/chgrp bitcoin /etc/truenorth
+ExecStartPre=!/bin/chgrp truenorth /etc/truenorth
 
 # Process management
 ####################
 
 Type=notify
 NotifyAccess=all
-PIDFile=/run/bitcoind/bitcoind.pid
+PIDFile=/run/truenorthd/truenorthd.pid
 
 Restart=on-failure
 TimeoutStartSec=infinity
@@ -42,18 +42,18 @@ TimeoutStopSec=600
 ####################################
 
 # Run as bitcoin:bitcoin
-User=bitcoin
+User=truenorth
 
-# /run/bitcoind
-RuntimeDirectory=bitcoind
+# /run/truenorthd
+RuntimeDirectory=truenorthd
 RuntimeDirectoryMode=0710
 
 # /etc/truenorth
 ConfigurationDirectory=bitcoin
 ConfigurationDirectoryMode=0710
 
-# /var/lib/bitcoind
-StateDirectory=bitcoind
+# /var/lib/truenorthd
+StateDirectory=truenorthd
 StateDirectoryMode=0710
 
 # Hardening measures

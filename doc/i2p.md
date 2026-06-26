@@ -41,7 +41,7 @@ Core configuration options:
 In a typical situation, this suffices:
 
 ```
-bitcoind -i2psam=127.0.0.1:7656
+truenorthd -i2psam=127.0.0.1:7656
 ```
 
 ## Additional configuration options related to I2P

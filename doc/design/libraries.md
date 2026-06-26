@@ -41,8 +41,8 @@ graph TD;
 
 bitcoin-cli[bitcoin-cli]-->libbitcoin_cli;
 
-bitcoind[bitcoind]-->libbitcoin_node;
-bitcoind[bitcoind]-->libbitcoin_wallet;
+truenorthd[bitcoind]-->libbitcoin_node;
+truenorthd[bitcoind]-->libbitcoin_wallet;
 
 bitcoin-qt[bitcoin-qt]-->libbitcoin_node;
 bitcoin-qt[bitcoin-qt]-->libbitcoinqt;

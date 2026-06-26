@@ -47,9 +47,9 @@ DD="$(mktemp -d -t tn-seedrot.XXXXXX)"
 cleanup() {
     "$BITCOINCLI" -regtest -datadir="$DD" stop >/dev/null 2>&1 || true
     for _ in $(seq 1 30); do
-        [ -f "$DD/regtest/bitcoind.pid" ] || break
+        [ -f "$DD/regtest/truenorthd.pid" ] || break
         local pid
-        pid="$(cat "$DD/regtest/bitcoind.pid" 2>/dev/null)" || break
+        pid="$(cat "$DD/regtest/truenorthd.pid" 2>/dev/null)" || break
         kill -0 "$pid" 2>/dev/null || break
         sleep 0.5
     done

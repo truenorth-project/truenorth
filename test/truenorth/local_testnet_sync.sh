@@ -46,7 +46,7 @@ cleanup() {
     "$BITCOINCLI" -regtest -datadir="$DDA" -rpcport="$RPCPORTA" stop >/dev/null 2>&1 || true
     "$BITCOINCLI" -regtest -datadir="$DDB" -rpcport="$RPCPORTB" stop >/dev/null 2>&1 || true
     sleep 1
-    for pidfile in "$DDA/regtest/bitcoind.pid" "$DDB/regtest/bitcoind.pid"; do
+    for pidfile in "$DDA/regtest/truenorthd.pid" "$DDB/regtest/truenorthd.pid"; do
         if [ -f "$pidfile" ]; then
             kill -TERM "$(cat "$pidfile")" 2>/dev/null || true
         fi

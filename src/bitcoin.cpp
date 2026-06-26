@@ -82,7 +82,7 @@ int main(int argc, char* argv[])
         } else if (cmd.command == "gui") {
             args.emplace_back(UseMultiprocess(cmd) ? "bitcoin-gui" : "bitcoin-qt");
         } else if (cmd.command == "node") {
-            args.emplace_back(UseMultiprocess(cmd) ? "bitcoin-node" : "bitcoind");
+            args.emplace_back(UseMultiprocess(cmd) ? "bitcoin-node" : "truenorthd");
         } else if (cmd.command == "rpc") {
             args.emplace_back("bitcoin-cli");
             // Since "bitcoin rpc" is a new interface that doesn't need to be

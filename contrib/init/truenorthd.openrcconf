@@ -1,31 +1,31 @@
 # /etc/conf.d/bitcoind: config file for /etc/init.d/bitcoind
 
 # Config file location
-#BITCOIND_CONFIGFILE="/etc/truenorth/truenorth.conf"
+#TRUENORTHD_CONFIGFILE="/etc/truenorth/truenorth.conf"
 
-# What directory to write pidfile to?  (created and owned by $BITCOIND_USER)
-#BITCOIND_PIDDIR="/var/run/bitcoind"
+# What directory to write pidfile to?  (created and owned by $TRUENORTHD_USER)
+#TRUENORTHD_PIDDIR="/var/run/truenorthd"
 
 # What filename to give the pidfile
-#BITCOIND_PIDFILE="${BITCOIND_PIDDIR}/bitcoind.pid"
+#TRUENORTHD_PIDFILE="${TRUENORTHD_PIDDIR}/truenorthd.pid"
 
-# Where to write bitcoind data (be mindful that the blockchain is large)
-#BITCOIND_DATADIR="/var/lib/bitcoind"
+# Where to write truenorthd data (be mindful that the blockchain is large)
+#TRUENORTHD_DATADIR="/var/lib/truenorthd"
 
-# User and group to own bitcoind process
-#BITCOIND_USER="bitcoin"
-#BITCOIND_GROUP="bitcoin"
+# User and group to own truenorthd process
+#TRUENORTHD_USER="truenorth"
+#TRUENORTHD_GROUP="truenorth"
 
-# Path to bitcoind executable
-#BITCOIND_BIN="/usr/bin/truenorthd"
+# Path to truenorthd executable
+#TRUENORTHD_BIN="/usr/bin/truenorthd"
 
-# Nice value to run bitcoind under
+# Nice value to run truenorthd under
 #BITCOIND_NICE=0
 
 # Additional options (avoid -conf and -datadir, use flags above)
-#BITCOIND_OPTS=""
+#TRUENORTHD_OPTS=""
 
-# The timeout in seconds OpenRC will wait for bitcoind to terminate
+# The timeout in seconds OpenRC will wait for truenorthd to terminate
 # after a SIGTERM has been raised.
 # Note that this will be mapped as argument to start-stop-daemon's
 # '--retry' option, which means you can specify a retry schedule

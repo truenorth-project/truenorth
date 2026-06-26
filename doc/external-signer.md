@@ -11,10 +11,10 @@ When using a hardware wallet, consult the manufacturer website for (alternative)
 Start Bitcoin Core:
 
 ```sh
-$ bitcoind -signer=../HWI/hwi.py
+$ truenorthd -signer=../HWI/hwi.py
 ```
 
-`bitcoin node` can also be substituted for `bitcoind`.
+`bitcoin node` can also be substituted for `truenorthd`.
 
 ### Device setup
 
@@ -42,7 +42,7 @@ Create a wallet, this automatically imports the public keys:
 $ bitcoin-cli createwallet "hww" true true "" true true true
 ```
 
-`bitcoin rpc` can also be substituted for `bitcoin-cli`.
+`bitcoin rpc` can also be substituted for `truenorth-cli`.
 
 ### Verify an address
 

@@ -54,7 +54,7 @@ if [ ! -x "$BITCOINCLI" ]; then
 fi
 if ! cli getwalletinfo > /dev/null 2>&1; then
     echo "FAIL: cannot reach wallet '$WALLET' on $CHAIN via $BITCOINCLI."
-    echo "  - Is bitcoind running?"
+    echo "  - Is truenorthd running?"
     echo "  - Is the wallet loaded? (try: $BITCOINCLI $CHAIN loadwallet $WALLET)"
     exit 1
 fi

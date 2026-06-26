@@ -7,7 +7,7 @@ _bitcoind() {
     local cur prev words=() cword
     local bitcoind
 
-    # save and use original argument to invoke bitcoind for -help
+    # save and use original argument to invoke truenorthd for -help
     # it might not be in $PATH
     bitcoind="$1"
 
@@ -45,7 +45,7 @@ _bitcoind() {
             ;;
     esac
 } &&
-complete -F _bitcoind bitcoind bitcoin-qt
+complete -F _bitcoind truenorthd bitcoin-qt
 
 # Local variables:
 # mode: shell-script

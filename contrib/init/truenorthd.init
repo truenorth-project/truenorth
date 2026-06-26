@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-#  bitcoind The bitcoin core server.
+#  truenorthd The bitcoin core server.
 #
 #
 # chkconfig: 345 80 20
@@ -22,11 +22,11 @@ prog=bitcoind
 # you can override the lockfile via BITCOIND_LOCKFILE in /etc/sysconfig/bitcoind
 lockfile=${BITCOIND_LOCKFILE-/var/lock/subsys/bitcoind}
 
-# bitcoind defaults to /usr/bin/truenorthd, override with BITCOIND_BIN
-bitcoind=${BITCOIND_BIN-/usr/bin/truenorthd}
+# truenorthd defaults to /usr/bin/truenorthd, override with TRUENORTHD_BIN
+truenorthd=${TRUENORTHD_BIN-/usr/bin/truenorthd}
 
-# bitcoind opts default to -disablewallet, override with BITCOIND_OPTS
-bitcoind_opts=${BITCOIND_OPTS--disablewallet}
+# truenorthd opts default to -disablewallet, override with TRUENORTHD_OPTS
+truenorthd_opts=${TRUENORTHD_OPTS--disablewallet}
 
 start() {
     echo -n $"Starting $prog: "
