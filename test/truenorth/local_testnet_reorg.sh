@@ -62,6 +62,18 @@ start_node() {
         -port="$port" -rpcport="$rpc" \
         -bind="127.0.0.1:$port" -rpcbind="127.0.0.1:$rpc" \
         -listen=1 -discover=0 -dnsseed=0 -fallbackfee=0.0002
+    # bitcoind -daemon hides startup errors and bitcoin-cli -rpcwait
+    # sometimes gives up before the cookie file exists. Poll for it.
+    local cookie="$dd/regtest/.cookie"
+    for _ in $(seq 1 60); do
+        [ -f "$cookie" ] && return 0
+        sleep 1
+    done
+    echo "FAIL: bitcoind ($dd) did not create cookie within 60s"
+    echo "---- debug.log (last 50 lines) ----"
+    tail -50 "$dd/regtest/debug.log" 2>/dev/null || echo "(no debug.log)"
+    echo "---- end debug.log ----"
+    return 1
 }
 
 wait_for_tip() {

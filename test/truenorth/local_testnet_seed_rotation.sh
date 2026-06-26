@@ -65,6 +65,20 @@ echo
 
 echo "[1/4] start bitcoind"
 "$BITCOIND" -regtest -datadir="$DD" -daemon
+
+# bitcoind -daemon hides startup errors and bitcoin-cli -rpcwait
+# sometimes gives up before the cookie file exists. Poll for it.
+COOKIE="$DD/regtest/.cookie"
+for _ in $(seq 1 60); do
+    [ -f "$COOKIE" ] && break
+    sleep 1
+done
+if [ ! -f "$COOKIE" ]; then
+    echo "FAIL: bitcoind did not create cookie within 60s"
+    tail -50 "$DD/regtest/debug.log" 2>/dev/null || echo "(no debug.log)"
+    exit 1
+fi
+
 cli -rpcwait createwallet ci >/dev/null
 ADDR="$(cli getnewaddress)"
 
