@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   lint:
-    name: Lint -- clang-format on src/truenorth/
+    name: Lint -- clang-format + codespell on TrueNorth additions
     # Ubuntu runners are the 1x billing tier; macos-latest is 10x. Lint has
     # no platform-specific reason to live on macOS.
     runs-on: ubuntu-latest
@@ -27,18 +27,16 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Install clang-format
+      - name: Install lint tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq clang-format
+          sudo apt-get install -y -qq clang-format codespell
           clang-format --version | head -1
+          codespell --version | head -1
 
       - name: clang-format dry-run on src/truenorth/*
         # Strict check on our additions only; inherited Bitcoin Core code is
-        # out of scope for this job. Additional upstream lint scripts
-        # (lint-include-guards.py, lint-files.py, lint-spelling.py, ...) can
-        # be wired in later as we conform our additions to those
-        # conventions; tracked separately.
+        # out of scope for this job.
         run: |
           clang-format --dry-run --Werror \
             src/truenorth/randomx_wrapper.h \
@@ -47,6 +45,20 @@ jobs:
             src/truenorth/seed_key.cpp \
             src/truenorth/mine_genesis.cpp \
             src/truenorth/miner.cpp
+
+      - name: codespell on TrueNorth additions
+        # Spell-check our own files only. The shared word-exception list
+        # (test/lint/spelling.ignore-words.txt) avoids the bitcoin-core
+        # false-positives (e.g. "tx", "nin"). Errors do fail the job --
+        # spelling regressions in user-facing docs are worth blocking on.
+        run: |
+          codespell \
+            --ignore-words=test/lint/spelling.ignore-words.txt \
+            src/truenorth/ \
+            test/truenorth/ \
+            doc/testnet.md \
+            README.md \
+            TRUENORTH_SPEC.md
 
   build-and-smoke-test:
     name: Linux x86_64 -- build + regtest smoke test
