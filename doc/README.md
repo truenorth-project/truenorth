@@ -23,6 +23,7 @@ For TrueNorth-specific docs, see [`/README.md`](../README.md) at the repo root.
 
 ## Operations
 
+- [`testnet.md`](testnet.md). How to join the TrueNorth testnet3 (seed `.onion`, sample tester config, what to report).
 - [`bitcoin-conf.md`](bitcoin-conf.md). Config file reference. The TrueNorth daemon looks for `truenorth.conf` rather than `bitcoin.conf`. Everything else applies.
 - [`files.md`](files.md). Datadir layout reference.
 - [`init.md`](init.md). systemd, openrc, upstart unit examples.

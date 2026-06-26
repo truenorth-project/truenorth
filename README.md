@@ -17,11 +17,11 @@ A Canadian-themed cryptocurrency forked from Bitcoin Core, using **RandomX** (CP
 | **Initial reward** | 50 BTC | 1024 NORTH |
 | **Tickers** | BTC | NORTH (mainnet) / tNORTH (testnet) |
 | **Mainnet bech32 HRP** | `bc1...` | `north1...` |
-| **Testnet bech32 HRP** | `tb1...` | `tnorth1...` |
+| **Testnet bech32 HRP** | `tb1...` (testnet4) | `tnorth41q...` (testnet4) |
 | **Mainnet P2P / RPC port** | 8333 / 8332 | 9555 / 9554 |
-| **Testnet3 P2P / RPC port** | 18333 / 18332 | 19555 / 19554 |
+| **Testnet4 P2P / RPC port** | 48333 / 48332 | 49555 / 49554 |
 | **Magic bytes (mainnet)** | `f9 be b4 d9` | `fa c4 b8 d2` |
-| **Magic bytes (testnet3)** | `0b 11 09 07` | `fa c4 b8 d3` |
+| **Magic bytes (testnet4)** | `1c 16 3f 28` | `fa c4 b8 d4` |
 
 A TrueNorth node and a Bitcoin node will refuse to peer with each other. The magic bytes, ports, address prefixes, and genesis block are all distinct.
 
@@ -68,21 +68,24 @@ Building on macOS works too. Replace the apt line with `brew install cmake boost
 
 ## Running a node
 
-### Testnet3
+### Testnet4
+
+The TrueNorth testnet runs onion-only. See [`doc/testnet.md`](doc/testnet.md) for the seed `.onion` address, a sample tester config, and bootstrap steps.
+
+A bare-minimum startup once the conf is in place:
 
 ```bash
-./build/bin/truenorthd -testnet=3 -daemon -dnsseed=1 -listen=1
+./build/bin/truenorthd -testnet4 -daemon
+./build/bin/truenorth-cli -testnet4 -rpcwait getblockchaininfo
 ```
 
-Default ports: P2P **19555**, RPC **19554**. Both bound to `127.0.0.1` by default; pass `-rpcallowip=` or set `rpcauth` if you need remote RPC.
+Default ports: P2P **49555**, RPC **49554**. Both bound to `127.0.0.1` by default; pass `-rpcallowip=` or set `rpcauth` if you need remote RPC.
 
-Once running:
+Address example:
 
 ```bash
-./build/bin/truenorth-cli -testnet=3 getblockchaininfo
-./build/bin/truenorth-cli -testnet=3 createwallet mywallet
-./build/bin/truenorth-cli -testnet=3 getnewaddress
-# -> tnorth1q...
+./build/bin/truenorth-cli -testnet4 getnewaddress
+# -> tnorth41q...
 ```
 
 ### Mainnet

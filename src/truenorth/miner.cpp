@@ -474,10 +474,13 @@ void RunBenchmark(int num_threads, int budget_seconds)
 
 std::string CLIChainArg(ChainType c)
 {
+    // Match the chain-selector flag forms documented in bitcoin-cli --help.
+    // -testnet=4 is NOT valid (-testnet takes only "3" or no value); the
+    // documented forms for testnet4 are -testnet4 or -chain=testnet4.
     switch (c) {
     case ChainType::MAIN: return "";
     case ChainType::TESTNET: return "-testnet=3";
-    case ChainType::TESTNET4: return "-testnet=4";
+    case ChainType::TESTNET4: return "-testnet4";
     case ChainType::SIGNET: return "-signet";
     case ChainType::REGTEST: return "-regtest";
     }
