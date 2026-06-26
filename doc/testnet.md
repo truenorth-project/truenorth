@@ -78,7 +78,7 @@ Tor `HiddenServiceDir` block in your torrc that maps a port to
 `127.0.0.1:49555`, then set `externalip=<your-onion>` in the conf and drop
 `listenonion=0`.
 
-## First run
+## First run: start the node
 
 ```
 ./truenorthd -testnet4 -daemon
@@ -100,6 +100,79 @@ After connection:
 You should see at least one connection and a best block hash that matches
 what the seed reports. Sync time depends on chain length and your Tor
 circuit; expect a few minutes for a testnet at meaningful height.
+
+## Start mining
+
+The testnet needs more than one miner to be useful. Right now it's running
+on a single miner, which means LWMA difficulty oscillates wildly (the
+single miner alternates between hitting the LWMA-set difficulty and getting
+the `fPowAllowMinDifficultyBlocks` exemption after long gaps). Adding a
+second or third miner stabilises the chain and exercises real network
+propagation, fork resolution, and seed-key rotation across participants.
+
+If you're running a node, please mine. Your participation is what makes
+the test meaningful.
+
+Create a wallet, get an address, and start the miner:
+
+```
+./truenorth-cli -testnet4 createwallet mywallet
+ADDR=$(./truenorth-cli -testnet4 -rpcwallet=mywallet getnewaddress)
+
+./truenorth-miner \
+    -chain=testnet4 \
+    -datadir=$HOME/.truenorth \
+    -cli=$(realpath ./truenorth-cli) \
+    -address=$ADDR \
+    -threads=$(nproc) \
+    -budgetseconds=300
+```
+
+Light-mode RandomX hashes at a few hundred H/s per modern CPU core; an
+8-core box will produce blocks regularly at testnet's permissive difficulty
+floor. The miner runs as a foreground process; use `nohup ... &` or a tmux
+session if you want it to keep going after you log out.
+
+Verify your miner is producing blocks by watching the chain tip:
+
+```
+./truenorth-cli -testnet4 getblockcount     # before
+# wait a minute or two
+./truenorth-cli -testnet4 getblockcount     # after, should be higher
+./truenorth-cli -testnet4 -rpcwallet=mywallet getbalance
+# coinbases mature after 100 blocks; immature coins also show with
+# -rpcwallet=mywallet getbalances
+```
+
+If the height isn't moving, check that the seed peer is still connected
+(`getconnectioncount` > 0) and that the miner process is still alive
+(`pgrep -af truenorth-miner`).
+
+### Mining benchmark (no node required)
+
+If you just want to verify the RandomX implementation works on your
+machine before committing to a real miner run:
+
+```
+./truenorth-miner -benchmark=1 -threads=$(nproc) -budgetseconds=10
+```
+
+This hashes for 10 seconds and prints aggregate and per-thread rates. No
+network or wallet involved.
+
+## Sending test transactions
+
+Once your coinbase outputs have matured (100 blocks after they were mined)
+you can send transactions to other testers' addresses. Coordinate with the
+other testers to swap addresses, then:
+
+```
+./truenorth-cli -testnet4 -rpcwallet=mywallet sendtoaddress <their-tnorth4-address> 10
+```
+
+Tx propagation across the Tor-routed onion network is what we want to see
+working under load. Mempool size, fee estimation behaviour, and reorg
+handling are all interesting to stress.
 
 ## What to look for and report
 
@@ -126,23 +199,6 @@ When filing, include:
 - Steps to reproduce
 - Relevant log output from `~/.truenorth/testnet4/debug.log` (be aware logs
   can contain IP addresses and similar)
-
-## Mining (optional)
-
-If you want to mine on testnet, use `truenorth-miner` against your local
-node. Light-mode RandomX is the reference miner; a recent x86_64 laptop CPU
-will turn over a few hundred hashes per second per core. The chain's PoW
-difficulty floor is permissive, so even a single laptop can keep up at low
-hashrate.
-
-```
-./truenorth-miner -chain=testnet4 -datadir=$HOME/.truenorth \
-                  -cli=$(which truenorth-cli) \
-                  -address=$(./truenorth-cli -testnet4 getnewaddress) \
-                  -threads=$(nproc) -budgetseconds=300
-```
-
-There is no stratum pool. Mining is solo only at this stage.
 
 ## Known issues
 

@@ -121,11 +121,14 @@ jobs:
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
           STAGE="truenorth-${TAG}-${{ matrix.platform }}"
-          mkdir -p "${STAGE}/bin"
+          mkdir -p "${STAGE}/bin" "${STAGE}/doc"
           cp build/bin/truenorthd          "${STAGE}/bin/"
           cp build/bin/truenorth-cli       "${STAGE}/bin/"
           cp build/bin/truenorth-miner   "${STAGE}/bin/"
           cp README.md COPYING "${STAGE}/"
+          # Tester-relevant docs travel with the binary so an onion-only
+          # operator doesn't have to bounce back to a browser.
+          cp doc/testnet.md "${STAGE}/doc/"
           tar czf "${STAGE}.tar.gz" "${STAGE}"
           sha256sum "${STAGE}.tar.gz" > "${STAGE}.tar.gz.sha256" 2>/dev/null \
             || shasum -a 256 "${STAGE}.tar.gz" > "${STAGE}.tar.gz.sha256"
