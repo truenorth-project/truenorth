@@ -22,8 +22,8 @@ prog=bitcoind
 # you can override the lockfile via BITCOIND_LOCKFILE in /etc/sysconfig/bitcoind
 lockfile=${BITCOIND_LOCKFILE-/var/lock/subsys/bitcoind}
 
-# bitcoind defaults to /usr/bin/bitcoind, override with BITCOIND_BIN
-bitcoind=${BITCOIND_BIN-/usr/bin/bitcoind}
+# bitcoind defaults to /usr/bin/truenorthd, override with BITCOIND_BIN
+bitcoind=${BITCOIND_BIN-/usr/bin/truenorthd}
 
 # bitcoind opts default to -disablewallet, override with BITCOIND_OPTS
 bitcoind_opts=${BITCOIND_OPTS--disablewallet}

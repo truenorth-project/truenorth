@@ -308,24 +308,24 @@ if(BUILD_BITCOIN_BIN)
   install_binary_component(bitcoin HAS_MANPAGE)
 endif()
 
-# Bitcoin Core bitcoind.
+# TrueNorth daemon (was bitcoind in upstream Bitcoin Core).
 if(BUILD_DAEMON)
-  add_executable(bitcoind
-    bitcoind.cpp
-    init/bitcoind.cpp
+  add_executable(truenorthd
+    truenorthd.cpp
+    init/truenorthd.cpp
   )
-  add_windows_resources(bitcoind bitcoind-res.rc)
-  add_windows_application_manifest(bitcoind)
-  target_link_libraries(bitcoind
+  add_windows_resources(truenorthd truenorthd-res.rc)
+  add_windows_application_manifest(truenorthd)
+  target_link_libraries(truenorthd
     core_interface
     bitcoin_node
     $<TARGET_NAME_IF_EXISTS:bitcoin_wallet>
   )
-  install_binary_component(bitcoind HAS_MANPAGE)
+  install_binary_component(truenorthd HAS_MANPAGE)
 endif()
 if(ENABLE_IPC AND BUILD_DAEMON)
   add_executable(bitcoin-node
-    bitcoind.cpp
+    truenorthd.cpp
     init/bitcoin-node.cpp
   )
   target_link_libraries(bitcoin-node
@@ -365,12 +365,12 @@ target_link_libraries(bitcoin_cli
 )
 
 
-# Bitcoin Core RPC client
+# TrueNorth RPC client (was bitcoin-cli in upstream Bitcoin Core).
 if(BUILD_CLI)
-  add_executable(bitcoin-cli bitcoin-cli.cpp)
-  add_windows_resources(bitcoin-cli bitcoin-cli-res.rc)
-  add_windows_application_manifest(bitcoin-cli)
-  target_link_libraries(bitcoin-cli
+  add_executable(truenorth-cli truenorth-cli.cpp)
+  add_windows_resources(truenorth-cli truenorth-cli-res.rc)
+  add_windows_application_manifest(truenorth-cli)
+  target_link_libraries(truenorth-cli
     core_interface
     bitcoin_cli
     bitcoin_common
@@ -378,7 +378,7 @@ if(BUILD_CLI)
     libevent::core
     libevent::extra
   )
-  install_binary_component(bitcoin-cli HAS_MANPAGE)
+  install_binary_component(truenorth-cli HAS_MANPAGE)
 endif()
 
 

@@ -31,8 +31,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BUILD="${BUILD:-build}"
-BITCOIND="$ROOT/$BUILD/bin/bitcoind"
-BITCOINCLI="$ROOT/$BUILD/bin/bitcoin-cli"
+BITCOIND="$ROOT/$BUILD/bin/truenorthd"
+BITCOINCLI="$ROOT/$BUILD/bin/truenorth-cli"
 MINER="$ROOT/$BUILD/bin/truenorth-miner"
 EPOCH=2048
 LAG=64

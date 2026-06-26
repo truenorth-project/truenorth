@@ -33,7 +33,7 @@ Tagged releases produce binaries on GitHub Releases. See https://github.com/true
 
 - `truenorth-<tag>-linux-x86_64.tar.gz` (with matching `.sha256`)
 
-Each tarball unpacks to a directory containing `bin/bitcoind`, `bin/bitcoin-cli`, `bin/truenorth-miner`, this `README.md`, and `COPYING`.
+Each tarball unpacks to a directory containing `bin/truenorthd`, `bin/truenorth-cli`, `bin/truenorth-miner`, this `README.md`, and `COPYING`.
 
 **macOS, Windows, other platforms**: no pre-built binary yet. Build from source (below). macOS release binaries are deliberately disabled in the release workflow for now because the macOS CI runner is the 10× billing tier; they may be re-enabled later.
 
@@ -53,16 +53,14 @@ Build:
 
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j --target bitcoind bitcoin-cli truenorth-miner
+cmake --build build -j --target truenorthd bitcoin-cli truenorth-miner
 ```
 
 This produces three binaries:
 
-- `build/bin/bitcoind`: the full TrueNorth node.
-- `build/bin/bitcoin-cli`: RPC client for talking to a running node.
-- `build/bin/truenorth-miner`: standalone solo CPU miner. Talks to `bitcoind` via RPC, hashes with the same RandomX library the node uses.
-
-Yes, the binaries are still named `bitcoind` and `bitcoin-cli`. We kept the inherited names so anyone familiar with Bitcoin Core's tooling can use them directly. The chain is TrueNorth; the executable names are a fork-history artifact.
+- `build/bin/truenorthd`: the full TrueNorth node.
+- `build/bin/truenorth-cli`: RPC client for talking to a running node.
+- `build/bin/truenorth-miner`: standalone solo CPU miner. Talks to `truenorthd` via RPC, hashes with the same RandomX library the node uses.
 
 Building on macOS works too. Replace the apt line with `brew install cmake boost libevent sqlite ccache llvm` and configure with the homebrew LLVM toolchain. See [`doc/build-osx.md`](doc/build-osx.md).
 
@@ -73,7 +71,7 @@ Building on macOS works too. Replace the apt line with `brew install cmake boost
 ### Testnet3
 
 ```bash
-./build/bin/bitcoind -testnet=3 -daemon -dnsseed=1 -listen=1
+./build/bin/truenorthd -testnet=3 -daemon -dnsseed=1 -listen=1
 ```
 
 Default ports: P2P **19555**, RPC **19554**. Both bound to `127.0.0.1` by default; pass `-rpcallowip=` or set `rpcauth` if you need remote RPC.
@@ -81,9 +79,9 @@ Default ports: P2P **19555**, RPC **19554**. Both bound to `127.0.0.1` by defaul
 Once running:
 
 ```bash
-./build/bin/bitcoin-cli -testnet=3 getblockchaininfo
-./build/bin/bitcoin-cli -testnet=3 createwallet mywallet
-./build/bin/bitcoin-cli -testnet=3 getnewaddress
+./build/bin/truenorth-cli -testnet=3 getblockchaininfo
+./build/bin/truenorth-cli -testnet=3 createwallet mywallet
+./build/bin/truenorth-cli -testnet=3 getnewaddress
 # -> tnorth1q...
 ```
 
@@ -94,8 +92,8 @@ Not yet launched. Don't run anyone's "mainnet" binary that you can't trace back 
 ### Regtest (local development)
 
 ```bash
-./build/bin/bitcoind -regtest -daemon
-./build/bin/bitcoin-cli -regtest generatetoaddress 1 $(./build/bin/bitcoin-cli -regtest getnewaddress)
+./build/bin/truenorthd -regtest -daemon
+./build/bin/truenorth-cli -regtest generatetoaddress 1 $(./build/bin/truenorth-cli -regtest getnewaddress)
 ```
 
 Used by the regression scripts under [`test/truenorth/`](test/truenorth/).

@@ -183,7 +183,7 @@ cmake --build build --target deploy
 
 ## Running Bitcoin Core
 
-Bitcoin Core should now be available at `./build/bin/bitcoind`.
+Bitcoin Core should now be available at `./build/bin/truenorthd`.
 If you compiled support for the GUI, it should be available at `./build/bin/bitcoin-qt`.
 
 There is also a multifunction command line interface at `./build/bin/bitcoin`
@@ -218,8 +218,8 @@ tail -f $HOME/Library/Application\ Support/Bitcoin/debug.log
 ## Other commands:
 
 ```shell
-./build/bin/bitcoind -daemon      # Starts the bitcoin daemon.
-./build/bin/bitcoin-cli --help    # Outputs a list of command-line options.
-./build/bin/bitcoin-cli help      # Outputs a list of RPC commands when the daemon is running.
+./build/bin/truenorthd -daemon      # Starts the bitcoin daemon.
+./build/bin/truenorth-cli --help    # Outputs a list of command-line options.
+./build/bin/truenorth-cli help      # Outputs a list of RPC commands when the daemon is running.
 ./build/bin/bitcoin-qt -server # Starts the bitcoin-qt server mode, allows bitcoin-cli control
 ```

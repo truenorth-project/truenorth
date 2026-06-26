@@ -94,10 +94,12 @@ jobs:
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DENABLE_IPC=OFF
 
-      - name: Build bitcoind + bitcoin-cli + truenorth-miner + test_bitcoin
+      - name: Build truenorthd + truenorth-cli + truenorth-miner + test_bitcoin
         # truenorth-miner is needed for the regression scripts below.
         # test_bitcoin is the Boost.Test runner for the unit suite.
-        run: cmake --build build --parallel 4 --target bitcoind bitcoin-cli truenorth-miner test_bitcoin
+        # Bounded -j: GitHub Actions runners (7 GiB RAM on ubuntu-latest)
+        # OOM-kill cc1plus when -j is unbounded on a from-scratch build.
+        run: cmake --build build --parallel 4 --target truenorthd truenorth-cli truenorth-miner test_bitcoin
 
       - name: Run truenorth_tests unit suite
         timeout-minutes: 5

@@ -44,7 +44,7 @@ When rebuilding during development, note that running `cmake --build build`, wit
 Obviously, it is important to build and run the tests at appropriate times -- but when you just want a quick compile to check your work, consider picking one or a set of build targets relevant to what you're working on, e.g.:
 
 ```sh
-cmake --build build --target bitcoind bitcoin-cli
+cmake --build build --target truenorthd bitcoin-cli
 cmake --build build --target bitcoin-qt
 cmake --build build --target bench_bitcoin
 ```

@@ -20,7 +20,7 @@
 #   AMOUNT       payout per address     (default: 100, i.e. 100 tNORTH)
 #   WALLET       wallet name to send from (default: faucet)
 #   CHAIN        bitcoin-cli chain arg  (default: -testnet=3)
-#   BITCOINCLI   bitcoin-cli path       (default: ./build/bin/bitcoin-cli)
+#   BITCOINCLI   bitcoin-cli path       (default: ./build/bin/truenorth-cli)
 #   LOG          CSV log file           (default: ./faucet.log.csv)
 #   DRY_RUN=1    print what would be sent without actually sending
 #   MIN_INTERVAL_S  seconds between sends (default: 1, anti-flood)
@@ -39,7 +39,7 @@ set -euo pipefail
 AMOUNT="${AMOUNT:-100}"
 WALLET="${WALLET:-faucet}"
 CHAIN="${CHAIN:--testnet=3}"
-BITCOINCLI="${BITCOINCLI:-./build/bin/bitcoin-cli}"
+BITCOINCLI="${BITCOINCLI:-./build/bin/truenorth-cli}"
 LOG="${LOG:-./faucet.log.csv}"
 MIN_INTERVAL_S="${MIN_INTERVAL_S:-1}"
 DRY_RUN="${DRY_RUN:-0}"

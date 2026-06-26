@@ -55,7 +55,7 @@ Paths
 
 All three configurations assume several paths that might need to be adjusted.
 
-    Binary:              /usr/bin/bitcoind
+    Binary:              /usr/bin/truenorthd
     Configuration file:  /etc/bitcoin/bitcoin.conf
     Data directory:      /var/lib/bitcoind
     PID file:            /var/run/bitcoind/bitcoind.pid (OpenRC and Upstart) or
@@ -86,7 +86,7 @@ OpenRC).
 
 ### macOS
 
-    Binary:              /usr/local/bin/bitcoind
+    Binary:              /usr/local/bin/truenorthd
     Configuration file:  ~/Library/Application Support/Bitcoin/bitcoin.conf
     Data directory:      ~/Library/Application Support/Bitcoin
     Lock file:           ~/Library/Application Support/Bitcoin/.lock

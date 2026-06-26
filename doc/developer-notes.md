@@ -423,7 +423,7 @@ in-tree. Example use:
 $ valgrind --suppressions=contrib/valgrind.supp build/bin/test_bitcoin
 $ valgrind --suppressions=contrib/valgrind.supp --leak-check=full \
       --show-leak-kinds=all build/bin/test_bitcoin --log_level=test_suite
-$ valgrind -v --leak-check=full build/bin/bitcoind -printtoconsole
+$ valgrind -v --leak-check=full build/bin/truenorthd -printtoconsole
 $ ./build/test/functional/test_runner.py --valgrind
 ```
 
@@ -500,7 +500,7 @@ Generating the coverage report:
 ```shell
 llvm-cov show \
     --object=build/bin/test_bitcoin \
-    --object=build/bin/bitcoind \
+    --object=build/bin/truenorthd \
     -Xdemangler=llvm-cxxfilt \
     --instr-profile=build/coverage.profdata \
     --ignore-filename-regex="src/crc32c/|src/leveldb/|src/minisketch/|src/secp256k1/|src/test/" \

@@ -97,23 +97,23 @@ jobs:
       - name: Build (bounded parallelism)
         run: |
           cmake --build build --parallel ${{ matrix.jobs }} \
-                --target bitcoind bitcoin-cli truenorth-miner
+                --target truenorthd truenorth-cli truenorth-miner
 
       - name: Strip release symbols
         run: |
-          strip build/bin/bitcoind build/bin/bitcoin-cli build/bin/truenorth-miner || true
+          strip build/bin/truenorthd build/bin/truenorth-cli build/bin/truenorth-miner || true
           ls -la build/bin/
 
       - name: Smoke test (start, mine one regtest block, stop)
         timeout-minutes: 5
         run: |
           DD=$(mktemp -d)
-          ./build/bin/bitcoind -regtest -datadir="$DD" -daemon
-          ./build/bin/bitcoin-cli -regtest -datadir="$DD" -rpcwait createwallet ci > /dev/null
-          ADDR=$(./build/bin/bitcoin-cli -regtest -datadir="$DD" getnewaddress)
-          ./build/bin/bitcoin-cli -regtest -datadir="$DD" generatetoaddress 1 "$ADDR" > /dev/null
-          COUNT=$(./build/bin/bitcoin-cli -regtest -datadir="$DD" getblockcount)
-          ./build/bin/bitcoin-cli -regtest -datadir="$DD" stop > /dev/null
+          ./build/bin/truenorthd -regtest -datadir="$DD" -daemon
+          ./build/bin/truenorth-cli -regtest -datadir="$DD" -rpcwait createwallet ci > /dev/null
+          ADDR=$(./build/bin/truenorth-cli -regtest -datadir="$DD" getnewaddress)
+          ./build/bin/truenorth-cli -regtest -datadir="$DD" generatetoaddress 1 "$ADDR" > /dev/null
+          COUNT=$(./build/bin/truenorth-cli -regtest -datadir="$DD" getblockcount)
+          ./build/bin/truenorth-cli -regtest -datadir="$DD" stop > /dev/null
           [ "$COUNT" = "1" ] || { echo "FAIL: smoke produced $COUNT blocks"; exit 1; }
 
       - name: Package tarball
@@ -122,8 +122,8 @@ jobs:
           TAG="${{ steps.tag.outputs.tag }}"
           STAGE="truenorth-${TAG}-${{ matrix.platform }}"
           mkdir -p "${STAGE}/bin"
-          cp build/bin/bitcoind          "${STAGE}/bin/"
-          cp build/bin/bitcoin-cli       "${STAGE}/bin/"
+          cp build/bin/truenorthd          "${STAGE}/bin/"
+          cp build/bin/truenorth-cli       "${STAGE}/bin/"
           cp build/bin/truenorth-miner   "${STAGE}/bin/"
           cp README.md COPYING "${STAGE}/"
           tar czf "${STAGE}.tar.gz" "${STAGE}"

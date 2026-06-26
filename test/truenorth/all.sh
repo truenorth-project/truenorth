@@ -19,7 +19,7 @@ BUILD="${BUILD:-build}"
 # Phase 1: build (unless skipped)
 if [ "${SKIP_BUILD:-0}" != "1" ]; then
     printf "%-50s " "[1/7] cmake --build target=all-launch ..."
-    if cmake --build "$BUILD" -j --target bitcoind bitcoin-cli truenorth-miner test_bitcoin > /tmp/all_sh_build.log 2>&1; then
+    if cmake --build "$BUILD" -j --target truenorthd bitcoin-cli truenorth-miner test_bitcoin > /tmp/all_sh_build.log 2>&1; then
         echo "OK"
     else
         echo "FAIL"
