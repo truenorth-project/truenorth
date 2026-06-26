@@ -49,7 +49,7 @@ For TrueNorth-specific docs, see [`/README.md`](../README.md) at the repo root.
 
 ## Release process
 
-- [`release-process.md`](release-process.md) and [`release-notes.md`](release-notes.md). Describe Bitcoin Core's release flow. TrueNorth's release tagging is currently handled by the GitHub Actions workflow in `.github/workflows/release.yml`.
+- [`release-process.md`](release-process.md). Inherited Bitcoin Core release flow doc. TrueNorth release tagging runs through the GitHub Actions workflow in `.github/workflows/release.yml`; historical Bitcoin Core release notes have been dropped from the repo.
 
 ---
 

@@ -5,13 +5,13 @@
 # See "man systemd.service" for details.
 
 # Note that almost all daemon options could be specified in
-# /etc/bitcoin/bitcoin.conf, but keep in mind those explicitly
+# /etc/truenorth/truenorth.conf, but keep in mind those explicitly
 # specified as arguments in ExecStart= will override those in the
 # config file.
 
 [Unit]
-Description=Bitcoin daemon
-Documentation=https://github.com/bitcoin/bitcoin/blob/master/doc/init.md
+Description=TrueNorth daemon
+Documentation=https://github.com/truenorth-project/truenorth/blob/master/doc/init.md
 
 # https://www.freedesktop.org/wiki/Software/systemd/NetworkTarget/
 After=network-online.target
@@ -19,13 +19,13 @@ Wants=network-online.target
 
 [Service]
 ExecStart=/usr/bin/bitcoind -pid=/run/bitcoind/bitcoind.pid \
-                            -conf=/etc/bitcoin/bitcoin.conf \
+                            -conf=/etc/truenorth/truenorth.conf \
                             -datadir=/var/lib/bitcoind \
                             -startupnotify='systemd-notify --ready' \
                             -shutdownnotify='systemd-notify --stopping'
 
 # Make sure the config directory is readable by the service user
-ExecStartPre=!/bin/chgrp bitcoin /etc/bitcoin
+ExecStartPre=!/bin/chgrp bitcoin /etc/truenorth
 
 # Process management
 ####################
@@ -48,7 +48,7 @@ User=bitcoin
 RuntimeDirectory=bitcoind
 RuntimeDirectoryMode=0710
 
-# /etc/bitcoin
+# /etc/truenorth
 ConfigurationDirectory=bitcoin
 ConfigurationDirectoryMode=0710
 

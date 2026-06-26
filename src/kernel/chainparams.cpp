@@ -144,8 +144,10 @@ public:
         pchMessageStart[3] = 0xd2;
         nDefaultPort = 9555;
         nPruneAfterHeight = 100000;
-        m_assumed_blockchain_size = 810;
-        m_assumed_chain_state_size = 14;
+        // Mainnet was just genesis-mined; no realistic disk planning numbers
+        // yet. Bump these as the chain grows.
+        m_assumed_blockchain_size = 1;
+        m_assumed_chain_state_size = 1;
 
         // TrueNorth mainnet genesis -- mined under RandomNorth (RandomX) by
         // truenorth-mine-genesis. nBits 0x207fffff is trivially easy for now;
