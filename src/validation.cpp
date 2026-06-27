@@ -1930,7 +1930,7 @@ CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
     const int halvings = nHeight / consensusParams.nSubsidyHalvingInterval;
     // After ~64 halvings the right shift would saturate to 0; pin to tail.
     if (halvings >= 64) return nSubsidyTail;
-    CAmount nSubsidy = 1024 * COIN;
+    CAmount nSubsidy = 512 * COIN;
     nSubsidy >>= halvings;
     return std::max(nSubsidy, nSubsidyTail);
 }

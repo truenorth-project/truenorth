@@ -89,7 +89,7 @@ public:
         m_chain_type = ChainType::MAIN;
         consensus.signet_blocks = false;
         consensus.signet_challenge.clear();
-        consensus.nSubsidyHalvingInterval = 525600;
+        consensus.nSubsidyHalvingInterval = 1051200;
         // TrueNorth mainnet activates all BIPs from genesis. The inherited
         // Bitcoin mainnet heights (BIP34=227931 through Segwit=481824) and the
         // script_flag_exceptions for two specific historical Bitcoin block
@@ -152,10 +152,10 @@ public:
         // TrueNorth mainnet genesis -- mined under RandomNorth (RandomX) by
         // truenorth-mine-genesis. nBits 0x207fffff is trivially easy for now;
         // production launch difficulty will be revisited.
-        genesis = CreateGenesisBlock(1748000000, 1, 0x207fffff, 1, 1024 * COIN);
+        genesis = CreateGenesisBlock(1748000000, 0, 0x207fffff, 1, 512 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256{"b6e1d89747965f6ad72903c20b597c774916b5848dc411d9a8182706eb67079c"});
-        assert(genesis.hashMerkleRoot == uint256{"c2176d844a7541ba4c7b34114dbcce7839ee3fac5fa549617121f92a9f09e263"});
+        assert(consensus.hashGenesisBlock == uint256{"95deceaaa8d2408ef5e0e8ae04c50d87af4868cb6744f0668d4aa8c52325e805"});
+        assert(genesis.hashMerkleRoot == uint256{"bedb5be1cd03ead77e25a27dbf4ffbd4fe8496f085cf42e4d1ce935b153dc565"});
 
         // Note that of those which support the service bits prefix, most only support a subset of
         // possible options.
@@ -203,7 +203,7 @@ public:
         m_chain_type = ChainType::TESTNET;
         consensus.signet_blocks = false;
         consensus.signet_challenge.clear();
-        consensus.nSubsidyHalvingInterval = 525600;
+        consensus.nSubsidyHalvingInterval = 1051200;
         // TrueNorth testnet3 activates all BIPs from genesis. The inherited
         // Bitcoin testnet3 heights (BIP34=21111, BIP65=581885, BIP66=330776,
         // CSV=770112, Segwit=834624) referred to a chain that started in 2011
@@ -267,10 +267,10 @@ public:
 
         // testnet3 genesis placeholder. Re-mined at launch with the real
         // pszTimestamp and launch-day nTime.
-        genesis = CreateGenesisBlock(1748000010, 0, 0x207fffff, 1, 1024 * COIN);
+        genesis = CreateGenesisBlock(1748000010, 1, 0x207fffff, 1, 512 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256{"ef35f972cc8703dc2795e3c79dfef36aff4ac2decead1afc7cb8d28e4856bec6"});
-        assert(genesis.hashMerkleRoot == uint256{"c2176d844a7541ba4c7b34114dbcce7839ee3fac5fa549617121f92a9f09e263"});
+        assert(consensus.hashGenesisBlock == uint256{"11f93a5dbb90014c9c1eda190e7bb1a6587f7938fb8be98fd9d780c3f0068052"});
+        assert(genesis.hashMerkleRoot == uint256{"bedb5be1cd03ead77e25a27dbf4ffbd4fe8496f085cf42e4d1ce935b153dc565"});
 
         vFixedSeeds.clear();
         vSeeds.clear();
@@ -324,7 +324,7 @@ public:
         m_chain_type = ChainType::TESTNET4;
         consensus.signet_blocks = false;
         consensus.signet_challenge.clear();
-        consensus.nSubsidyHalvingInterval = 525600;
+        consensus.nSubsidyHalvingInterval = 1051200;
         consensus.BIP34Height = 1;
         consensus.BIP34Hash = uint256{};
         consensus.BIP65Height = 1;
@@ -377,10 +377,10 @@ public:
         // TrueNorth testnet4 genesis -- placeholder, will be re-mined when
         // (and if) we decide to publicly launch this chain. testnet3 is the
         // June 1 launch target.
-        genesis = CreateGenesisBlock(1748000020, 2, 0x207fffff, 1, 1024 * COIN);
+        genesis = CreateGenesisBlock(1748000020, 0, 0x207fffff, 1, 512 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256{"004c1e2f06986786ad6993d6b50a6c31adec9c642cc5f8a8a6fe02beb7fc97ab"});
-        assert(genesis.hashMerkleRoot == uint256{"c2176d844a7541ba4c7b34114dbcce7839ee3fac5fa549617121f92a9f09e263"});
+        assert(consensus.hashGenesisBlock == uint256{"0cdd8a4406a021b2e8069bea38f9f67324aa96241091cf77c70be6def3e7c8f5"});
+        assert(genesis.hashMerkleRoot == uint256{"bedb5be1cd03ead77e25a27dbf4ffbd4fe8496f085cf42e4d1ce935b153dc565"});
 
         vFixedSeeds.clear();
         vSeeds.clear();
@@ -476,7 +476,7 @@ public:
         m_chain_type = ChainType::SIGNET;
         consensus.signet_blocks = true;
         consensus.signet_challenge.assign(bin.begin(), bin.end());
-        consensus.nSubsidyHalvingInterval = 525600;
+        consensus.nSubsidyHalvingInterval = 1051200;
         consensus.BIP34Height = 1;
         consensus.BIP34Hash = uint256{};
         consensus.BIP65Height = 1;
@@ -523,10 +523,10 @@ public:
         nPruneAfterHeight = 1000;
 
         // TrueNorth signet genesis -- mined under RandomNorth.
-        genesis = CreateGenesisBlock(1748000030, 3, 0x207fffff, 1, 1024 * COIN);
+        genesis = CreateGenesisBlock(1748000030, 0, 0x207fffff, 1, 512 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256{"75f959ec5e3e0e407c6217c07cb550f79b021692af8bd4657b785112c458da1c"});
-        assert(genesis.hashMerkleRoot == uint256{"c2176d844a7541ba4c7b34114dbcce7839ee3fac5fa549617121f92a9f09e263"});
+        assert(consensus.hashGenesisBlock == uint256{"bf936c69831c079eeef29f3da092f96d6b1088dc530e46317a2b722c543fafff"});
+        assert(genesis.hashMerkleRoot == uint256{"bedb5be1cd03ead77e25a27dbf4ffbd4fe8496f085cf42e4d1ce935b153dc565"});
 
         // No UTXO snapshot available -- the Bitcoin-signet snapshot
         // entry that was here doesn't apply.
@@ -630,10 +630,10 @@ public:
         }
 
         // TrueNorth regtest genesis -- mined under RandomNorth.
-        genesis = CreateGenesisBlock(1296688602, 0, 0x207fffff, 1, 1024 * COIN);
+        genesis = CreateGenesisBlock(1296688602, 0, 0x207fffff, 1, 512 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256{"f63e4985566b02b9e296c7a3a2ec8557d3c85a956b22563881ea9a5e06582962"});
-        assert(genesis.hashMerkleRoot == uint256{"c2176d844a7541ba4c7b34114dbcce7839ee3fac5fa549617121f92a9f09e263"});
+        assert(consensus.hashGenesisBlock == uint256{"d911bd3ec7ba0f597643c3920f4d6e01ffd872fcae38e0aaab13eb42718aed2f"});
+        assert(genesis.hashMerkleRoot == uint256{"bedb5be1cd03ead77e25a27dbf4ffbd4fe8496f085cf42e4d1ce935b153dc565"});
 
         vFixedSeeds.clear(); //!< Regtest mode doesn't have any fixed seeds.
         vSeeds.clear();

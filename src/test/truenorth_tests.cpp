@@ -195,23 +195,23 @@ BOOST_AUTO_TEST_CASE(subsidy_initial_and_first_halvings)
     const auto chainParams = CreateChainParams(*m_node.args, ChainType::MAIN);
     const auto& c = chainParams->GetConsensus();
 
-    BOOST_CHECK_EQUAL(GetBlockSubsidy(0, c), 1024 * COIN);
-    BOOST_CHECK_EQUAL(GetBlockSubsidy(c.nSubsidyHalvingInterval - 1, c), 1024 * COIN);
-    BOOST_CHECK_EQUAL(GetBlockSubsidy(c.nSubsidyHalvingInterval, c), 512 * COIN);
-    BOOST_CHECK_EQUAL(GetBlockSubsidy(2 * c.nSubsidyHalvingInterval, c), 256 * COIN);
-    BOOST_CHECK_EQUAL(GetBlockSubsidy(3 * c.nSubsidyHalvingInterval, c), 128 * COIN);
+    BOOST_CHECK_EQUAL(GetBlockSubsidy(0, c), 512 * COIN);
+    BOOST_CHECK_EQUAL(GetBlockSubsidy(c.nSubsidyHalvingInterval - 1, c), 512 * COIN);
+    BOOST_CHECK_EQUAL(GetBlockSubsidy(c.nSubsidyHalvingInterval, c), 256 * COIN);
+    BOOST_CHECK_EQUAL(GetBlockSubsidy(2 * c.nSubsidyHalvingInterval, c), 128 * COIN);
+    BOOST_CHECK_EQUAL(GetBlockSubsidy(3 * c.nSubsidyHalvingInterval, c), 64 * COIN);
 }
 
-// 1024 >> 7 = 8 NORTH exactly, so halving 7 hits the floor on the nose;
-// halving 8 (1024 >> 8 = 4) is pinned to the 8-NORTH tail; anything beyond
+// 512 >> 6 = 8 NORTH exactly, so halving 6 hits the floor on the nose;
+// halving 7 (512 >> 7 = 4) is pinned to the 8-NORTH tail; anything beyond
 // stays at the floor in perpetuity.
 BOOST_AUTO_TEST_CASE(subsidy_tail_floor_kicks_in)
 {
     const auto chainParams = CreateChainParams(*m_node.args, ChainType::MAIN);
     const auto& c = chainParams->GetConsensus();
 
+    BOOST_CHECK_EQUAL(GetBlockSubsidy(6 * c.nSubsidyHalvingInterval, c), 8 * COIN);
     BOOST_CHECK_EQUAL(GetBlockSubsidy(7 * c.nSubsidyHalvingInterval, c), 8 * COIN);
-    BOOST_CHECK_EQUAL(GetBlockSubsidy(8 * c.nSubsidyHalvingInterval, c), 8 * COIN);
     BOOST_CHECK_EQUAL(GetBlockSubsidy(50 * c.nSubsidyHalvingInterval, c), 8 * COIN);
 }
 

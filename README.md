@@ -13,8 +13,8 @@ A Canadian-themed cryptocurrency forked from Bitcoin Core, using **RandomX** (CP
 | **Proof of work** | SHA256d | RandomX ("RandomNorth"), light-mode, with per-epoch seed-key rotation (every 2048 blocks) |
 | **Difficulty adjustment** | 2016-block retarget | LWMA-1, retargets every block over a 90-block window |
 | **Block time** | 10 minutes | 2 minutes |
-| **Subsidy** | Halves every 210,000 blocks, dies at zero | Halves every 525,600 blocks, floors at 8 NORTH (tail emission, perpetual security budget) |
-| **Initial reward** | 50 BTC | 1024 NORTH |
+| **Subsidy** | Halves every 210,000 blocks, dies at zero | Halves every 1,051,200 blocks, floors at 8 NORTH (tail emission, perpetual security budget) |
+| **Initial reward** | 50 BTC | 512 NORTH |
 | **Tickers** | BTC | NORTH (mainnet) / tNORTH (testnet) |
 | **Mainnet bech32 HRP** | `bc1...` | `north1...` |
 | **Testnet bech32 HRP** | `tb1...` (testnet4) | `tnorth41q...` (testnet4) |

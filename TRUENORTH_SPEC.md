@@ -30,21 +30,23 @@
 ## 3. Emission & Monetary Policy
 - **Fair launch.** No premine, no founder allocation. Genesis coinbase is
   unspendable; emission begins at block 1, open to all.
-- **Reward formula:** `reward(height) = max(1024 >> floor(height / 525600), 8)` NORTH
+- **Reward formula:** `reward(height) = max(512 >> floor(height / 1051200), 8)` NORTH
+- **Halving cadence:** every 1,051,200 blocks (~4 years at 120s block time).
+  Matches Bitcoin's halving period; produces a distribution curve where
+  year-1 issuance is ~12.5% of pre-tail supply.
 
 | Phase | Years | Block reward |
 |-------|-------|--------------|
-| 1     | 0–2   | 1,024        |
-| 2     | 2–4   | 512          |
-| 3     | 4–6   | 256          |
-| 4     | 6–8   | 128          |
-| 5     | 8–10  | 64           |
-| 6     | 10–12 | 32           |
-| 7     | 12–14 | 16           |
-| Tail  | 14+   | 8 (perpetual)|
+| 1     | 0–4   | 512          |
+| 2     | 4–8   | 256          |
+| 3     | 8–12  | 128          |
+| 4     | 12–16 | 64           |
+| 5     | 16–20 | 32           |
+| 6     | 20–24 | 16           |
+| Tail  | 24+   | 8 (perpetual)|
 
-- **Main emission (~14 yrs):** ~1.07 billion NORTH
-- **Tail emission (yr 14+):** 8 NORTH/block, about 2.1M per year, perpetual (~0.2% inflation, declining)
+- **Main emission (~24 yrs):** ~1.06 billion NORTH
+- **Tail emission (yr 24+):** 8 NORTH/block, about 2.1M per year, perpetual (~0.2% inflation, declining)
 - `MAX_MONEY` sanity constant set well above any reachable supply (no hard cap)
 
 ## 4. Difficulty Adjustment
@@ -75,8 +77,8 @@
 - **Relay/mempool policy:** inherit Bitcoin Core defaults.
 
 ## 8. Supply at a Glance
-- Year 1: ~269M NORTH
-- Year 14: ~1.07B NORTH (main emission complete)
+- Year 1: ~135M NORTH (12.5% of pre-tail; matches Bitcoin's year-1 share)
+- Year 24: ~1.06B NORTH (main emission complete)
 - After: ~2.1M NORTH/year, perpetual (~0.2% inflation, declining)
 
 ## 9. Security & 51%-Attack Resistance

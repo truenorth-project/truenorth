@@ -98,7 +98,7 @@ bool MineFor(const ChainSpec& spec, uint64_t max_nonce_tries)
     }
 
     const int32_t nVersion = 1;
-    const CAmount reward = 1024 * COIN;
+    const CAmount reward = 512 * COIN;
 
     CBlock genesis = BuildGenesis(spec.nTime, /*nNonce=*/0, spec.nBits,
                                   nVersion, reward);
@@ -115,7 +115,7 @@ bool MineFor(const ChainSpec& spec, uint64_t max_nonce_tries)
                         spec.name,
                         static_cast<unsigned long long>(i + 1),
                         static_cast<long long>(elapsed_ms));
-            std::printf("genesis = CreateGenesisBlock(%u, %u, 0x%08x, %d, 1024 * COIN);\n",
+            std::printf("genesis = CreateGenesisBlock(%u, %u, 0x%08x, %d, 512 * COIN);\n",
                         genesis.nTime, genesis.nNonce, genesis.nBits, nVersion);
             std::printf("consensus.hashGenesisBlock = genesis.GetHash();\n");
             std::printf("assert(consensus.hashGenesisBlock == uint256{\"%s\"});\n",
@@ -178,7 +178,7 @@ int main(int argc, char* argv[])
     std::fprintf(stderr, "== TrueNorth genesis-mining utility ==\n");
     std::fprintf(stderr, "Timestamp message: \"%s\"\n", GENESIS_TIMESTAMP_MSG);
     std::fprintf(stderr, "Genesis output script: OP_RETURN (unspendable)\n");
-    std::fprintf(stderr, "Genesis reward: 1024 * COIN (unspendable)\n");
+    std::fprintf(stderr, "Genesis reward: 512 * COIN (unspendable)\n");
     if (!chain_filter.empty()) {
         std::fprintf(stderr, "Filtering to chain: %s\n", chain_filter.c_str());
     }
