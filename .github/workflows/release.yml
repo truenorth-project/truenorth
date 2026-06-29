@@ -68,7 +68,9 @@ jobs:
       - name: Install brew deps (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          brew install --quiet cmake boost libevent sqlite ccache llvm
+          # llvm dropped: Homebrew LLVM 22+ headers don't compose with the
+          # Xcode macOS SDK. We use Apple Clang instead (see Configure step).
+          brew install --quiet cmake boost libevent sqlite ccache
 
       - name: Restore ccache
         uses: actions/cache@v4
@@ -85,13 +87,14 @@ jobs:
           # ccache compiler launchers keep re-runs fast; bounded -j (set per
           # platform below) keeps a from-scratch build inside the runner's
           # memory budget -- unbounded -j is what blew up the first attempt.
+          # On macOS we deliberately use Apple Clang (the system default)
+          # rather than Homebrew LLVM: Homebrew LLVM 22+ has stdc++ headers
+          # that no longer compose with Xcode's macOS SDK (basic types like
+          # size_t and __uint32_t fail to resolve). Apple Clang in current
+          # Xcode supports the consteval features we need.
           ARGS=( -DCMAKE_BUILD_TYPE=Release -DENABLE_IPC=OFF
                  -DCMAKE_C_COMPILER_LAUNCHER=ccache
                  -DCMAKE_CXX_COMPILER_LAUNCHER=ccache )
-          if [ "${{ matrix.os }}" = "macos-latest" ]; then
-            ARGS+=( -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm/bin/clang )
-            ARGS+=( -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++ )
-          fi
           cmake -B build "${ARGS[@]}"
 
       - name: Build (bounded parallelism)
