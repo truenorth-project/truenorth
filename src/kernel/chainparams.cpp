@@ -149,12 +149,11 @@ public:
         m_assumed_blockchain_size = 1;
         m_assumed_chain_state_size = 1;
 
-        // TrueNorth mainnet genesis -- mined under RandomNorth (RandomX) by
-        // truenorth-mine-genesis. nBits 0x207fffff is trivially easy for now;
-        // production launch difficulty will be revisited.
-        genesis = CreateGenesisBlock(1748000000, 0, 0x207fffff, 1, 512 * COIN);
+        // Timestamp 4070908800 (2099-01-01) is a placeholder; mainnet is
+        // not launchable from this binary. Update and re-mine at launch.
+        genesis = CreateGenesisBlock(4070908800, 2, 0x207fffff, 1, 512 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256{"95deceaaa8d2408ef5e0e8ae04c50d87af4868cb6744f0668d4aa8c52325e805"});
+        assert(consensus.hashGenesisBlock == uint256{"8158970ee7fc58bb987aca8f87671fafddb1c3107a522b1b741b1fc23be0c151"});
         assert(genesis.hashMerkleRoot == uint256{"bedb5be1cd03ead77e25a27dbf4ffbd4fe8496f085cf42e4d1ce935b153dc565"});
 
         // Note that of those which support the service bits prefix, most only support a subset of
