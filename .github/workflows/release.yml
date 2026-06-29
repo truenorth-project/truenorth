@@ -163,5 +163,9 @@ jobs:
           allowUpdates: true
           artifactErrorsFailBuild: true
           replacesArtifacts: true
-          prerelease: ${{ contains(steps.tag.outputs.tag, 'tn3') || contains(steps.tag.outputs.tag, 'soft') || contains(steps.tag.outputs.tag, 'pre') || contains(steps.tag.outputs.tag, 'rc') }}
+          # Don't mark soft-launch tags as prerelease -- they're the canonical
+          # current release of the chain. Only `rc` and `pre` qualifiers stay
+          # in prerelease.
+          prerelease: ${{ contains(steps.tag.outputs.tag, 'rc') || contains(steps.tag.outputs.tag, 'pre') }}
+          makeLatest: true
           artifacts: "truenorth-*-${{ matrix.platform }}.tar.gz,truenorth-*-${{ matrix.platform }}.tar.gz.sha256"
