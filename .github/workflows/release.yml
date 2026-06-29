@@ -112,6 +112,18 @@ jobs:
         run: |
           DD=$(mktemp -d)
           ./build/bin/truenorthd -regtest -datadir="$DD" -daemon
+          # bitcoind -daemon hides startup errors and -rpcwait sometimes
+          # gives up before the cookie file exists. Poll for it.
+          COOKIE="$DD/regtest/.cookie"
+          for _ in $(seq 1 60); do
+              [ -f "$COOKIE" ] && break
+              sleep 1
+          done
+          if [ ! -f "$COOKIE" ]; then
+              echo "FAIL: truenorthd did not create the cookie file within 60s"
+              tail -100 "$DD/regtest/debug.log" 2>/dev/null || echo "(no debug.log)"
+              exit 1
+          fi
           ./build/bin/truenorth-cli -regtest -datadir="$DD" -rpcwait createwallet ci > /dev/null
           ADDR=$(./build/bin/truenorth-cli -regtest -datadir="$DD" getnewaddress)
           ./build/bin/truenorth-cli -regtest -datadir="$DD" generatetoaddress 1 "$ADDR" > /dev/null
