@@ -10,6 +10,7 @@
 #include <crypto/sha256.h>
 #include <pubkey.h>
 #include <script/script.h>
+#include <truenorth/qrh.h>
 #include <uint256.h>
 
 typedef std::vector<unsigned char> valtype;
@@ -1939,6 +1940,67 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
         } else {
             return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_WRONG_LENGTH);
         }
+    } else if (witversion == 2 && program.size() == WITNESS_V2_QRH_SIZE && !is_p2sh) {
+        // P2QRH: 32-byte non-P2SH witness v2 program (which encodes a
+        // hash commitment over (scheme_id, pubkey, script_root)).
+        // See doc/p2qrh.md.
+        if (!(flags & SCRIPT_VERIFY_QRH)) return set_success(serror);
+        if (stack.size() == 0) return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_WITNESS_EMPTY);
+
+        // Optional annex (same convention as taproot; reserved for future
+        // soft-fork extensions).
+        if (stack.size() >= 2 && !stack.back().empty() && stack.back()[0] == ANNEX_TAG) {
+            const valtype& annex = SpanPopBack(stack);
+            execdata.m_annex_hash = (HashWriter{} << annex).GetSHA256();
+            execdata.m_annex_present = true;
+        } else {
+            execdata.m_annex_present = false;
+        }
+        execdata.m_annex_init = true;
+
+        // Top of remaining stack is scheme_id (exactly 1 byte).
+        if (stack.size() < 2) return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH);
+        const valtype& scheme_id_bytes = SpanPopBack(stack);
+        if (scheme_id_bytes.size() != 1) {
+            return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH);
+        }
+        const uint8_t scheme_id = scheme_id_bytes[0];
+
+        // Only Schnorr (scheme_id=0x01) is registered at launch. PQ schemes
+        // land via soft fork; unknown scheme_ids are consensus-invalid to
+        // avoid script-upgrade skew across nodes.
+        if (scheme_id != truenorth::QRH_SCHEME_SCHNORR) {
+            return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH);
+        }
+
+        // Stage-5 scope: key-path only. Witness (post-annex, post-scheme_id)
+        // is exactly [signature, pubkey]. Script-path spending lands in a
+        // later soft-fork extension.
+        if (stack.size() != 2) return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH);
+        const valtype& signature = stack.front();
+        const valtype& pubkey = stack.back();
+
+        // Schnorr x-only pubkey is 32 bytes.
+        if (pubkey.size() != 32) {
+            return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH);
+        }
+
+        // Recompute the commitment from the revealed pubkey and verify it
+        // matches the on-chain program. Key-path spends use QRH_EMPTY_SCRIPT_ROOT.
+        const uint256 expected_commitment = truenorth::ComputeQRHCommitment(
+            scheme_id,
+            std::span<const unsigned char>(pubkey.data(), pubkey.size()),
+            truenorth::QRH_EMPTY_SCRIPT_ROOT);
+        if (memcmp(expected_commitment.begin(), program.data(), 32) != 0) {
+            return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH);
+        }
+
+        // Verify the Schnorr signature over BIP-341 sighash using the
+        // revealed pubkey.
+        if (!checker.CheckSchnorrSignature(signature, pubkey, SigVersion::TAPROOT, execdata, serror)) {
+            return false; // serror is set
+        }
+        return set_success(serror);
     } else if (witversion == 1 && program.size() == WITNESS_V1_TAPROOT_SIZE && !is_p2sh) {
         // BIP341 Taproot: 32-byte non-P2SH witness v1 program (which encodes a P2C-tweaked pubkey)
         if (!(flags & SCRIPT_VERIFY_TAPROOT)) return set_success(serror);

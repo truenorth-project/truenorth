@@ -18,19 +18,29 @@
 #include <chainparams.h>
 #include <consensus/amount.h>
 #include <consensus/params.h>
+#include <key.h>
+#include <policy/policy.h>
 #include <pow.h>
 #include <primitives/block.h>
+#include <primitives/transaction.h>
+#include <pubkey.h>
+#include <script/interpreter.h>
+#include <script/script.h>
+#include <script/script_error.h>
 #include <test/util/setup_common.h>
+#include <truenorth/qrh.h>
 #include <truenorth/randomx_wrapper.h>
 #include <truenorth/seed_key.h>
 #include <uint256.h>
 #include <util/chaintype.h>
+#include <util/strencodings.h>
 #include <validation.h>
 
 #include <boost/test/unit_test.hpp>
 
 #include <deque>
 #include <memory>
+#include <span>
 #include <vector>
 
 BOOST_FIXTURE_TEST_SUITE(truenorth_tests, BasicTestingSetup)
@@ -306,6 +316,249 @@ BOOST_AUTO_TEST_CASE(randomx_light_hash_differs_for_different_data)
     const uint256 a = RandomXLightHash(seed, d1, sizeof(d1));
     const uint256 b = RandomXLightHash(seed, d2, sizeof(d2));
     BOOST_CHECK(a != b);
+}
+
+// =========================================================================
+// F. P2QRH commitment helper (pure function)
+// =========================================================================
+
+BOOST_AUTO_TEST_CASE(qrh_commitment_helper_deterministic)
+{
+    const std::vector<unsigned char> pubkey(32, 0xAB);
+    const uint256 a = truenorth::ComputeQRHCommitment(
+        truenorth::QRH_SCHEME_SCHNORR, pubkey, truenorth::QRH_EMPTY_SCRIPT_ROOT);
+    const uint256 b = truenorth::ComputeQRHCommitment(
+        truenorth::QRH_SCHEME_SCHNORR, pubkey, truenorth::QRH_EMPTY_SCRIPT_ROOT);
+    BOOST_CHECK(a == b);
+}
+
+BOOST_AUTO_TEST_CASE(qrh_commitment_helper_differs_by_scheme_id)
+{
+    const std::vector<unsigned char> pubkey(32, 0xAB);
+    const uint256 a = truenorth::ComputeQRHCommitment(
+        truenorth::QRH_SCHEME_SCHNORR, pubkey, truenorth::QRH_EMPTY_SCRIPT_ROOT);
+    const uint256 b = truenorth::ComputeQRHCommitment(
+        0x02 /* future PQ scheme */, pubkey, truenorth::QRH_EMPTY_SCRIPT_ROOT);
+    BOOST_CHECK(a != b);
+}
+
+BOOST_AUTO_TEST_CASE(qrh_commitment_helper_differs_by_pubkey)
+{
+    const std::vector<unsigned char> pk_a(32, 0xAB);
+    const std::vector<unsigned char> pk_b(32, 0xCD);
+    const uint256 a = truenorth::ComputeQRHCommitment(
+        truenorth::QRH_SCHEME_SCHNORR, pk_a, truenorth::QRH_EMPTY_SCRIPT_ROOT);
+    const uint256 b = truenorth::ComputeQRHCommitment(
+        truenorth::QRH_SCHEME_SCHNORR, pk_b, truenorth::QRH_EMPTY_SCRIPT_ROOT);
+    BOOST_CHECK(a != b);
+}
+
+BOOST_AUTO_TEST_CASE(qrh_commitment_helper_differs_by_script_root)
+{
+    const std::vector<unsigned char> pubkey(32, 0xAB);
+    const uint256 nonzero_root = uint256::ONE;
+    const uint256 a = truenorth::ComputeQRHCommitment(
+        truenorth::QRH_SCHEME_SCHNORR, pubkey, truenorth::QRH_EMPTY_SCRIPT_ROOT);
+    const uint256 b = truenorth::ComputeQRHCommitment(
+        truenorth::QRH_SCHEME_SCHNORR, pubkey, nonzero_root);
+    BOOST_CHECK(a != b);
+}
+
+// =========================================================================
+// G. P2QRH consensus validation (VerifyScript over witness v2 spends)
+// =========================================================================
+
+namespace {
+
+// A fully-signed valid QRH key-path spend, ready to be mutated for negative
+// tests. Callers modify the witness stack or scriptPubKey and re-verify.
+struct QRHSpendFixture {
+    CKey key;
+    XOnlyPubKey xpk;
+    CAmount amount{100 * COIN};
+    CScript scriptPubKey;
+    CMutableTransaction txCredit;
+    CMutableTransaction txSpend;
+    PrecomputedTransactionData txdata;
+    std::vector<unsigned char> sig;  // 64-byte Schnorr signature over BIP-341 sighash
+};
+
+std::unique_ptr<QRHSpendFixture> MakeValidQRHSpend()
+{
+    auto f = std::make_unique<QRHSpendFixture>();
+
+    f->key.MakeNewKey(true);
+    f->xpk = XOnlyPubKey{f->key.GetPubKey()};
+
+    // Build the QRH scriptPubKey.
+    const uint256 commitment = truenorth::ComputeQRHCommitment(
+        truenorth::QRH_SCHEME_SCHNORR,
+        std::span<const unsigned char>(f->xpk.begin(), f->xpk.end()),
+        truenorth::QRH_EMPTY_SCRIPT_ROOT);
+    f->scriptPubKey = CScript() << OP_2 << ToByteVector(commitment);
+
+    // Credit tx: single output pinned to the QRH scriptPubKey.
+    f->txCredit.vin.emplace_back();
+    f->txCredit.vin[0].scriptSig = CScript() << OP_0 << OP_0;
+    f->txCredit.vout.emplace_back(f->amount, f->scriptPubKey);
+
+    // Spend tx: consumes the QRH output, pays to a trivial anyone-can-spend
+    // sink. The fee is folded into the sink amount for test simplicity.
+    f->txSpend.vin.emplace_back(COutPoint{f->txCredit.GetHash(), 0});
+    f->txSpend.vout.emplace_back(f->amount, CScript() << OP_TRUE);
+
+    // Precompute BIP-341 sighash inputs.
+    std::vector<CTxOut> spent_outputs{f->txCredit.vout[0]};
+    f->txdata.Init(CTransaction(f->txSpend), std::move(spent_outputs), /*force=*/true);
+
+    // Compute sighash and sign with the raw key (no taproot tweak — QRH
+    // signs against the raw x-only pubkey).
+    ScriptExecutionData sed;
+    sed.m_annex_init = true;
+    sed.m_annex_present = false;
+    uint256 sighash;
+    BOOST_REQUIRE(SignatureHashSchnorr(sighash, sed, CTransaction(f->txSpend), 0,
+                                        SIGHASH_DEFAULT, SigVersion::TAPROOT, f->txdata,
+                                        MissingDataBehavior::FAIL));
+    f->sig.assign(64, 0);
+    uint256 aux{}; // deterministic aux for reproducible tests
+    BOOST_REQUIRE(f->key.SignSchnorr(sighash, f->sig, /*merkle_root=*/nullptr, aux));
+    return f;
+}
+
+// Verify a QRH spend with the given witness stack against the given
+// scriptPubKey. Returns (accepted, error).
+std::pair<bool, ScriptError> RunVerify(const QRHSpendFixture& f,
+                                       const std::vector<std::vector<unsigned char>>& witness_stack,
+                                       const CScript& scriptPubKey_override,
+                                       unsigned int flags = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS | SCRIPT_VERIFY_QRH)
+{
+    CScriptWitness witness;
+    witness.stack = witness_stack;
+    ScriptError err = SCRIPT_ERR_OK;
+    const bool ok = VerifyScript(
+        CScript{},  // scriptSig empty (native segwit)
+        scriptPubKey_override,
+        &witness,
+        flags,
+        MutableTransactionSignatureChecker{&f.txSpend, 0, f.amount, f.txdata,
+                                            MissingDataBehavior::ASSERT_FAIL},
+        &err);
+    return {ok, err};
+}
+
+std::vector<std::vector<unsigned char>> ValidWitnessStack(const QRHSpendFixture& f)
+{
+    return {f.sig,
+            std::vector<unsigned char>{f.xpk.begin(), f.xpk.end()},
+            {truenorth::QRH_SCHEME_SCHNORR}};
+}
+
+} // namespace
+
+BOOST_AUTO_TEST_CASE(qrh_valid_key_path_spend_accepts)
+{
+    auto f = MakeValidQRHSpend();
+    const auto [ok, err] = RunVerify(*f, ValidWitnessStack(*f), f->scriptPubKey);
+    BOOST_CHECK(ok);
+    BOOST_CHECK_EQUAL(err, SCRIPT_ERR_OK);
+}
+
+BOOST_AUTO_TEST_CASE(qrh_unknown_scheme_id_rejects)
+{
+    auto f = MakeValidQRHSpend();
+    auto stack = ValidWitnessStack(*f);
+    stack[2] = {0x02}; // reserved for future PQ scheme; unknown at launch
+    const auto [ok, err] = RunVerify(*f, stack, f->scriptPubKey);
+    BOOST_CHECK(!ok);
+}
+
+BOOST_AUTO_TEST_CASE(qrh_scheme_id_zero_rejects)
+{
+    auto f = MakeValidQRHSpend();
+    auto stack = ValidWitnessStack(*f);
+    stack[2] = {truenorth::QRH_SCHEME_RESERVED_ZERO};
+    const auto [ok, err] = RunVerify(*f, stack, f->scriptPubKey);
+    BOOST_CHECK(!ok);
+}
+
+BOOST_AUTO_TEST_CASE(qrh_scheme_id_wrong_byte_length_rejects)
+{
+    auto f = MakeValidQRHSpend();
+    auto stack = ValidWitnessStack(*f);
+    stack[2] = {0x01, 0x00}; // 2 bytes instead of 1
+    const auto [ok, err] = RunVerify(*f, stack, f->scriptPubKey);
+    BOOST_CHECK(!ok);
+}
+
+BOOST_AUTO_TEST_CASE(qrh_wrong_pubkey_size_rejects)
+{
+    auto f = MakeValidQRHSpend();
+    auto stack = ValidWitnessStack(*f);
+    stack[1].pop_back(); // 31 bytes instead of 32
+    const auto [ok, err] = RunVerify(*f, stack, f->scriptPubKey);
+    BOOST_CHECK(!ok);
+}
+
+BOOST_AUTO_TEST_CASE(qrh_commitment_mismatch_rejects)
+{
+    auto f = MakeValidQRHSpend();
+    auto stack = ValidWitnessStack(*f);
+    // Flip one bit of the revealed pubkey. Signature verification is
+    // never reached because the commitment recomputation fails first.
+    stack[1][0] ^= 0x01;
+    const auto [ok, err] = RunVerify(*f, stack, f->scriptPubKey);
+    BOOST_CHECK(!ok);
+}
+
+BOOST_AUTO_TEST_CASE(qrh_invalid_signature_rejects)
+{
+    auto f = MakeValidQRHSpend();
+    auto stack = ValidWitnessStack(*f);
+    stack[0][0] ^= 0xFF; // corrupt the signature
+    const auto [ok, err] = RunVerify(*f, stack, f->scriptPubKey);
+    BOOST_CHECK(!ok);
+}
+
+BOOST_AUTO_TEST_CASE(qrh_empty_witness_rejects)
+{
+    auto f = MakeValidQRHSpend();
+    const auto [ok, err] = RunVerify(*f, {}, f->scriptPubKey);
+    BOOST_CHECK(!ok);
+    BOOST_CHECK_EQUAL(err, SCRIPT_ERR_WITNESS_PROGRAM_WITNESS_EMPTY);
+}
+
+BOOST_AUTO_TEST_CASE(qrh_too_few_stack_items_rejects)
+{
+    auto f = MakeValidQRHSpend();
+    auto stack = ValidWitnessStack(*f);
+    stack.pop_back(); // drop scheme_id -> only 2 items left
+    const auto [ok, err] = RunVerify(*f, stack, f->scriptPubKey);
+    BOOST_CHECK(!ok);
+}
+
+BOOST_AUTO_TEST_CASE(qrh_extra_stack_items_rejects)
+{
+    auto f = MakeValidQRHSpend();
+    auto stack = ValidWitnessStack(*f);
+    // Insert an unexpected extra element at the front; script-path
+    // spending is not yet supported at consensus.
+    stack.insert(stack.begin(), {0xDE, 0xAD});
+    const auto [ok, err] = RunVerify(*f, stack, f->scriptPubKey);
+    BOOST_CHECK(!ok);
+}
+
+BOOST_AUTO_TEST_CASE(qrh_flag_off_passes_through)
+{
+    // Without SCRIPT_VERIFY_QRH, the branch is dormant and any witness
+    // shape returns success (matches taproot's soft-fork-compat behavior
+    // when SCRIPT_VERIFY_TAPROOT is off).
+    auto f = MakeValidQRHSpend();
+    auto stack = ValidWitnessStack(*f);
+    stack[2] = {0x99}; // unknown scheme_id — would reject with flag on
+    const auto [ok, err] = RunVerify(*f, stack, f->scriptPubKey, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS);
+    BOOST_CHECK(ok);
+    BOOST_CHECK_EQUAL(err, SCRIPT_ERR_OK);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
