@@ -94,6 +94,7 @@ IsMineResult LegacyWalletIsMineInnerDONOTUSE(const LegacyDataSPKM& keystore, con
     case TxoutType::NULL_DATA:
     case TxoutType::WITNESS_UNKNOWN:
     case TxoutType::WITNESS_V1_TAPROOT:
+    case TxoutType::WITNESS_V2_QRH: // no wallet-side key path for P2QRH yet; see doc/p2qrh.md
     case TxoutType::ANCHOR:
         break;
     case TxoutType::PUBKEY:
