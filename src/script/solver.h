@@ -31,6 +31,7 @@ enum class TxoutType {
     WITNESS_V0_SCRIPTHASH,
     WITNESS_V0_KEYHASH,
     WITNESS_V1_TAPROOT,
+    WITNESS_V2_QRH, //!< P2QRH: witness v2, 32-byte quantum-resistant hash commitment; see doc/p2qrh.md
     WITNESS_UNKNOWN, //!< Only for Witness versions not already defined above
 };
 

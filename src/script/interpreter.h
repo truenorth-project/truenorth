@@ -227,6 +227,7 @@ struct ScriptExecutionData
 static constexpr size_t WITNESS_V0_SCRIPTHASH_SIZE = 32;
 static constexpr size_t WITNESS_V0_KEYHASH_SIZE = 20;
 static constexpr size_t WITNESS_V1_TAPROOT_SIZE = 32;
+static constexpr size_t WITNESS_V2_QRH_SIZE = 32; //!< P2QRH commitment size; see doc/p2qrh.md
 
 static constexpr uint8_t TAPROOT_LEAF_MASK = 0xfe;
 static constexpr uint8_t TAPROOT_LEAF_TAPSCRIPT = 0xc0;
