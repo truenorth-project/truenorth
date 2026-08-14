@@ -60,9 +60,11 @@ WalletDescriptor GenerateWalletDescriptor(const CExtPubKey& master_key, const Ou
         break;
     }
     case OutputType::BECH32M_QRH: {
-        // Descriptor support for P2QRH lands in a later stage (see doc/p2qrh.md).
-        // Until then, no DescriptorScriptPubKeyMan should be created for this type.
-        assert(false);
+        // P2QRH descriptors (see doc/p2qrh.md). Purpose 88h is a fresh
+        // derivation path distinct from Taproot's 86h so that a wallet
+        // with both descriptor types does not reuse keys across them.
+        desc_prefix = "qrh(" + xpub + "/88h";
+        break;
     }
     case OutputType::UNKNOWN: {
         // We should never have a DescriptorScriptPubKeyMan for an UNKNOWN OutputType,
