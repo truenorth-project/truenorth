@@ -2747,6 +2747,20 @@ std::unique_ptr<DescriptorImpl> InferScript(const CScript& script, ParseScriptCo
             }
         }
     }
+    if (txntype == TxoutType::WITNESS_V2_QRH && ctx == ParseScriptContext::TOP) {
+        // Extract the on-chain commitment. We cannot recover the internal key from
+        // the commitment alone (that's the whole point of P2QRH), so look it up in
+        // the SigningProvider's qrh_spend_data map -- populated by QRHDescriptor
+        // when the descriptor first generated this output. See doc/p2qrh.md.
+        uint256 commitment;
+        std::copy(data[0].begin(), data[0].end(), commitment.begin());
+        QRHSpendData spend;
+        if (provider.GetQRHSpendData(commitment, spend) && spend.scheme_id == truenorth::QRH_SCHEME_SCHNORR) {
+            if (auto key = InferXOnlyPubkey(spend.internal_key, ParseScriptContext::P2TR, provider)) {
+                return std::make_unique<QRHDescriptor>(std::move(key));
+            }
+        }
+    }
 
     if (ctx == ParseScriptContext::P2WSH || ctx == ParseScriptContext::P2TR) {
         const auto script_ctx{ctx == ParseScriptContext::P2WSH ? miniscript::MiniscriptContext::P2WSH : miniscript::MiniscriptContext::TAPSCRIPT};
