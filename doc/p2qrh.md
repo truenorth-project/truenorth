@@ -145,11 +145,20 @@ to prevent scheme-substitution attacks.
 
 ## Activation
 
-- **Mainnet**: active from block 0 (fresh chain, no legacy commitments, no
-  BIP9 deployment needed).
-- **Testnet4**: active from a defined future height (e.g., current tip +
-  1000 blocks) to allow the code path to be exercised on a chain that already
-  has legacy blocks below.
+**Active from block 0 on every chain** (mainnet, testnet, testnet4, signet,
+regtest). No BIP9 deployment, no legacy grandfathering, no
+`script_flag_exceptions`.
+
+Rationale: TrueNorth is a fresh chain with no historical P2QRH outputs on
+any network. Retroactively "activating" the rule from genesis has no effect
+on any past block (they contain zero witness-v2 outputs to validate). And
+because unknown scheme_ids are consensus-invalid rather than merely
+non-standard, there is nothing on-chain that a from-genesis activation could
+turn from valid to invalid.
+
+Concretely, `SCRIPT_VERIFY_QRH` is included in the base flag set constructed
+by `GetBlockScriptFlags()` in `src/validation.cpp` — the same code path that
+enables P2SH, WITNESS, and TAPROOT unconditionally.
 
 ## Wallet implications
 
