@@ -59,6 +59,11 @@ WalletDescriptor GenerateWalletDescriptor(const CExtPubKey& master_key, const Ou
         desc_prefix = "tr(" + xpub + "/86h";
         break;
     }
+    case OutputType::BECH32M_QRH: {
+        // Descriptor support for P2QRH lands in a later stage (see doc/p2qrh.md).
+        // Until then, no DescriptorScriptPubKeyMan should be created for this type.
+        assert(false);
+    }
     case OutputType::UNKNOWN: {
         // We should never have a DescriptorScriptPubKeyMan for an UNKNOWN OutputType,
         // so if we get to this point something is wrong

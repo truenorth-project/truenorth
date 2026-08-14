@@ -19,6 +19,7 @@ enum class OutputType {
     P2SH_SEGWIT,
     BECH32,
     BECH32M,
+    BECH32M_QRH, //!< P2QRH (witness v2, bech32m-encoded); see doc/p2qrh.md
     UNKNOWN,
 };
 
@@ -27,6 +28,7 @@ static constexpr auto OUTPUT_TYPES = std::array{
     OutputType::P2SH_SEGWIT,
     OutputType::BECH32,
     OutputType::BECH32M,
+    OutputType::BECH32M_QRH,
 };
 
 std::optional<OutputType> ParseOutputType(const std::string& str);
