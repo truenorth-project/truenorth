@@ -16,8 +16,9 @@ A Canadian-themed cryptocurrency forked from Bitcoin Core, using **RandomX** (CP
 | **Subsidy** | Halves every 210,000 blocks, dies at zero | Halves every 1,051,200 blocks, floors at 8 NORTH (tail emission, perpetual security budget) |
 | **Initial reward** | 50 BTC | 512 NORTH |
 | **Tickers** | BTC | NORTH (mainnet) / tNORTH (testnet) |
-| **Mainnet bech32 HRP** | `bc1...` | `north1...` |
-| **Testnet bech32 HRP** | `tb1...` (testnet4) | `tnorth41q...` (testnet4) |
+| **Default address type** | P2WPKH (bech32) | **P2QRH** (bech32m, witness v2, quantum-resistant hash commitment) |
+| **Mainnet bech32 HRP** | `bc1...` | `north1z...` (P2QRH default) |
+| **Testnet bech32 HRP** | `tb1...` (testnet4) | `tnorth41z...` (testnet4, P2QRH default) |
 | **Mainnet P2P / RPC port** | 8333 / 8332 | 9555 / 9554 |
 | **Testnet4 P2P / RPC port** | 48333 / 48332 | 49555 / 49554 |
 | **Magic bytes (mainnet)** | `f9 be b4 d9` | `fa c4 b8 d2` |
@@ -85,7 +86,7 @@ Address example:
 
 ```bash
 ./build/bin/truenorth-cli -testnet4 getnewaddress
-# -> tnorth41q...
+# -> tnorth41z...   (P2QRH by default; pass -addresstype=bech32 for P2WPKH)
 ```
 
 ### Mainnet
@@ -136,11 +137,27 @@ The protocol is RandomX-based, so any miner that supports RandomX with a custom 
 
 ---
 
+## Quantum resistance
+
+TrueNorth ships mainnet with **P2QRH (Pay-to-Quantum-Resistant-Hash) as the default wallet address type**. The on-chain scriptPubKey commits to a 32-byte SHA256 hash of `(scheme_id, pubkey, script_root)` rather than the pubkey itself.
+
+- **Coins-at-rest are quantum-safe.** A cryptographically-relevant quantum computer cannot recover the pubkey from an unspent P2QRH output — the hash commitment stands between the attacker and the pubkey.
+- **Signature scheme is not pre-committed.** Launch uses secp256k1 Schnorr under the commitment (same signature crypto as Taproot, hidden behind the hash). Post-quantum schemes — ML-DSA, Falcon, SLH-DSA — get reserved `scheme_id` bytes and can be added via soft fork **without disturbing existing UTXOs or changing the address format**.
+- **Address format is fixed forever.** `north1z…` on mainnet, `tnorth41z…` on testnet, `bcrt1z…` on regtest. Adding PQ signatures later does not require users to migrate addresses.
+
+Bitcoin will eventually need a PQ transition and will spend years debating one because of its legacy pubkey-exposing outputs. TrueNorth launches with none of that debt: no historical P2QRH outputs to preserve, no legacy commitment format to grandfather. See [`doc/p2qrh.md`](doc/p2qrh.md) for the full protocol spec — output format, scheme registry, sighash, activation, and rationale for every design decision.
+
+Opt out for a specific address if you need P2WPKH for interop with older tooling: `getnewaddress "" bech32`.
+
+---
+
 ## Documentation
 
 | File | What |
 |---|---|
-| [`test/truenorth/`](test/truenorth/) | End-to-end regression scripts (sync, multitx, seed rotation, reorg, IBD) |
+| [`doc/p2qrh.md`](doc/p2qrh.md) | P2QRH (witness v2) quantum-resistant output type: spec, scheme registry, activation |
+| [`doc/testnet.md`](doc/testnet.md) | Testnet4 bootstrap: seed `.onion`, sample config |
+| [`test/truenorth/`](test/truenorth/) | End-to-end regression scripts (sync, multitx, seed rotation, reorg, IBD, QRH) |
 | [`doc/`](doc/) | Inherited Bitcoin Core docs. Build instructions per platform live here; consensus and RPC reference notes also apply largely unchanged |
 
 ---
@@ -159,6 +176,7 @@ Bitcoin's architecture isn't the only way. Block time, PoW algorithm, subsidy sc
 - **ASIC-resistant**: RandomX is intentionally hostile to specialized hardware.
 - **Perpetual security**: tail emission keeps miners paid past the last halving.
 - **Faster confirmations**: 2-minute blocks for usability without sacrificing security relative to other small PoW coins.
+- **Quantum-resistant by default**: P2QRH addresses commit to a hash of the pubkey, not the pubkey itself; post-quantum signature schemes plug in via soft fork without disturbing existing UTXOs.
 - **Canadian-themed**: a piece of flavor.
 
 Not a meme launch. No presale. No premined treasury. Just a CPU-mineable coin with Bitcoin-style monetary policy plus tail emission.
