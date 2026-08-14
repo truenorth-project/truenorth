@@ -13,6 +13,7 @@
 #include <script/script.h>
 #include <script/signingprovider.h>
 #include <script/solver.h>
+#include <truenorth/qrh.h>
 #include <uint256.h>
 
 #include <common/args.h>
@@ -1568,6 +1569,52 @@ public:
 };
 
 /** A parsed rawtr(...) descriptor. */
+/** A parsed qrh(...) descriptor for the P2QRH witness v2 output type.
+ *  Stage-3 scope: key-path only (no script tree), scheme_id = QRH_SCHEME_SCHNORR.
+ *  See doc/p2qrh.md. */
+class QRHDescriptor final : public DescriptorImpl
+{
+protected:
+    std::vector<CScript> MakeScripts(const std::vector<CPubKey>& keys, std::span<const CScript> scripts, FlatSigningProvider& out) const override
+    {
+        // Key-path only for stage 3. Script-tree support (analog to tr()'s
+        // {SCRIPTS} form) is a later addition; see doc/p2qrh.md.
+        assert(scripts.empty());
+        assert(keys.size() == 1);
+        XOnlyPubKey xpk(keys[0]);
+        if (!xpk.IsFullyValid()) return {};
+        uint256 commitment = truenorth::ComputeQRHCommitment(
+            truenorth::QRH_SCHEME_SCHNORR,
+            std::span<const unsigned char>(xpk.begin(), xpk.end()),
+            truenorth::QRH_EMPTY_SCRIPT_ROOT);
+        WitnessV2QRH output(commitment);
+        return Vector(GetScriptForDestination(output));
+    }
+public:
+    QRHDescriptor(std::unique_ptr<PubkeyProvider> internal_key) : DescriptorImpl(Vector(std::move(internal_key)), "qrh") {}
+    std::optional<OutputType> GetOutputType() const override { return OutputType::BECH32M_QRH; }
+    bool IsSingleType() const final { return true; }
+
+    // scriptPubKey: OP_2 + push(32) + 32 bytes = 34 bytes. Same shape as Taproot.
+    std::optional<int64_t> ScriptSize() const override { return 1 + 1 + 32; }
+
+    // Key-path witness: [scheme_id, pubkey, signature] plus CompactSize length prefixes.
+    // count(1) + (1+1) + (1+32) + (1+64) = 101 bytes.
+    std::optional<int64_t> MaxSatisfactionWeight(bool) const override {
+        return 1 + 2 + 33 + 65;
+    }
+
+    std::optional<int64_t> MaxSatisfactionElems() const override {
+        // scheme_id, pubkey, signature
+        return 3;
+    }
+
+    std::unique_ptr<DescriptorImpl> Clone() const override
+    {
+        return std::make_unique<QRHDescriptor>(m_pubkey_args.at(0)->Clone());
+    }
+};
+
 class RawTRDescriptor final : public DescriptorImpl
 {
 protected:
@@ -2440,6 +2487,31 @@ std::vector<std::unique_ptr<DescriptorImpl>> ParseScript(uint32_t& key_exp_index
         return ret;
     } else if (Func("rawtr", expr)) {
         error = "Can only have rawtr at top level";
+        return {};
+    }
+    if (ctx == ParseScriptContext::TOP && Func("qrh", expr)) {
+        // Stage-3 scope: qrh(KEY) — key-path only. Script-tree form
+        // (qrh(KEY, {SCRIPTS})) is a later addition; see doc/p2qrh.md.
+        auto arg = Expr(expr);
+        if (expr.size()) {
+            error = strprintf("qrh(): only one key expected at this stage.");
+            return {};
+        }
+        // Reuse P2TR key-parsing context: QRH_SCHEME_SCHNORR uses the same
+        // 32-byte x-only pubkeys as Taproot. Future PQ schemes will need
+        // scheme-aware parsing.
+        auto internal_keys = ParsePubkey(key_exp_index, arg, ParseScriptContext::P2TR, out, error);
+        if (internal_keys.empty()) {
+            error = strprintf("qrh(): %s", error);
+            return {};
+        }
+        ++key_exp_index;
+        for (auto& pubkey : internal_keys) {
+            ret.emplace_back(std::make_unique<QRHDescriptor>(std::move(pubkey)));
+        }
+        return ret;
+    } else if (Func("qrh", expr)) {
+        error = "Can only have qrh at top level";
         return {};
     }
     if (ctx == ParseScriptContext::TOP && Func("raw", expr)) {
