@@ -333,6 +333,16 @@ bool IsWitnessStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs)
                 return false;
             }
         }
+
+        // P2QRH policy rules (mirrors Taproot key-path):
+        // - No annexes at policy layer (consensus accepts them, reserved
+        //   for future soft-fork extensions; see doc/p2qrh.md).
+        if (witnessversion == 2 && witnessprogram.size() == WITNESS_V2_QRH_SIZE && !p2sh) {
+            std::span stack{tx.vin[i].scriptWitness.stack};
+            if (stack.size() >= 2 && !stack.back().empty() && stack.back()[0] == ANNEX_TAG) {
+                return false;
+            }
+        }
     }
     return true;
 }
