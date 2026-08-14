@@ -52,6 +52,10 @@ bool HidingSigningProvider::GetTaprootBuilder(const XOnlyPubKey& output_key, Tap
 {
     return m_provider->GetTaprootBuilder(output_key, builder);
 }
+bool HidingSigningProvider::GetQRHSpendData(const uint256& commitment, QRHSpendData& spenddata) const
+{
+    return m_provider->GetQRHSpendData(commitment, spenddata);
+}
 std::vector<CPubKey> HidingSigningProvider::GetMuSig2ParticipantPubkeys(const CPubKey& pubkey) const
 {
     if (m_hide_origin) return {};
@@ -86,6 +90,10 @@ bool FlatSigningProvider::GetTaprootBuilder(const XOnlyPubKey& output_key, Tapro
 {
     return LookupHelper(tr_trees, output_key, builder);
 }
+bool FlatSigningProvider::GetQRHSpendData(const uint256& commitment, QRHSpendData& spenddata) const
+{
+    return LookupHelper(qrh_spend_data, commitment, spenddata);
+}
 
 std::vector<CPubKey> FlatSigningProvider::GetMuSig2ParticipantPubkeys(const CPubKey& pubkey) const
 {
@@ -101,6 +109,7 @@ FlatSigningProvider& FlatSigningProvider::Merge(FlatSigningProvider&& b)
     keys.merge(b.keys);
     origins.merge(b.origins);
     tr_trees.merge(b.tr_trees);
+    qrh_spend_data.merge(b.qrh_spend_data);
     aggregate_pubkeys.merge(b.aggregate_pubkeys);
     return *this;
 }
@@ -296,6 +305,14 @@ bool MultiSigningProvider::GetTaprootBuilder(const XOnlyPubKey& output_key, Tapr
 {
     for (const auto& provider: m_providers) {
         if (provider->GetTaprootBuilder(output_key, builder)) return true;
+    }
+    return false;
+}
+
+bool MultiSigningProvider::GetQRHSpendData(const uint256& commitment, QRHSpendData& spenddata) const
+{
+    for (const auto& provider: m_providers) {
+        if (provider->GetQRHSpendData(commitment, spenddata)) return true;
     }
     return false;
 }

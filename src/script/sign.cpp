@@ -14,6 +14,7 @@
 #include <script/script.h>
 #include <script/signingprovider.h>
 #include <script/solver.h>
+#include <truenorth/qrh.h>
 #include <uint256.h>
 #include <util/translation.h>
 #include <util/vector.h>
@@ -412,7 +413,6 @@ static bool SignStep(const SigningProvider& provider, const BaseSignatureCreator
     case TxoutType::NONSTANDARD:
     case TxoutType::NULL_DATA:
     case TxoutType::WITNESS_UNKNOWN:
-    case TxoutType::WITNESS_V2_QRH: // P2QRH signing not yet implemented; see doc/p2qrh.md
         return false;
     case TxoutType::PUBKEY:
         if (!CreateSig(creator, sigdata, provider, sig, CPubKey(vSolutions[0]), scriptPubKey, sigversion)) return false;
@@ -476,6 +476,31 @@ static bool SignStep(const SigningProvider& provider, const BaseSignatureCreator
 
     case TxoutType::WITNESS_V1_TAPROOT:
         return SignTaproot(provider, creator, WitnessV1Taproot(XOnlyPubKey{vSolutions[0]}), sigdata, ret);
+
+    case TxoutType::WITNESS_V2_QRH: {
+        // P2QRH key-path spend. Look up the (scheme_id, pubkey, script_root)
+        // triple that the commitment was constructed from; the wallet learns
+        // this when the descriptor generated the output. See doc/p2qrh.md.
+        const uint256 commitment{vSolutions[0]};
+        QRHSpendData spenddata;
+        if (!provider.GetQRHSpendData(commitment, spenddata)) return false;
+        // Only Schnorr is supported at this stage; PQ schemes plug in via
+        // additional scheme_id branches when they activate.
+        if (spenddata.scheme_id != truenorth::QRH_SCHEME_SCHNORR) return false;
+        std::vector<unsigned char> sig;
+        // No taproot tweak — QRH signs with the raw x-only key. Pass nullptr
+        // for both leaf_hash and merkle_root.
+        if (!creator.CreateSchnorrSig(provider, sig, spenddata.internal_key,
+                                       /*leaf_hash=*/nullptr, /*merkle_root=*/nullptr,
+                                       SigVersion::TAPROOT)) {
+            return false;
+        }
+        // Witness stack, bottom to top: [signature, pubkey, scheme_id].
+        ret.emplace_back(std::move(sig));
+        ret.emplace_back(spenddata.internal_key.begin(), spenddata.internal_key.end());
+        ret.emplace_back(std::vector<unsigned char>{spenddata.scheme_id});
+        return true;
+    }
 
     case TxoutType::ANCHOR:
         return true;

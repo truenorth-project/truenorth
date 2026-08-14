@@ -1588,6 +1588,12 @@ protected:
             std::span<const unsigned char>(xpk.begin(), xpk.end()),
             truenorth::QRH_EMPTY_SCRIPT_ROOT);
         WitnessV2QRH output(commitment);
+        // Record spend data so the wallet can later sign this output.
+        out.qrh_spend_data[commitment] = QRHSpendData{
+            truenorth::QRH_SCHEME_SCHNORR,
+            xpk,
+            truenorth::QRH_EMPTY_SCRIPT_ROOT,
+        };
         return Vector(GetScriptForDestination(output));
     }
 public:

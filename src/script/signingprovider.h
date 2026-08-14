@@ -41,6 +41,17 @@ struct TaprootSpendData
     void Merge(TaprootSpendData other);
 };
 
+/** Spend data needed to sign a P2QRH output. See doc/p2qrh.md. */
+struct QRHSpendData
+{
+    /** The signature scheme this commitment was constructed with. */
+    uint8_t scheme_id{0};
+    /** The internal key. For scheme_id=QRH_SCHEME_SCHNORR, an x-only pubkey. */
+    XOnlyPubKey internal_key;
+    /** Merkle root of the script tree (32 bytes of zeros for key-path only). */
+    uint256 script_root;
+};
+
 /** Utility class to construct Taproot outputs from internal key and script tree. */
 class TaprootBuilder
 {
@@ -161,6 +172,8 @@ public:
     virtual bool GetKeyOrigin(const CKeyID& keyid, KeyOriginInfo& info) const { return false; }
     virtual bool GetTaprootSpendData(const XOnlyPubKey& output_key, TaprootSpendData& spenddata) const { return false; }
     virtual bool GetTaprootBuilder(const XOnlyPubKey& output_key, TaprootBuilder& builder) const { return false; }
+    /** Fetch the QRH spend data for the given 32-byte commitment (the on-chain program). */
+    virtual bool GetQRHSpendData(const uint256& commitment, QRHSpendData& spenddata) const { return false; }
     virtual std::vector<CPubKey> GetMuSig2ParticipantPubkeys(const CPubKey& pubkey) const { return {}; }
 
     bool GetKeyByXOnly(const XOnlyPubKey& pubkey, CKey& key) const
@@ -205,6 +218,7 @@ public:
     bool GetKeyOrigin(const CKeyID& keyid, KeyOriginInfo& info) const override;
     bool GetTaprootSpendData(const XOnlyPubKey& output_key, TaprootSpendData& spenddata) const override;
     bool GetTaprootBuilder(const XOnlyPubKey& output_key, TaprootBuilder& builder) const override;
+    bool GetQRHSpendData(const uint256& commitment, QRHSpendData& spenddata) const override;
     std::vector<CPubKey> GetMuSig2ParticipantPubkeys(const CPubKey& pubkey) const override;
 };
 
@@ -215,6 +229,7 @@ struct FlatSigningProvider final : public SigningProvider
     std::map<CKeyID, std::pair<CPubKey, KeyOriginInfo>> origins;
     std::map<CKeyID, CKey> keys;
     std::map<XOnlyPubKey, TaprootBuilder> tr_trees; /** Map from output key to Taproot tree (which can then make the TaprootSpendData */
+    std::map<uint256, QRHSpendData> qrh_spend_data; /** Map from P2QRH commitment (on-chain program) to spend data (see doc/p2qrh.md) */
     std::map<CPubKey, std::vector<CPubKey>> aggregate_pubkeys; /** MuSig2 aggregate pubkeys */
 
     bool GetCScript(const CScriptID& scriptid, CScript& script) const override;
@@ -224,6 +239,7 @@ struct FlatSigningProvider final : public SigningProvider
     bool GetKey(const CKeyID& keyid, CKey& key) const override;
     bool GetTaprootSpendData(const XOnlyPubKey& output_key, TaprootSpendData& spenddata) const override;
     bool GetTaprootBuilder(const XOnlyPubKey& output_key, TaprootBuilder& builder) const override;
+    bool GetQRHSpendData(const uint256& commitment, QRHSpendData& spenddata) const override;
     std::vector<CPubKey> GetMuSig2ParticipantPubkeys(const CPubKey& pubkey) const override;
 
     FlatSigningProvider& Merge(FlatSigningProvider&& b) LIFETIMEBOUND;
@@ -318,6 +334,7 @@ public:
     bool GetKey(const CKeyID& keyid, CKey& key) const override;
     bool GetTaprootSpendData(const XOnlyPubKey& output_key, TaprootSpendData& spenddata) const override;
     bool GetTaprootBuilder(const XOnlyPubKey& output_key, TaprootBuilder& builder) const override;
+    bool GetQRHSpendData(const uint256& commitment, QRHSpendData& spenddata) const override;
 };
 
 #endif // BITCOIN_SCRIPT_SIGNINGPROVIDER_H
