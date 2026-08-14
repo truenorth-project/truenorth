@@ -24,9 +24,12 @@
 #include <primitives/block.h>
 #include <primitives/transaction.h>
 #include <pubkey.h>
+#include <script/descriptor.h>
 #include <script/interpreter.h>
 #include <script/script.h>
 #include <script/script_error.h>
+#include <script/sign.h>
+#include <script/signingprovider.h>
 #include <test/util/setup_common.h>
 #include <truenorth/qrh.h>
 #include <truenorth/randomx_wrapper.h>
@@ -559,6 +562,109 @@ BOOST_AUTO_TEST_CASE(qrh_flag_off_passes_through)
     const auto [ok, err] = RunVerify(*f, stack, f->scriptPubKey, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS);
     BOOST_CHECK(ok);
     BOOST_CHECK_EQUAL(err, SCRIPT_ERR_OK);
+}
+
+// =========================================================================
+// H. P2QRH wallet-side signing (descriptor -> spend data -> SignStep)
+// =========================================================================
+
+// Descriptor path: parsing `qrh(HEX_XONLY_PUBKEY)` and expanding it should
+// produce the correct scriptPubKey and populate qrh_spend_data so that
+// later signing can look up the pubkey.
+BOOST_AUTO_TEST_CASE(qrh_descriptor_populates_spend_data)
+{
+    CKey key;
+    key.MakeNewKey(true);
+    const XOnlyPubKey xpk{key.GetPubKey()};
+    const std::string desc_str = "qrh(" + HexStr(xpk) + ")";
+
+    FlatSigningProvider in_provider;
+    std::string error;
+    auto descs = Parse(desc_str, in_provider, error, /*require_checksum=*/false);
+    BOOST_REQUIRE_MESSAGE(descs.size() == 1, "Parse: " + error);
+
+    FlatSigningProvider out_provider;
+    std::vector<CScript> scripts;
+    BOOST_REQUIRE(descs[0]->Expand(0, in_provider, scripts, out_provider));
+    BOOST_REQUIRE_EQUAL(scripts.size(), 1u);
+
+    // Sanity-check the scriptPubKey shape: OP_2 <push32> <32-byte commitment>.
+    BOOST_REQUIRE_EQUAL(scripts[0].size(), 34u);
+    BOOST_CHECK_EQUAL(scripts[0][0], OP_2);
+
+    // The descriptor should have populated spend data indexed by the same
+    // commitment that ComputeQRHCommitment produces for these inputs.
+    const uint256 expected_commitment = truenorth::ComputeQRHCommitment(
+        truenorth::QRH_SCHEME_SCHNORR,
+        std::span<const unsigned char>(xpk.begin(), xpk.end()),
+        truenorth::QRH_EMPTY_SCRIPT_ROOT);
+    QRHSpendData spend;
+    BOOST_REQUIRE(out_provider.GetQRHSpendData(expected_commitment, spend));
+    BOOST_CHECK_EQUAL(spend.scheme_id, truenorth::QRH_SCHEME_SCHNORR);
+    BOOST_CHECK(spend.internal_key == xpk);
+    BOOST_CHECK(spend.script_root == truenorth::QRH_EMPTY_SCRIPT_ROOT);
+}
+
+// Round-trip: given spend data (as populated by a descriptor) and the private
+// key, ProduceSignature should produce a witness that VerifyScript accepts.
+BOOST_AUTO_TEST_CASE(qrh_sign_step_produces_valid_witness)
+{
+    auto f = MakeValidQRHSpend();
+
+    // Assemble the signing provider as the wallet would (private key +
+    // qrh_spend_data populated at descriptor-expand time).
+    FlatSigningProvider provider;
+    provider.keys[f->key.GetPubKey().GetID()] = f->key;
+    provider.pubkeys[f->key.GetPubKey().GetID()] = f->key.GetPubKey();
+    const uint256 commitment = truenorth::ComputeQRHCommitment(
+        truenorth::QRH_SCHEME_SCHNORR,
+        std::span<const unsigned char>(f->xpk.begin(), f->xpk.end()),
+        truenorth::QRH_EMPTY_SCRIPT_ROOT);
+    provider.qrh_spend_data[commitment] = QRHSpendData{
+        truenorth::QRH_SCHEME_SCHNORR, f->xpk, truenorth::QRH_EMPTY_SCRIPT_ROOT,
+    };
+
+    // Sign via the same code path the wallet uses at spend time.
+    MutableTransactionSignatureCreator creator{f->txSpend, 0, f->amount, &f->txdata, SIGHASH_DEFAULT};
+    SignatureData sigdata;
+    BOOST_REQUIRE(ProduceSignature(provider, creator, f->scriptPubKey, sigdata));
+    BOOST_CHECK(sigdata.complete);
+
+    // Witness shape: [signature, pubkey, scheme_id].
+    BOOST_REQUIRE_EQUAL(sigdata.scriptWitness.stack.size(), 3u);
+    BOOST_CHECK_EQUAL(sigdata.scriptWitness.stack[0].size(), 64u); // Schnorr sig (SIGHASH_DEFAULT: no hash byte appended)
+    BOOST_CHECK_EQUAL(sigdata.scriptWitness.stack[1].size(), 32u); // x-only pubkey
+    BOOST_REQUIRE_EQUAL(sigdata.scriptWitness.stack[2].size(), 1u);
+    BOOST_CHECK_EQUAL(sigdata.scriptWitness.stack[2][0], truenorth::QRH_SCHEME_SCHNORR);
+
+    // And the resulting witness passes consensus.
+    ScriptError err = SCRIPT_ERR_OK;
+    const bool ok = VerifyScript(
+        CScript{}, f->scriptPubKey, &sigdata.scriptWitness,
+        SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS | SCRIPT_VERIFY_QRH,
+        MutableTransactionSignatureChecker{&f->txSpend, 0, f->amount, f->txdata, MissingDataBehavior::ASSERT_FAIL},
+        &err);
+    BOOST_CHECK(ok);
+    BOOST_CHECK_EQUAL(err, SCRIPT_ERR_OK);
+}
+
+// SignStep should refuse to sign when the provider has no spend data for
+// the commitment (e.g. the wallet does not own this output).
+BOOST_AUTO_TEST_CASE(qrh_sign_step_without_spend_data_fails)
+{
+    auto f = MakeValidQRHSpend();
+
+    // Provider has the key but no qrh_spend_data entry -- SignStep cannot
+    // recover the pubkey behind the commitment.
+    FlatSigningProvider provider;
+    provider.keys[f->key.GetPubKey().GetID()] = f->key;
+    provider.pubkeys[f->key.GetPubKey().GetID()] = f->key.GetPubKey();
+
+    MutableTransactionSignatureCreator creator{f->txSpend, 0, f->amount, &f->txdata, SIGHASH_DEFAULT};
+    SignatureData sigdata;
+    ProduceSignature(provider, creator, f->scriptPubKey, sigdata);
+    BOOST_CHECK(!sigdata.complete);
+    BOOST_CHECK(sigdata.scriptWitness.stack.empty());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

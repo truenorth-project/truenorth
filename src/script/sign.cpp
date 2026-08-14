@@ -584,6 +584,12 @@ bool ProduceSignature(const SigningProvider& provider, const BaseSignatureCreato
             sigdata.scriptWitness.stack = std::move(result);
         }
         result.clear();
+    } else if (whichType == TxoutType::WITNESS_V2_QRH && !P2SH) {
+        sigdata.witness = true;
+        if (solved) {
+            sigdata.scriptWitness.stack = std::move(result);
+        }
+        result.clear();
     } else if (solved && whichType == TxoutType::WITNESS_UNKNOWN) {
         sigdata.witness = true;
     }
