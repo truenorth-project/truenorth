@@ -34,10 +34,16 @@ jobs:
           - os: macos-latest
             platform: macos-arm64
             jobs: 3
-          # Windows: not built. WSL2 users run the linux-x86_64 binary.
-          # Native Windows would need either cross-compilation via depends/
-          # or a windows-latest matrix entry with mingw-w64; defer until
-          # there's tester demand.
+          # Windows binaries are cross-compiled from Linux using mingw-w64
+          # via the depends system. Same runner tier as native Linux
+          # (ubuntu-latest is 1x). The depends build (Boost + libevent +
+          # sqlite3 as Windows static libs) takes 30-60 min from scratch;
+          # the depends output is cached across runs so tag pushes stay
+          # fast when the depends inputs haven't changed.
+          - os: ubuntu-latest
+            platform: windows-x86_64
+            jobs: 4
+            host: x86_64-w64-mingw32
     name: Build ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
@@ -56,8 +62,8 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "Building tag: $TAG"
 
-      - name: Install apt deps (Linux)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Install apt deps (native Linux)
+        if: matrix.os == 'ubuntu-latest' && matrix.host == ''
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq \
@@ -72,6 +78,46 @@ jobs:
           # Xcode macOS SDK. We use Apple Clang instead (see Configure step).
           brew install --quiet cmake boost libevent sqlite ccache
 
+      - name: Install cross-compile toolchain (Windows via mingw-w64)
+        if: matrix.host == 'x86_64-w64-mingw32'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+              build-essential cmake pkg-config \
+              g++-mingw-w64-x86-64-posix \
+              curl automake autoconf libtool \
+              ccache zip
+          # Boost's headers require the POSIX threading variant of mingw
+          # (win32 threads lack the primitives Boost.Thread and friends
+          # need). Both variants ship together; select posix explicitly.
+          sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
+          sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
+
+      - name: Restore depends cache (cross-compile only)
+        if: matrix.host != ''
+        uses: actions/cache@v4
+        with:
+          path: depends/${{ matrix.host }}
+          # Rebuild depends only when its inputs change. depends/packages/
+          # holds one .mk per third-party dep (boost, libevent, sqlite,
+          # ...); depends/hosts/${{ matrix.host }}.mk holds the toolchain
+          # tuple. Hashing both catches version bumps and toolchain
+          # changes without over-invalidating on unrelated repo edits.
+          key: depends-${{ matrix.host }}-${{ hashFiles('depends/packages/*.mk', format('depends/hosts/{0}.mk', matrix.host)) }}
+          restore-keys: |
+            depends-${{ matrix.host }}-
+
+      - name: Prime depends (cross-compile only)
+        if: matrix.host != ''
+        run: |
+          # Builds Boost, libevent, sqlite3 and other deps as static
+          # libraries targeting Windows, and writes
+          # depends/${{ matrix.host }}/toolchain.cmake for cmake to pick
+          # up. Skips wallet-optional stacks (Qt GUI, upnp, natpmp, zmq)
+          # since our release binaries don't ship them.
+          make -C depends HOST=${{ matrix.host }} -j${{ matrix.jobs }} \
+               NO_QT=1 NO_UPNP=1 NO_NATPMP=1 NO_ZMQ=1 NO_USDT=1
+
       - name: Restore ccache
         uses: actions/cache@v4
         with:
@@ -80,7 +126,8 @@ jobs:
           restore-keys: |
             release-ccache-${{ matrix.platform }}-
 
-      - name: Configure
+      - name: Configure (native)
+        if: matrix.host == ''
         env:
           CCACHE_DIR: ${{ github.workspace }}/../.ccache
         run: |
@@ -97,17 +144,42 @@ jobs:
                  -DCMAKE_CXX_COMPILER_LAUNCHER=ccache )
           cmake -B build "${ARGS[@]}"
 
+      - name: Configure (cross-compile)
+        if: matrix.host != ''
+        env:
+          CCACHE_DIR: ${{ github.workspace }}/../.ccache
+        run: |
+          # The depends system wrote a cmake toolchain file pointing at the
+          # mingw-w64 compilers and the static deps we just built. That
+          # toolchain sets CMAKE_SYSTEM_NAME=Windows, so binaries land as
+          # .exe files and Bitcoin Core's cmake picks the Windows code paths.
+          cmake -B build \
+                --toolchain depends/${{ matrix.host }}/toolchain.cmake \
+                -DCMAKE_BUILD_TYPE=Release -DENABLE_IPC=OFF
+
       - name: Build (bounded parallelism)
         run: |
           cmake --build build --parallel ${{ matrix.jobs }} \
                 --target truenorthd truenorth-cli truenorth-miner
 
-      - name: Strip release symbols
+      - name: Strip release symbols (native)
+        if: matrix.host == ''
         run: |
           strip build/bin/truenorthd build/bin/truenorth-cli build/bin/truenorth-miner || true
           ls -la build/bin/
 
-      - name: Smoke test (start, mine one regtest block, stop)
+      - name: Strip release symbols (cross-compile)
+        if: matrix.host != ''
+        run: |
+          # mingw-w64-x86_64-strip is the cross strip tool; targets .exe files.
+          ${{ matrix.host }}-strip \
+              build/bin/truenorthd.exe \
+              build/bin/truenorth-cli.exe \
+              build/bin/truenorth-miner.exe || true
+          ls -la build/bin/
+
+      - name: Smoke test (native only)
+        if: matrix.host == ''
         timeout-minutes: 5
         run: |
           DD=$(mktemp -d)
@@ -131,8 +203,9 @@ jobs:
           ./build/bin/truenorth-cli -regtest -datadir="$DD" stop > /dev/null
           [ "$COUNT" = "1" ] || { echo "FAIL: smoke produced $COUNT blocks"; exit 1; }
 
-      - name: Package tarball
-        id: package
+      - name: Package tarball (native)
+        if: matrix.host == ''
+        id: package_native
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
           STAGE="truenorth-${TAG}-${{ matrix.platform }}"
@@ -149,6 +222,23 @@ jobs:
             || shasum -a 256 "${STAGE}.tar.gz" > "${STAGE}.tar.gz.sha256"
           ls -la "${STAGE}.tar.gz" "${STAGE}.tar.gz.sha256"
           cat "${STAGE}.tar.gz.sha256"
+
+      - name: Package zip (Windows cross-compile)
+        if: matrix.host != ''
+        id: package_zip
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          STAGE="truenorth-${TAG}-${{ matrix.platform }}"
+          mkdir -p "${STAGE}/bin" "${STAGE}/doc"
+          cp build/bin/truenorthd.exe        "${STAGE}/bin/"
+          cp build/bin/truenorth-cli.exe     "${STAGE}/bin/"
+          cp build/bin/truenorth-miner.exe   "${STAGE}/bin/"
+          cp README.md COPYING "${STAGE}/"
+          cp doc/testnet.md "${STAGE}/doc/"
+          zip -r "${STAGE}.zip" "${STAGE}"
+          sha256sum "${STAGE}.zip" > "${STAGE}.zip.sha256"
+          ls -la "${STAGE}.zip" "${STAGE}.zip.sha256"
+          cat "${STAGE}.zip.sha256"
 
       - name: Upload to GitHub Release
         # ncipollo/release-action handles existing releases via allowUpdates,
@@ -168,4 +258,6 @@ jobs:
           # in prerelease.
           prerelease: ${{ contains(steps.tag.outputs.tag, 'rc') || contains(steps.tag.outputs.tag, 'pre') }}
           makeLatest: true
-          artifacts: "truenorth-*-${{ matrix.platform }}.tar.gz,truenorth-*-${{ matrix.platform }}.tar.gz.sha256"
+          # Match both .tar.gz (Linux, macOS) and .zip (Windows) artifacts
+          # for the current platform.
+          artifacts: "truenorth-*-${{ matrix.platform }}.tar.gz,truenorth-*-${{ matrix.platform }}.tar.gz.sha256,truenorth-*-${{ matrix.platform }}.zip,truenorth-*-${{ matrix.platform }}.zip.sha256"
