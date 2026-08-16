@@ -23,12 +23,12 @@ namespace {
 // keyed by `g_current_seed`. Switching seeds rebuilds cache (~1-2 s) plus
 // dataset (~10 s wall in FAST mode).
 std::mutex g_mutex;
-randomx_cache*   g_cache   GUARDED_BY(g_mutex) = nullptr;
+randomx_cache* g_cache GUARDED_BY(g_mutex) = nullptr;
 randomx_dataset* g_dataset GUARDED_BY(g_mutex) = nullptr; //!< only allocated in FAST mode
-randomx_vm*      g_vm      GUARDED_BY(g_mutex) = nullptr;
-uint256          g_current_seed GUARDED_BY(g_mutex);
-bool             g_have_seed GUARDED_BY(g_mutex) = false;
-RandomXMode      g_active_mode GUARDED_BY(g_mutex) = RandomXMode::LIGHT;
+randomx_vm* g_vm GUARDED_BY(g_mutex) = nullptr;
+uint256 g_current_seed GUARDED_BY(g_mutex);
+bool g_have_seed GUARDED_BY(g_mutex) = false;
+RandomXMode g_active_mode GUARDED_BY(g_mutex) = RandomXMode::LIGHT;
 
 // The mode used to build (g_cache, g_dataset, g_vm). Distinct from
 // g_active_mode: g_active_mode is what SetMinerMode requested; g_built_mode
@@ -103,14 +103,13 @@ void BuildDatasetParallel(randomx_dataset* dataset, randomx_cache* cache)
     workers.reserve(nthreads);
     for (unsigned int t = 0; t < nthreads; ++t) {
         const unsigned long start = t * per_thread;
-        const unsigned long count = (t == nthreads - 1)
-                                        ? (total_items - start)
-                                        : per_thread;
+        const unsigned long count = (t == nthreads - 1) ? (total_items - start) : per_thread;
         workers.emplace_back([dataset, cache, start, count] {
             randomx_init_dataset(dataset, cache, start, count);
         });
     }
-    for (auto& w : workers) w.join();
+    for (auto& w : workers)
+        w.join();
 }
 
 void EnsureForSeed(const uint256& seed_key) EXCLUSIVE_LOCKS_REQUIRED(g_mutex)
@@ -164,7 +163,7 @@ void EnsureForSeed(const uint256& seed_key) EXCLUSIVE_LOCKS_REQUIRED(g_mutex)
             }
             randomx_init_cache(g_cache, seed_key.begin(), 32);
             g_active_mode = RandomXMode::LIGHT;
-            g_built_mode  = RandomXMode::LIGHT;
+            g_built_mode = RandomXMode::LIGHT;
         } else {
             BuildDatasetParallel(g_dataset, g_cache);
             g_built_mode = RandomXMode::FAST;
@@ -188,8 +187,7 @@ void EnsureForSeed(const uint256& seed_key) EXCLUSIVE_LOCKS_REQUIRED(g_mutex)
 
 RandomXMode AutoDetectMinerMode(std::uint64_t min_free_mib)
 {
-    return AvailableMemoryMiB() >= min_free_mib ? RandomXMode::FAST
-                                                : RandomXMode::LIGHT;
+    return AvailableMemoryMiB() >= min_free_mib ? RandomXMode::FAST : RandomXMode::LIGHT;
 }
 
 void SetMinerMode(RandomXMode mode)
@@ -211,7 +209,7 @@ const char* ModeName(RandomXMode mode)
 {
     switch (mode) {
     case RandomXMode::LIGHT: return "light";
-    case RandomXMode::FAST:  return "fast";
+    case RandomXMode::FAST: return "fast";
     }
     return "?";
 }

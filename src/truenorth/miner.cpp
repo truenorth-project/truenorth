@@ -446,9 +446,7 @@ void RunBenchmark(int num_threads, int budget_seconds)
                                    std::chrono::steady_clock::now() - warmup_start)
                                    .count();
         std::fprintf(stderr, "benchmark: warmup (cache%s init) took %lldms\n",
-                     truenorth::CurrentMinerMode() == truenorth::RandomXMode::FAST
-                         ? " + dataset"
-                         : "",
+                     truenorth::CurrentMinerMode() == truenorth::RandomXMode::FAST ? " + dataset" : "",
                      static_cast<long long>(warmup_ms));
     }
 
