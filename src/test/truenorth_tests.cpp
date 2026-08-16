@@ -34,6 +34,7 @@
 #include <truenorth/qrh.h>
 #include <truenorth/randomx_wrapper.h>
 #include <truenorth/seed_key.h>
+#include <truenorth/system_mem.h>
 #include <uint256.h>
 #include <util/chaintype.h>
 #include <util/strencodings.h>
@@ -319,6 +320,58 @@ BOOST_AUTO_TEST_CASE(randomx_light_hash_differs_for_different_data)
     const uint256 a = RandomXLightHash(seed, d1, sizeof(d1));
     const uint256 b = RandomXLightHash(seed, d2, sizeof(d2));
     BOOST_CHECK(a != b);
+}
+
+// -------- RandomX mode selection + fast-mode plumbing (Issue #1) --------
+
+BOOST_AUTO_TEST_CASE(available_memory_returns_positive_on_supported_platforms)
+{
+    // On Linux, macOS, and Windows -- the platforms we build release
+    // binaries for -- AvailableMemoryMiB should never return 0. A 0
+    // return specifically means the platform is unsupported by the probe.
+    const std::uint64_t mib = truenorth::AvailableMemoryMiB();
+    BOOST_CHECK(mib > 0);
+    // Sanity: no modern machine has <64 MiB actually free.
+    BOOST_CHECK(mib >= 64);
+}
+
+BOOST_AUTO_TEST_CASE(auto_detect_picks_light_with_impossible_threshold)
+{
+    // Threshold larger than any physical machine's RAM guarantees LIGHT.
+    const auto mode = truenorth::AutoDetectMinerMode(/*min_free_mib=*/std::uint64_t{1} << 40);
+    BOOST_CHECK(mode == truenorth::RandomXMode::LIGHT);
+}
+
+BOOST_AUTO_TEST_CASE(auto_detect_picks_fast_with_zero_threshold_on_supported_platform)
+{
+    // Threshold 0 means "any positive amount of memory is enough". This
+    // implicitly asserts the platform is supported (probe returns > 0);
+    // on an unsupported platform AvailableMemoryMiB returns 0 and the
+    // predicate 0 >= 0 still holds, so FAST is picked. That's a design
+    // trade-off documented in the header.
+    const auto mode = truenorth::AutoDetectMinerMode(/*min_free_mib=*/0);
+    BOOST_CHECK(mode == truenorth::RandomXMode::FAST);
+}
+
+BOOST_AUTO_TEST_CASE(set_and_current_miner_mode_round_trip)
+{
+    using truenorth::CurrentMinerMode;
+    using truenorth::RandomXMode;
+    using truenorth::SetMinerMode;
+    const auto original = CurrentMinerMode();
+    SetMinerMode(RandomXMode::FAST);
+    BOOST_CHECK(CurrentMinerMode() == RandomXMode::FAST);
+    SetMinerMode(RandomXMode::LIGHT);
+    BOOST_CHECK(CurrentMinerMode() == RandomXMode::LIGHT);
+    // Restore whatever mode the suite started in so later tests are not
+    // sensitive to ordering.
+    SetMinerMode(original);
+}
+
+BOOST_AUTO_TEST_CASE(mode_name_labels)
+{
+    BOOST_CHECK_EQUAL(std::string(truenorth::ModeName(truenorth::RandomXMode::LIGHT)), "light");
+    BOOST_CHECK_EQUAL(std::string(truenorth::ModeName(truenorth::RandomXMode::FAST)), "fast");
 }
 
 // =========================================================================

@@ -15,12 +15,21 @@
 //
 // Also has -benchmark=1 for raw hash-rate testing without a node running.
 //
+// RandomX mode selection: `-mode=auto|light|fast` (default auto).
+//   auto  = pick FAST when >= 2560 MiB memory is available, else LIGHT.
+//   light = 256 MiB cache. Slow but small footprint (Raspberry Pi etc.).
+//   fast  = ~2 GiB dataset. 5-10x throughput per thread; startup pays
+//           ~5-10 s to build the dataset, plus another build each seed-
+//           rotation (~every 2.84 days).
+//
 // Build: cmake --build build --target truenorth-miner
 // Usage:
 //   truenorth-miner -chain=regtest -datadir=/path/to/dd
 //                   -address=bcrt1q... [-threads=N] [-maxblocks=N]
 //                   [-budgetseconds=N] [-cli=/path/to/bitcoin-cli]
+//                   [-mode=auto|light|fast]
 //   truenorth-miner -benchmark=1 -threads=N [-budgetseconds=N]
+//                   [-mode=auto|light|fast]
 
 #include <addresstype.h>
 #include <arith_uint256.h>
@@ -418,10 +427,29 @@ std::string HexBlock(const CBlock& block)
 void RunBenchmark(int num_threads, int budget_seconds)
 {
     std::fprintf(stderr,
-                 "benchmark: threads=%d  duration=%ds  seed=kGenesisSeed\n",
+                 "benchmark: mode=%s  threads=%d  duration=%ds  seed=kGenesisSeed\n",
+                 truenorth::ModeName(truenorth::CurrentMinerMode()),
                  num_threads, budget_seconds);
 
     const uint256 seed = uint256::ZERO;
+
+    // Warm up the shared wrapper state (cache + dataset if FAST) BEFORE
+    // starting the timer. Otherwise fast-mode benchmarks look artificially
+    // slow because the ~5-10 s dataset build gets counted against the
+    // hashing budget. In production this cost is real and one-time per
+    // seed rotation; the benchmark is meant to report steady-state H/s.
+    {
+        const auto warmup_start = std::chrono::steady_clock::now();
+        unsigned char dummy[80] = {0};
+        (void)truenorth::RandomXLightHash(seed, dummy, sizeof(dummy));
+        const auto warmup_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                   std::chrono::steady_clock::now() - warmup_start)
+                                   .count();
+        std::fprintf(stderr, "benchmark: warmup (cache%s init) took %lldms\n",
+                     truenorth::CurrentMinerMode() == truenorth::RandomXMode::FAST ? " + dataset" : "",
+                     static_cast<long long>(warmup_ms));
+    }
+
     const auto t_start = std::chrono::steady_clock::now();
     const auto t_deadline = t_start + std::chrono::seconds(budget_seconds);
     std::atomic<uint64_t> total{0};
@@ -501,6 +529,7 @@ int main(int argc, char* argv[])
     int budget_seconds = 30;
     int num_threads = 1;
     bool benchmark_mode = false;
+    std::string mode_str = "auto"; //!< auto | light | fast
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -528,10 +557,26 @@ int main(int argc, char* argv[])
             num_threads = std::stoi(val);
         else if (key == "-benchmark")
             benchmark_mode = (val == "1");
+        else if (key == "-mode")
+            mode_str = val;
         else
             Die("unknown option: " + key);
     }
     if (num_threads < 1) Die("-threads must be >= 1");
+
+    // Resolve RandomX mode and install it before any MinerThread is
+    // constructed (see randomx_wrapper.h SetMinerMode SAFETY note).
+    truenorth::RandomXMode rx_mode;
+    if (mode_str == "auto") {
+        rx_mode = truenorth::AutoDetectMinerMode();
+    } else if (mode_str == "light") {
+        rx_mode = truenorth::RandomXMode::LIGHT;
+    } else if (mode_str == "fast") {
+        rx_mode = truenorth::RandomXMode::FAST;
+    } else {
+        Die("unknown -mode=" + mode_str + " (expected auto | light | fast)");
+    }
+    truenorth::SetMinerMode(rx_mode);
 
     std::signal(SIGINT, OnSignal);
     std::signal(SIGTERM, OnSignal);
@@ -560,10 +605,11 @@ int main(int argc, char* argv[])
     const CliConfig cfg{cli_path, CLIChainArg(chain), datadir, rpcport, rpchost};
 
     std::fprintf(stderr,
-                 "truenorth-miner -- chain=%s address=%s datadir=%s threads=%d maxblocks=%d budget=%ds\n",
+                 "truenorth-miner -- chain=%s address=%s datadir=%s threads=%d maxblocks=%d budget=%ds mode=%s\n",
                  chain_str.c_str(), address.c_str(),
                  datadir.empty() ? "<default>" : datadir.c_str(),
-                 num_threads, max_blocks, budget_seconds);
+                 num_threads, max_blocks, budget_seconds,
+                 truenorth::ModeName(truenorth::CurrentMinerMode()));
 
     int blocks_found = 0;
     uint64_t extranonce = 0;

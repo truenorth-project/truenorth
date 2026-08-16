@@ -117,6 +117,19 @@ Used by the regression scripts under [`test/truenorth/`](test/truenorth/).
 
 `-threads=N` distributes nonce-grinding across N worker threads, each holding its own RandomX VM. Hashing is lock-free on the hot path; per-thread rate holds within about 5% across 1-4 threads.
 
+**Mode selection** (`-mode=auto|light|fast`, default `auto`):
+
+- **light** — ~256 MiB RandomX cache only. Small footprint, ~5-30 H/s per core.
+  Right choice for a Raspberry Pi or a low-RAM VM.
+- **fast** — ~2 GiB dataset built at startup (~5-10 s). 5-10× throughput per
+  thread. One dataset rebuild per seed-key rotation (~every 2.84 days).
+- **auto** (default) — probes available memory and picks `fast` when at least
+  2560 MiB is free, else `light`. Fails safe to `light` on unsupported
+  platforms.
+
+The node binary (`truenorthd`) always runs in light mode; only `truenorth-miner`
+selects a mode. Full nodes keep the small memory footprint.
+
 **Hash-rate sanity check** (no node required):
 
 ```bash
@@ -125,11 +138,11 @@ Used by the regression scripts under [`test/truenorth/`](test/truenorth/).
 
 Sample output on an Apple Silicon laptop:
 
-| Threads | Aggregate H/s | Per-thread |
-|---|---|---|
-| 1 | 50.5 | 50.5 |
-| 4 | 189.5 | 47.4 |
-| 8 | 291.0 | 36.4 (E-cores past 4 P-cores) |
+| Threads | Light (aggr H/s) | Light per-thread | Fast (aggr H/s) | Fast per-thread | Speedup |
+|---|---|---|---|---|---|
+| 1 | 56 | 56 | 583 | 583 | 10.4× |
+| 4 | 208 | 52 | 2237 | 559 | 10.8× |
+| 8 | 321 | 40 (E-cores past 4 P-cores) | 2541 | 318 | 7.9× |
 
 ### Other miners
 
