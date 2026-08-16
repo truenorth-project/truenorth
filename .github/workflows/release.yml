@@ -258,6 +258,8 @@ jobs:
           # in prerelease.
           prerelease: ${{ contains(steps.tag.outputs.tag, 'rc') || contains(steps.tag.outputs.tag, 'pre') }}
           makeLatest: true
-          # Match both .tar.gz (Linux, macOS) and .zip (Windows) artifacts
-          # for the current platform.
-          artifacts: "truenorth-*-${{ matrix.platform }}.tar.gz,truenorth-*-${{ matrix.platform }}.tar.gz.sha256,truenorth-*-${{ matrix.platform }}.zip,truenorth-*-${{ matrix.platform }}.zip.sha256"
+          # Per-platform artifact extension: Windows cross-compile produces .zip,
+          # native Linux/macOS produce .tar.gz. Passing both patterns to every
+          # platform trips artifactErrorsFailBuild -- the non-matching pattern
+          # fails the whole upload. Ternary keeps that safety net intact.
+          artifacts: ${{ matrix.host && format('truenorth-*-{0}.zip,truenorth-*-{0}.zip.sha256', matrix.platform) || format('truenorth-*-{0}.tar.gz,truenorth-*-{0}.tar.gz.sha256', matrix.platform) }}
