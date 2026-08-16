@@ -66,6 +66,7 @@ add_library(bitcoin_consensus STATIC EXCLUDE_FROM_ALL
   primitives/block.cpp
   truenorth/qrh.cpp
   truenorth/randomx_wrapper.cpp
+  truenorth/system_mem.cpp
   primitives/transaction.cpp
   pubkey.cpp
   script/interpreter.cpp
