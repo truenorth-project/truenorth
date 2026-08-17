@@ -30,13 +30,21 @@ A TrueNorth node and a Bitcoin node will refuse to peer with each other. The mag
 
 ## Pre-built binaries
 
-Tagged releases produce binaries on GitHub Releases. See https://github.com/truenorth-project/truenorth/releases. Currently published:
+Tagged releases produce binaries on GitHub Releases. See https://github.com/truenorth-project/truenorth/releases. Each release currently ships three archives:
 
-- `truenorth-<tag>-linux-x86_64.tar.gz` (with matching `.sha256`)
+- `truenorth-<tag>-linux-x86_64.tar.gz` — Linux x86_64 (glibc)
+- `truenorth-<tag>-macos-arm64.tar.gz` — macOS Apple Silicon
+- `truenorth-<tag>-windows-x86_64.zip` — Windows x86_64, cross-compiled from Linux with mingw-w64
 
-Each tarball unpacks to a directory containing `bin/truenorthd`, `bin/truenorth-cli`, `bin/truenorth-miner`, this `README.md`, and `COPYING`.
+Every archive ships with a matching `.sha256` — verify before running:
 
-**macOS, Windows, other platforms**: no pre-built binary yet. Build from source (below). macOS release binaries are deliberately disabled in the release workflow for now because the macOS CI runner is the 10× billing tier; they may be re-enabled later.
+```bash
+sha256sum -c truenorth-<tag>-linux-x86_64.tar.gz.sha256
+```
+
+Each package unpacks to a directory containing `bin/truenorthd`, `bin/truenorth-cli`, `bin/truenorth-miner` (or their `.exe` counterparts on Windows), a `doc/` directory with tester-relevant documentation, this `README.md`, and `COPYING`.
+
+**Other platforms** (Intel Macs, Linux ARM64, FreeBSD, etc.) are not currently pre-built — build from source (below).
 
 ## Build from source
 
