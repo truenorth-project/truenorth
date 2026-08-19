@@ -374,6 +374,92 @@ BOOST_AUTO_TEST_CASE(mode_name_labels)
     BOOST_CHECK_EQUAL(std::string(truenorth::ModeName(truenorth::RandomXMode::FAST)), "fast");
 }
 
+// -------- Two-slot cache LRU behavior (Issue #2) --------
+//
+// These tests share global slot state with each other (and with the
+// LightHash tests above), which is unavoidable -- the wrapper's slot
+// map is a process singleton by design. Tests use disjoint seed
+// ranges (100+, 200+, 300+, 400+, 500+) to reduce cross-test
+// interference, and assert only invariants that hold regardless of
+// prior slot contents.
+
+BOOST_AUTO_TEST_CASE(randomx_cache_allocations_bounded_by_two)
+{
+    using truenorth::RandomXCacheAllocations;
+    using truenorth::RandomXLightHash;
+    const unsigned char data[] = {'q'};
+    // Request many unique seeds; slot count should never exceed 2.
+    // The two-slot LRU must evict the oldest, not accumulate.
+    for (uint64_t i = 300; i < 320; ++i) {
+        const uint256 s = ArithToUint256(arith_uint256(i));
+        RandomXLightHash(s, data, sizeof(data));
+        BOOST_CHECK(RandomXCacheAllocations() <= std::size_t{2});
+    }
+    // After the loop, exactly the last two seeds should occupy the
+    // slots; total slot count is 2.
+    BOOST_CHECK_EQUAL(RandomXCacheAllocations(), std::size_t{2});
+}
+
+BOOST_AUTO_TEST_CASE(randomx_hash_stable_across_slot_eviction)
+{
+    using truenorth::RandomXLightHash;
+    const uint256 seed_a = ArithToUint256(arith_uint256(uint64_t{200}));
+    const uint256 seed_b = ArithToUint256(arith_uint256(uint64_t{201}));
+    const uint256 seed_c = ArithToUint256(arith_uint256(uint64_t{202}));
+    const unsigned char data[] = {'x', 'y', 'z'};
+
+    // Establish canonical hash for seed_a.
+    const uint256 hash_first = RandomXLightHash(seed_a, data, sizeof(data));
+
+    // Force eviction of seed_a: two subsequent unique seeds push it
+    // out of both slots (main -> secondary -> evicted).
+    RandomXLightHash(seed_b, data, sizeof(data));
+    RandomXLightHash(seed_c, data, sizeof(data));
+
+    // Request seed_a again; must allocate fresh cache and produce the
+    // same hash. This is the core correctness invariant of the LRU:
+    // eviction never changes hash results for a given (seed, data)
+    // pair.
+    const uint256 hash_second = RandomXLightHash(seed_a, data, sizeof(data));
+    BOOST_CHECK(hash_first == hash_second);
+}
+
+BOOST_AUTO_TEST_CASE(randomx_cache_promotion_preserves_hash)
+{
+    using truenorth::RandomXLightHash;
+    const uint256 seed_a = ArithToUint256(arith_uint256(uint64_t{400}));
+    const uint256 seed_b = ArithToUint256(arith_uint256(uint64_t{401}));
+    const unsigned char data[] = {'w'};
+
+    const uint256 hash_a_first = RandomXLightHash(seed_a, data, sizeof(data));
+    // Push seed_a to secondary by adding seed_b.
+    RandomXLightHash(seed_b, data, sizeof(data));
+    // Requesting seed_a again promotes secondary -> main without
+    // reallocation. Hash must match.
+    const uint256 hash_a_promoted = RandomXLightHash(seed_a, data, sizeof(data));
+    BOOST_CHECK(hash_a_first == hash_a_promoted);
+}
+
+BOOST_AUTO_TEST_CASE(randomx_cache_allocated_bytes_matches_slot_count)
+{
+    using truenorth::RandomXCacheAllocatedBytes;
+    using truenorth::RandomXCacheAllocations;
+    using truenorth::RandomXLightHash;
+    const unsigned char data[] = {'m'};
+    // Ensure at least one slot is populated.
+    const uint256 s = ArithToUint256(arith_uint256(uint64_t{500}));
+    RandomXLightHash(s, data, sizeof(data));
+
+    const std::size_t slots = RandomXCacheAllocations();
+    const std::uint64_t bytes = RandomXCacheAllocatedBytes();
+    BOOST_CHECK(slots >= 1);
+    // In LIGHT mode (validation-only, no miner active), each cache is
+    // nominally 256 MiB. The reported byte total should be exactly
+    // slots * 256 MiB when no FAST cache is present.
+    const std::uint64_t light_per_slot = std::uint64_t{256} * 1024 * 1024;
+    BOOST_CHECK_EQUAL(bytes, light_per_slot * slots);
+}
+
 // =========================================================================
 // F. P2QRH commitment helper (pure function)
 // =========================================================================
