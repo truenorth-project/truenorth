@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 
 namespace truenorth {
 
@@ -33,10 +34,8 @@ RandomXMode AutoDetectMinerMode(std::uint64_t min_free_mib = kFastModeMinAvailMi
 // Set the mining mode for subsequent MinerThread construction. Called
 // once at process startup by truenorth-miner after CLI parsing.
 //
-// SAFETY: not concurrent-safe. Do not change the mode while any
-// MinerThread is alive: existing MinerThreads hold VMs that assume the
-// current (cache, dataset) shape. truenorth-miner sets this once
-// before spawning workers and never changes it.
+// SAFETY: not concurrent-safe with existing MinerThreads on a different
+// mode. Set once before spawning workers.
 //
 // Called by: truenorth-miner. NOT called by the node (validation
 // stays LIGHT unconditionally).
@@ -49,39 +48,58 @@ RandomXMode CurrentMinerMode();
 // Short label for logging: "light" / "fast".
 const char* ModeName(RandomXMode mode);
 
+// -------------------------------------------------------------------
+// Two-slot cache accessors (test-only)
+//
+// The wrapper keeps a main + secondary cache slot per tevador/RandomX
+// guidance. This lets validation replay blocks from a recent prior
+// seed epoch (chain reorg across a seed-rotation boundary) without
+// paying the ~1s cache-init cost each time, and lets an unexpected
+// old-seed template survive at least one lookup. Slots are populated
+// lazily as unique seeds are requested; miss on both slots evicts the
+// secondary, demotes the main, and installs a fresh main.
+//
+// In-flight MinerThreads and hash calls hold a shared_ptr to their
+// Cache, so eviction from the slot map does NOT free the underlying
+// resources until the last user drops the reference.
+// -------------------------------------------------------------------
+
+// Number of cache slots currently populated (0, 1, or 2).
+std::size_t RandomXCacheAllocations();
+
+// Total bytes allocated across populated slots. Approximate: uses the
+// nominal ~256 MiB cache size and ~2080 MiB dataset size (fast mode
+// only). Doesn't include per-thread VM overhead.
+std::uint64_t RandomXCacheAllocatedBytes();
+
+// -------------------------------------------------------------------
+
 // RandomX hash of `data` using `seed_key` as the cache key.
 //
-// The first call with a given seed allocates the RandomX cache, which
-// takes 1-2 seconds. Calls with the same seed reuse that cache and only
-// pay the per-hash cost (a few milliseconds in light-mode).
+// Consults the two-slot cache: hit main -> reuse; hit secondary ->
+// swap-to-main; miss -> allocate new LIGHT-mode cache as main and
+// demote previous main. If the miner has already installed a FAST
+// cache for `seed_key`, this reuses that cache's light VM (still
+// correct — fast-mode VMs also hash correctly, just with dataset
+// access).
 //
-// Callers on the node (validation) side get light-mode behaviour
-// regardless of SetMinerMode, because the node never calls SetMinerMode
-// and CurrentMinerMode() defaults to LIGHT. Don't use this for mining
-// at thread-parallel rates; it serializes on a global mutex. See
-// MinerThread below for that.
-//
-// Thread-safe.
+// Thread-safe. Called by block validation.
 uint256 RandomXLightHash(const uint256& seed_key,
                          const unsigned char* data,
                          std::size_t size);
 
-// Per-thread RandomX VM for mining. The constructor takes the global
-// mutex briefly to make sure the shared cache (and, in FAST mode, the
-// shared ~2 GiB dataset) exists for `seed_key`, then allocates a
-// private VM bound to it. Hash() can be called from the constructing
-// thread with no locking after that.
+// Per-thread RandomX VM for mining. Constructor grabs the slot mutex
+// briefly to acquire or install the Cache for `seed_key` at the
+// currently-active miner mode (LIGHT or FAST per SetMinerMode).
+// The MinerThread holds a shared_ptr<Cache> internally, keeping the
+// cache alive even if it's later evicted from the slot map (e.g.
+// because a new seed came in). Hash() then runs lock-free on the
+// thread-private VM.
 //
 // The active mode (LIGHT vs FAST) is whatever SetMinerMode was last
 // called with. FAST mode's first-for-a-given-seed construction pays
 // the dataset-build cost (~10 s wall clock, parallelised across cores);
-// subsequent MinerThreads for the same seed reuse it.
-//
-// Don't re-initialise the shared cache against a different seed while
-// any MinerThread is still alive. The VMs hold pointers into the cache
-// (and dataset) that would dangle. truenorth-miner spawns workers per
-// block template, joins them all, then switches seeds, which avoids
-// this.
+// subsequent MinerThreads for the same seed reuse the same cache.
 class MinerThread
 {
 public:
@@ -96,7 +114,10 @@ public:
     void Hash(const unsigned char* data, std::size_t size, uint256& out);
 
 private:
-    void* m_vm; // randomx_vm* (opaque so callers don't need <randomx.h>)
+    // Pimpl hides std::shared_ptr<Cache> and randomx_vm* from callers so
+    // they don't need <randomx.h> or the internal Cache type.
+    struct Impl;
+    std::unique_ptr<Impl> m_impl;
 };
 
 } // namespace truenorth
