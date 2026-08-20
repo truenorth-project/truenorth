@@ -23,8 +23,8 @@ inline constexpr std::string_view QRH_DOMAIN_TAG{"TrueNorth/QRH/v1"};
 // is accepted at consensus at launch; PQ schemes are added via soft fork.
 // See doc/p2qrh.md scheme registry.
 inline constexpr uint8_t QRH_SCHEME_RESERVED_ZERO = 0x00; //!< Never valid
-inline constexpr uint8_t QRH_SCHEME_SCHNORR       = 0x01; //!< secp256k1 Schnorr (BIP-340)
-inline constexpr uint8_t QRH_SCHEME_INVALID       = 0xFF; //!< Sentinel; reject at consensus
+inline constexpr uint8_t QRH_SCHEME_SCHNORR = 0x01;       //!< secp256k1 Schnorr (BIP-340)
+inline constexpr uint8_t QRH_SCHEME_INVALID = 0xFF;       //!< Sentinel; reject at consensus
 
 // Sentinel for "no script tree" — 32 bytes of zeros, mirroring the
 // Taproot empty-tree convention.
