@@ -3306,6 +3306,45 @@ bool Chainstate::ActivateBestChainStep(BlockValidationState& state, CBlockIndex*
     const CBlockIndex* pindexOldTip = m_chain.Tip();
     const CBlockIndex* pindexFork = m_chain.FindFork(pindexMostWork);
 
+    // Reorg-depth cap: refuse to disconnect more than max_reorg_depth
+    // blocks from the current tip. Defense-in-depth for a small-hash
+    // chain vulnerable to deep-history-rewrite attacks by rented
+    // compute -- an attacker cannot force a reorg past this depth
+    // regardless of how much work they command, because every honest
+    // node refuses to follow it. Regtest sets max_reorg_depth=0 so
+    // reorg-heavy regression scripts continue to work.
+    //
+    // The refused chain stays in the block index and stays in
+    // setBlockIndexCandidates removal-until-later logic. If a
+    // subsequent chain extends the current tip (or extends a shorter
+    // fork) so that its reorg depth falls within the cap, that chain
+    // will be selected normally. To bring the local node onto the
+    // refused chain manually, operators can use invalidateblock on the
+    // current tip until the fork depth drops below the cap.
+    const int max_reorg_depth = m_chainman.GetConsensus().max_reorg_depth;
+    if (max_reorg_depth > 0 && pindexOldTip && pindexFork) {
+        const int fork_depth = pindexOldTip->nHeight - pindexFork->nHeight;
+        if (fork_depth > max_reorg_depth) {
+            LogPrintf("WARNING: refusing reorg of depth %d (cap %d): "
+                      "current tip %s at height %d, proposed tip %s at height %d, "
+                      "common ancestor %s at height %d\n",
+                      fork_depth, max_reorg_depth,
+                      pindexOldTip->GetBlockHash().ToString(), pindexOldTip->nHeight,
+                      pindexMostWork->GetBlockHash().ToString(), pindexMostWork->nHeight,
+                      pindexFork->GetBlockHash().ToString(), pindexFork->nHeight);
+            // Remove from candidates so FindMostWorkChain will not re-select
+            // this chain immediately. The block index entries remain; a
+            // subsequent extension of either chain may make it re-enter
+            // candidates via AddToBlockIndex.
+            setBlockIndexCandidates.erase(pindexMostWork);
+            // Tell the outer ActivateBestChain loop to wipe pindexMostWork
+            // and re-run FindMostWorkChain rather than looping on the same
+            // rejected chain forever.
+            fInvalidFound = true;
+            return true;
+        }
+    }
+
     // Disconnect active blocks which are no longer in the best chain.
     bool fBlocksDisconnected = false;
     DisconnectedBlockTransactions disconnectpool{MAX_DISCONNECTED_TX_POOL_BYTES};

@@ -460,6 +460,37 @@ BOOST_AUTO_TEST_CASE(randomx_cache_allocated_bytes_matches_slot_count)
     BOOST_CHECK_EQUAL(bytes, light_per_slot * slots);
 }
 
+// -------- Maximum reorg-depth cap (Issue #8) --------
+//
+// End-to-end enforcement (that Chainstate::ActivateBestChainStep
+// actually refuses a > cap reorg) is not covered by these unit tests --
+// it requires setting up a full Chainstate with two forks and would
+// depend on a test-flag override for regtest (which sets
+// max_reorg_depth=0 by design so reorg regression scripts still work).
+// Here we verify that the chainparams-level configuration is correct;
+// the wire-up is covered by inspection + the compile-time integration
+// with ActivateBestChainStep.
+
+BOOST_AUTO_TEST_CASE(reorg_cap_mainnet_is_72_blocks)
+{
+    const auto params = CChainParams::Main();
+    BOOST_CHECK_EQUAL(params->GetConsensus().max_reorg_depth, 72);
+}
+
+BOOST_AUTO_TEST_CASE(reorg_cap_testnet4_is_72_blocks)
+{
+    const auto params = CChainParams::TestNet4();
+    BOOST_CHECK_EQUAL(params->GetConsensus().max_reorg_depth, 72);
+}
+
+BOOST_AUTO_TEST_CASE(reorg_cap_regtest_is_disabled)
+{
+    const auto params = CChainParams::RegTest(CChainParams::RegTestOptions{});
+    // Regtest deliberately has no cap so reorg-heavy regression tests
+    // (e.g. local_testnet_reorg.sh) continue to work.
+    BOOST_CHECK_EQUAL(params->GetConsensus().max_reorg_depth, 0);
+}
+
 // =========================================================================
 // F. P2QRH commitment helper (pure function)
 // =========================================================================
