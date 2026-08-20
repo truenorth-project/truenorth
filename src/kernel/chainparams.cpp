@@ -166,6 +166,10 @@ public:
         // add higher-height checkpoints per doc/checkpoint-process.md.
         consensus.nMinimumChainWork = uint256{};
         consensus.defaultAssumeValid = consensus.hashGenesisBlock;
+        // Reorg-depth cap: reject any reorg deeper than 72 blocks
+        // (~2h 24min at 2-minute block time). Defense-in-depth
+        // between checkpoints. See src/consensus/params.h.
+        consensus.max_reorg_depth = 72;
         m_checkpoint_data = {
             /* .mapCheckpoints = */ {
                 {0, consensus.hashGenesisBlock},
@@ -267,6 +271,7 @@ public:
         // history.
         consensus.nMinimumChainWork = uint256{};
         consensus.defaultAssumeValid = uint256{};
+        consensus.max_reorg_depth = 72;
 
         // TrueNorth testnet3 network magic. Pattern: mainnet (fa c4 b8 d2)
         // + last byte incremented per chain. None collides with Bitcoin's
@@ -374,6 +379,7 @@ public:
         // No historical chain yet; cleared until we have meaningful work.
         consensus.nMinimumChainWork = uint256{};
         consensus.defaultAssumeValid = uint256{};
+        consensus.max_reorg_depth = 72;
 
         // TrueNorth testnet4 magic -- next byte in the fa c4 b8 d* family
         // after testnet3. Not on the June 1 launch path (we're launching
@@ -463,6 +469,7 @@ public:
             // design.
             consensus.nMinimumChainWork = uint256{};
             consensus.defaultAssumeValid = uint256{};
+            consensus.max_reorg_depth = 72;
             m_assumed_blockchain_size = 0;
             m_assumed_chain_state_size = 0;
             chainTxData = ChainTxData{
@@ -474,6 +481,7 @@ public:
             bin = *options.challenge;
             consensus.nMinimumChainWork = uint256{};
             consensus.defaultAssumeValid = uint256{};
+            consensus.max_reorg_depth = 72;
             m_assumed_blockchain_size = 0;
             m_assumed_chain_state_size = 0;
             chainTxData = ChainTxData{
@@ -608,6 +616,10 @@ public:
 
         consensus.nMinimumChainWork = uint256{};
         consensus.defaultAssumeValid = uint256{};
+        // Regtest: no reorg cap so regression scripts can force
+        // arbitrary-depth reorgs during testing. See
+        // consensus/params.h::max_reorg_depth.
+        consensus.max_reorg_depth = 0;
 
         pchMessageStart[0] = 0xfa;
         pchMessageStart[1] = 0xbf;

@@ -129,6 +129,24 @@ struct Params {
     uint256 defaultAssumeValid;
 
     /**
+     * Maximum depth of chain reorganization the node will accept.
+     * Reorgs deeper than this are rejected regardless of the alternate
+     * chain's accumulated work -- defense-in-depth for a small-hash
+     * chain in its early years, where a well-funded actor could
+     * otherwise mine a private chain and rewrite deep history on
+     * publication. 0 means no cap (regtest only, so reorg-heavy tests
+     * continue to work).
+     *
+     * Complements the hardcoded checkpoint mechanism (which pins
+     * specific historical blocks at release time). This rule is a
+     * per-node continuous policy applied between checkpoints.
+     *
+     * See src/validation.cpp:Chainstate::ActivateBestChainStep and
+     * doc/checkpoint-process.md for the interaction.
+     */
+    int max_reorg_depth{0};
+
+    /**
      * If true, witness commitments contain a payload equal to a Bitcoin Script solution
      * to the signet challenge. See BIP325.
      */
