@@ -34,17 +34,27 @@ jobs:
           clang-format --version | head -1
           codespell --version | head -1
 
-      - name: clang-format dry-run on src/truenorth/*
+      - name: clang-format dry-run on TrueNorth additions
         # Strict check on our additions only; inherited Bitcoin Core code is
-        # out of scope for this job.
+        # out of scope for this job (formatting inherited code creates
+        # painful merge diffs against upstream).
         run: |
           clang-format --dry-run --Werror \
+            src/truenorth/genesis_spec.h \
+            src/truenorth/mine_genesis.cpp \
+            src/truenorth/miner.cpp \
+            src/truenorth/qrh.h \
+            src/truenorth/qrh.cpp \
             src/truenorth/randomx_wrapper.h \
             src/truenorth/randomx_wrapper.cpp \
             src/truenorth/seed_key.h \
             src/truenorth/seed_key.cpp \
-            src/truenorth/mine_genesis.cpp \
-            src/truenorth/miner.cpp
+            src/truenorth/system_mem.h \
+            src/truenorth/system_mem.cpp \
+            src/checkpoints.h \
+            src/checkpoints.cpp \
+            src/test/truenorth_tests.cpp \
+            src/test/checkpoints_tests.cpp
 
       - name: codespell on TrueNorth additions
         # Spell-check our own files only. The shared word-exception list
