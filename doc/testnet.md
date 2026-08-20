@@ -1,8 +1,9 @@
 # Joining the TrueNorth testnet
 
 This is the operator runbook for testers who want to run a TrueNorth testnet4
-node. The testnet is reachable only via Tor; the seed node lives behind a
-hidden service, not a clearnet address.
+node. The testnet is currently reachable only via Tor; the seed node lives
+behind a hidden service. This is a testnet4-specific bootstrapping choice —
+mainnet will support clearnet peers alongside Tor hidden services.
 
 ## What's running
 
@@ -15,8 +16,10 @@ hidden service, not a clearnet address.
 | RPC port (local-only by default) | 49554 |
 | Seed node | `3guf2wvltezb6w3tjjveumtt6lsnb7bjpts6ornk4hj4wlod4s7n53id.onion:49555` |
 
-The testnet runs onion-only. There is no clearnet seed and no DNS seeder
-yet. Bootstrapping happens entirely through the `.onion` addnode below.
+The testnet currently runs onion-only — no clearnet seed, no DNS seeder yet.
+Mainnet will support clearnet peers; this Tor-only setup is specific to
+testnet4 while we bootstrap. Bootstrapping happens entirely through the
+`.onion` addnode below.
 
 testnet4 was picked over testnet3 because testnet4's chainparams are
 designed for fresh chains: all BIPs activate from genesis, BIP94 timewarp
