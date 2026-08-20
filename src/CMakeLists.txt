@@ -105,6 +105,7 @@ add_library(bitcoin_common STATIC EXCLUDE_FROM_ALL
   truenorth/seed_key.cpp
   chainparams.cpp
   chainparamsbase.cpp
+  checkpoints.cpp
   coins.cpp
   common/args.cpp
   common/bloom.cpp

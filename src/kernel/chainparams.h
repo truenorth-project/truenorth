@@ -6,6 +6,7 @@
 #ifndef BITCOIN_KERNEL_CHAINPARAMS_H
 #define BITCOIN_KERNEL_CHAINPARAMS_H
 
+#include <checkpoints.h>
 #include <consensus/params.h>
 #include <kernel/messagestartchars.h>
 #include <primitives/block.h>
@@ -118,6 +119,12 @@ public:
 
     const ChainTxData& TxData() const { return chainTxData; }
 
+    // Hardcoded checkpoint set for this chain. Populated for mainnet
+    // (see doc/checkpoint-process.md for the release-time maintainer
+    // procedure); empty for testnet4 and regtest by design so those
+    // chains can exercise deep reorgs. See src/checkpoints.h.
+    const CCheckpointData& Checkpoints() const { return m_checkpoint_data; }
+
     /**
      * SigNetOptions holds configurations for creating a signet CChainParams.
      */
@@ -170,6 +177,7 @@ protected:
     bool m_is_mockable_chain;
     std::vector<AssumeutxoData> m_assumeutxo_data;
     ChainTxData chainTxData;
+    CCheckpointData m_checkpoint_data;
 };
 
 std::optional<ChainType> GetNetworkForMagic(const MessageStartChars& pchMessageStart);
