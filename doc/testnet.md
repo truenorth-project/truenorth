@@ -31,7 +31,7 @@ prefixed `tnorth4` instead of `tnorth1q`, ports in the 49000s instead of
 
 ## Requirements
 
-- Linux x86_64 host, macOS arm64 host, or build-from-source on anything else
+- Linux x86_64, macOS arm64, or Windows x86_64 (all supported by the pre-built release binaries); or build-from-source on anything else
 - Tor 0.4.x or later running locally with SOCKS on 127.0.0.1:9050
 - Roughly 1 GiB RAM, 4 GiB disk, any always-on internet connection
 

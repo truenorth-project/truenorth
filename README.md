@@ -73,6 +73,8 @@ This produces three binaries:
 
 Building on macOS works too. Replace the apt line with `brew install cmake boost libevent sqlite ccache llvm` and configure with the homebrew LLVM toolchain. See [`doc/build-osx.md`](doc/build-osx.md).
 
+Windows binaries are **cross-compiled from Linux** via mingw-w64 (see the `depends/` system and [`doc/build-windows.md`](doc/build-windows.md)). Native Windows builds are not currently supported — for a Windows build environment, use WSL2 with the Linux instructions above.
+
 ---
 
 ## Running a node
@@ -86,6 +88,13 @@ A bare-minimum startup once the conf is in place:
 ```bash
 ./build/bin/truenorthd -testnet4 -daemon
 ./build/bin/truenorth-cli -testnet4 -rpcwait getblockchaininfo
+```
+
+On Windows (from an unpacked release archive, using Command Prompt or PowerShell):
+
+```
+bin\truenorthd.exe -testnet4 -daemon
+bin\truenorth-cli.exe -testnet4 -rpcwait getblockchaininfo
 ```
 
 Default ports: P2P **49555**, RPC **49554**. Both bound to `127.0.0.1` by default; pass `-rpcallowip=` or set `rpcauth` if you need remote RPC.
