@@ -151,7 +151,9 @@ private:
                 randomx_init_dataset(m_dataset, m_cache, start, count);
             });
         }
-        for (auto& w : workers) w.join();
+        for (auto& w : workers) {
+            w.join();
+        }
     }
 
     uint256 m_seed;
