@@ -46,6 +46,11 @@ The pre-built binaries dynamically link against modern glibc, so an Ubuntu
 24.04 (or equivalent) host is the easy path. Older glibc will need source
 builds.
 
+If you plan to run `truenorth-miner` in fast mode, see the README's
+Mining -> Performance tuning section for huge-pages and NUMA setup
+(~10-20% and ~20-40% hashrate boosts respectively). Both are opt-in but
+recommended for sustained mining.
+
 ## Getting the binary
 
 Either download the tarball from the releases page:

@@ -46,6 +46,7 @@
 #include <script/script.h>
 #include <serialize.h>
 #include <streams.h>
+#include <truenorth/numa.h>
 #include <truenorth/randomx_wrapper.h>
 #include <truenorth/seed_key.h>
 #include <uint256.h>
@@ -360,8 +361,9 @@ bool MineOnce(CBlock& block,
     std::vector<std::thread> workers;
     workers.reserve(num_threads);
     for (int t = 0; t < num_threads; ++t) {
-        workers.emplace_back([&, t]() {
-            truenorth::MinerThread mt(seed_key);
+        const int node = truenorth::numa::NodeForThread(t, num_threads);
+        workers.emplace_back([&, t, node]() {
+            truenorth::MinerThread mt(seed_key, node);
             // Per-thread mutable copy of the header so we can patch the
             // nonce without coordinating with other workers.
             std::vector<unsigned char> hdr = hdr_template;
@@ -427,9 +429,13 @@ std::string HexBlock(const CBlock& block)
 void RunBenchmark(int num_threads, int budget_seconds)
 {
     std::fprintf(stderr,
-                 "benchmark: mode=%s  threads=%d  duration=%ds  seed=kGenesisSeed\n",
+                 "benchmark: mode=%s  threads=%d  duration=%ds  largepages=%s  numa=%s(active=%s,nodes=%d)  seed=kGenesisSeed\n",
                  truenorth::ModeName(truenorth::CurrentMinerMode()),
-                 num_threads, budget_seconds);
+                 num_threads, budget_seconds,
+                 truenorth::LargePagesPrefName(truenorth::CurrentLargePagesPreference()),
+                 truenorth::numa::PrefName(truenorth::numa::CurrentPreference()),
+                 truenorth::numa::ShouldEnable() ? "yes" : "no",
+                 truenorth::numa::NumNodes());
 
     const uint256 seed = uint256::ZERO;
 
@@ -457,8 +463,9 @@ void RunBenchmark(int num_threads, int budget_seconds)
     std::vector<std::thread> workers;
     workers.reserve(num_threads);
     for (int t = 0; t < num_threads; ++t) {
-        workers.emplace_back([&, t]() {
-            truenorth::MinerThread mt(seed);
+        const int node = truenorth::numa::NodeForThread(t, num_threads);
+        workers.emplace_back([&, t, node]() {
+            truenorth::MinerThread mt(seed, node);
             // Distinct per-thread prefix so workers aren't all hashing the
             // exact same input -- prevents accidentally pessimistic or
             // optimistic numbers from CPU-side micro-architectural sharing.
@@ -529,7 +536,9 @@ int main(int argc, char* argv[])
     int budget_seconds = 30;
     int num_threads = 1;
     bool benchmark_mode = false;
-    std::string mode_str = "auto"; //!< auto | light | fast
+    std::string mode_str = "auto";       //!< auto | light | fast
+    std::string largepages_str = "auto"; //!< auto | on | off
+    std::string numa_str = "auto";       //!< auto | on | off
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -559,10 +568,44 @@ int main(int argc, char* argv[])
             benchmark_mode = (val == "1");
         else if (key == "-mode")
             mode_str = val;
+        else if (key == "-largepages")
+            largepages_str = val;
+        else if (key == "-numa")
+            numa_str = val;
         else
             Die("unknown option: " + key);
     }
     if (num_threads < 1) Die("-threads must be >= 1");
+
+    // Resolve huge-pages preference and install it before any Cache
+    // is constructed. Preference must be set BEFORE SetMinerMode
+    // side-effects (though in practice both are pre-startup and
+    // don't collide).
+    truenorth::LargePagesPref lp_pref;
+    if (largepages_str == "auto") {
+        lp_pref = truenorth::LargePagesPref::AUTO;
+    } else if (largepages_str == "on") {
+        lp_pref = truenorth::LargePagesPref::ON;
+    } else if (largepages_str == "off") {
+        lp_pref = truenorth::LargePagesPref::OFF;
+    } else {
+        Die("unknown -largepages=" + largepages_str + " (expected auto | on | off)");
+    }
+    truenorth::SetLargePagesPreference(lp_pref);
+
+    // Resolve NUMA preference before any MinerThread constructs, so the
+    // first alloc sees the right topology.
+    truenorth::numa::NumaPref numa_pref;
+    if (numa_str == "auto") {
+        numa_pref = truenorth::numa::NumaPref::AUTO;
+    } else if (numa_str == "on") {
+        numa_pref = truenorth::numa::NumaPref::ON;
+    } else if (numa_str == "off") {
+        numa_pref = truenorth::numa::NumaPref::OFF;
+    } else {
+        Die("unknown -numa=" + numa_str + " (expected auto | on | off)");
+    }
+    truenorth::numa::SetPreference(numa_pref);
 
     // Resolve RandomX mode and install it before any MinerThread is
     // constructed (see randomx_wrapper.h SetMinerMode SAFETY note).
@@ -605,11 +648,15 @@ int main(int argc, char* argv[])
     const CliConfig cfg{cli_path, CLIChainArg(chain), datadir, rpcport, rpchost};
 
     std::fprintf(stderr,
-                 "truenorth-miner -- chain=%s address=%s datadir=%s threads=%d maxblocks=%d budget=%ds mode=%s\n",
+                 "truenorth-miner -- chain=%s address=%s datadir=%s threads=%d maxblocks=%d budget=%ds mode=%s largepages=%s numa=%s(active=%s,nodes=%d)\n",
                  chain_str.c_str(), address.c_str(),
                  datadir.empty() ? "<default>" : datadir.c_str(),
                  num_threads, max_blocks, budget_seconds,
-                 truenorth::ModeName(truenorth::CurrentMinerMode()));
+                 truenorth::ModeName(truenorth::CurrentMinerMode()),
+                 truenorth::LargePagesPrefName(truenorth::CurrentLargePagesPreference()),
+                 truenorth::numa::PrefName(truenorth::numa::CurrentPreference()),
+                 truenorth::numa::ShouldEnable() ? "yes" : "no",
+                 truenorth::numa::NumNodes());
 
     int blocks_found = 0;
     uint64_t extranonce = 0;

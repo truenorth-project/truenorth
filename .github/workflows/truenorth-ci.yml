@@ -43,6 +43,8 @@ jobs:
             src/truenorth/genesis_spec.h \
             src/truenorth/mine_genesis.cpp \
             src/truenorth/miner.cpp \
+            src/truenorth/numa.h \
+            src/truenorth/numa.cpp \
             src/truenorth/qrh.h \
             src/truenorth/qrh.cpp \
             src/truenorth/randomx_wrapper.h \
