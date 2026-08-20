@@ -2,7 +2,7 @@
 
 A Canadian-themed cryptocurrency forked from Bitcoin Core, using **RandomX** (CPU-friendly, ASIC-resistant) proof-of-work and **LWMA-1** per-block difficulty adjustment.
 
-**Status**: Private testnet. Mainnet TBD. If you found this repo and want to test, open a GitHub Issue.
+**Status**: Public testnet4 (open to anyone; see [`doc/testnet.md`](doc/testnet.md) to join). Mainnet TBD.
 
 ---
 
@@ -79,7 +79,7 @@ Building on macOS works too. Replace the apt line with `brew install cmake boost
 
 ### Testnet4
 
-The TrueNorth testnet runs onion-only. See [`doc/testnet.md`](doc/testnet.md) for the seed `.onion` address, a sample tester config, and bootstrap steps.
+The TrueNorth testnet currently runs onion-only — this is a testnet4-specific bootstrapping choice; mainnet will support clearnet peers alongside Tor. See [`doc/testnet.md`](doc/testnet.md) for the seed `.onion` address, a sample tester config, and bootstrap steps.
 
 A bare-minimum startup once the conf is in place:
 
