@@ -64,6 +64,7 @@ add_library(bitcoin_consensus STATIC EXCLUDE_FROM_ALL
   consensus/tx_check.cpp
   hash.cpp
   primitives/block.cpp
+  truenorth/numa.cpp
   truenorth/qrh.cpp
   truenorth/randomx_wrapper.cpp
   truenorth/system_mem.cpp
@@ -85,6 +86,22 @@ target_link_libraries(bitcoin_consensus
 # in the vendored CMakeLists, so add the path explicitly so <randomx.h>
 # resolves from src/truenorth/randomx_wrapper.cpp.
 target_include_directories(bitcoin_consensus PRIVATE ${CMAKE_SOURCE_DIR}/src/randomx/src)
+
+# Optional libnuma dependency for NUMA-aware thread pinning and per-node
+# cache allocation on multi-socket Linux hosts. Absence is fine: the
+# numa.cpp wrapper compiles stub implementations when HAVE_LIBNUMA is
+# not defined (macOS, Windows, or Linux without libnuma-dev installed).
+# See src/truenorth/numa.h.
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+  find_library(NUMA_LIBRARY numa)
+  if(NUMA_LIBRARY)
+    target_link_libraries(bitcoin_consensus PRIVATE ${NUMA_LIBRARY})
+    target_compile_definitions(bitcoin_consensus PRIVATE HAVE_LIBNUMA=1)
+    message(STATUS "libnuma found at ${NUMA_LIBRARY} -- NUMA support enabled")
+  else()
+    message(STATUS "libnuma not found -- NUMA support disabled (install libnuma-dev on Debian/Ubuntu, numactl-devel on RHEL)")
+  endif()
+endif()
 
 if(WITH_ZMQ)
   add_subdirectory(zmq)

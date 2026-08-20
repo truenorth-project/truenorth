@@ -31,6 +31,7 @@
 #include <script/sign.h>
 #include <script/signingprovider.h>
 #include <test/util/setup_common.h>
+#include <truenorth/numa.h>
 #include <truenorth/qrh.h>
 #include <truenorth/randomx_wrapper.h>
 #include <truenorth/seed_key.h>
@@ -371,6 +372,134 @@ BOOST_AUTO_TEST_CASE(mode_name_labels)
 {
     BOOST_CHECK_EQUAL(std::string(truenorth::ModeName(truenorth::RandomXMode::LIGHT)), "light");
     BOOST_CHECK_EQUAL(std::string(truenorth::ModeName(truenorth::RandomXMode::FAST)), "fast");
+}
+
+// -------- Huge pages preference (Issue #7 part 1) --------
+
+BOOST_AUTO_TEST_CASE(large_pages_pref_round_trip)
+{
+    using truenorth::CurrentLargePagesPreference;
+    using truenorth::LargePagesPref;
+    using truenorth::SetLargePagesPreference;
+    const auto original = CurrentLargePagesPreference();
+    SetLargePagesPreference(LargePagesPref::OFF);
+    BOOST_CHECK(CurrentLargePagesPreference() == LargePagesPref::OFF);
+    SetLargePagesPreference(LargePagesPref::ON);
+    BOOST_CHECK(CurrentLargePagesPreference() == LargePagesPref::ON);
+    SetLargePagesPreference(LargePagesPref::AUTO);
+    BOOST_CHECK(CurrentLargePagesPreference() == LargePagesPref::AUTO);
+    // Restore so later tests are not sensitive to ordering.
+    SetLargePagesPreference(original);
+}
+
+BOOST_AUTO_TEST_CASE(large_pages_pref_names)
+{
+    using truenorth::LargePagesPref;
+    using truenorth::LargePagesPrefName;
+    BOOST_CHECK_EQUAL(std::string(LargePagesPrefName(LargePagesPref::AUTO)), "auto");
+    BOOST_CHECK_EQUAL(std::string(LargePagesPrefName(LargePagesPref::ON)), "on");
+    BOOST_CHECK_EQUAL(std::string(LargePagesPrefName(LargePagesPref::OFF)), "off");
+}
+
+// -------- NUMA topology + pinning (Issue #7 part 2) --------
+//
+// These tests run on any host regardless of NUMA availability. On
+// macOS / Windows / Linux-without-libnuma the wrapper compiles stubs
+// that always report "not available", and the tests verify the
+// graceful-fallback behavior. On Linux with libnuma installed and
+// multi-node hardware, the assertions still hold (NUMA is opt-in).
+
+BOOST_AUTO_TEST_CASE(numa_pref_round_trip)
+{
+    using truenorth::numa::CurrentPreference;
+    using truenorth::numa::NumaPref;
+    using truenorth::numa::SetPreference;
+    const auto original = CurrentPreference();
+    SetPreference(NumaPref::OFF);
+    BOOST_CHECK(CurrentPreference() == NumaPref::OFF);
+    SetPreference(NumaPref::ON);
+    BOOST_CHECK(CurrentPreference() == NumaPref::ON);
+    SetPreference(NumaPref::AUTO);
+    BOOST_CHECK(CurrentPreference() == NumaPref::AUTO);
+    SetPreference(original);
+}
+
+BOOST_AUTO_TEST_CASE(numa_pref_names)
+{
+    using truenorth::numa::NumaPref;
+    using truenorth::numa::PrefName;
+    BOOST_CHECK_EQUAL(std::string(PrefName(NumaPref::AUTO)), "auto");
+    BOOST_CHECK_EQUAL(std::string(PrefName(NumaPref::ON)), "on");
+    BOOST_CHECK_EQUAL(std::string(PrefName(NumaPref::OFF)), "off");
+}
+
+BOOST_AUTO_TEST_CASE(numa_num_nodes_at_least_one)
+{
+    // Any host must report at least 1 node (the "everything" node).
+    BOOST_CHECK(truenorth::numa::NumNodes() >= 1);
+}
+
+BOOST_AUTO_TEST_CASE(numa_should_enable_false_when_pref_off)
+{
+    using truenorth::numa::CurrentPreference;
+    using truenorth::numa::NumaPref;
+    using truenorth::numa::SetPreference;
+    using truenorth::numa::ShouldEnable;
+    const auto original = CurrentPreference();
+    SetPreference(NumaPref::OFF);
+    BOOST_CHECK(!ShouldEnable());
+    SetPreference(original);
+}
+
+BOOST_AUTO_TEST_CASE(numa_node_for_thread_returns_zero_when_disabled)
+{
+    using truenorth::numa::CurrentPreference;
+    using truenorth::numa::NodeForThread;
+    using truenorth::numa::NumaPref;
+    using truenorth::numa::SetPreference;
+    const auto original = CurrentPreference();
+    SetPreference(NumaPref::OFF);
+    // Regardless of which thread index we ask for, we should get
+    // node 0 when NUMA is disabled.
+    BOOST_CHECK_EQUAL(NodeForThread(0, 8), 0);
+    BOOST_CHECK_EQUAL(NodeForThread(3, 8), 0);
+    BOOST_CHECK_EQUAL(NodeForThread(7, 8), 0);
+    SetPreference(original);
+}
+
+BOOST_AUTO_TEST_CASE(numa_bind_thread_returns_false_when_disabled)
+{
+    using truenorth::numa::BindThreadToNode;
+    using truenorth::numa::CurrentPreference;
+    using truenorth::numa::NumaPref;
+    using truenorth::numa::SetPreference;
+    const auto original = CurrentPreference();
+    SetPreference(NumaPref::OFF);
+    BOOST_CHECK(!BindThreadToNode(0));
+    SetPreference(original);
+}
+
+BOOST_AUTO_TEST_CASE(large_pages_off_still_hashes_correctly)
+{
+    // Force huge pages off and verify RandomXLightHash still works
+    // (fallback path exercises no-large-pages allocation). The seed is
+    // in a range unlikely to be touched by other tests so slot state
+    // doesn't matter.
+    using truenorth::CurrentLargePagesPreference;
+    using truenorth::LargePagesPref;
+    using truenorth::RandomXLightHash;
+    using truenorth::SetLargePagesPreference;
+    const auto original = CurrentLargePagesPreference();
+    SetLargePagesPreference(LargePagesPref::OFF);
+
+    const uint256 seed = ArithToUint256(arith_uint256(uint64_t{7001}));
+    const unsigned char data[] = {'p'};
+    // Just verifying no crash + hash is deterministic.
+    const uint256 h1 = RandomXLightHash(seed, data, sizeof(data));
+    const uint256 h2 = RandomXLightHash(seed, data, sizeof(data));
+    BOOST_CHECK(h1 == h2);
+
+    SetLargePagesPreference(original);
 }
 
 // -------- Two-slot cache LRU behavior (Issue #2) --------

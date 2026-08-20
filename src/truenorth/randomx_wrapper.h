@@ -49,6 +49,46 @@ RandomXMode CurrentMinerMode();
 const char* ModeName(RandomXMode mode);
 
 // -------------------------------------------------------------------
+// Huge pages (Issue #7 part 1)
+//
+// RandomX's fast-mode dataset is ~2 GiB. With default 4 KiB pages the
+// TLB (typically 1500-4000 entries on modern CPUs) covers well under
+// 1% of the dataset, so every dataset lookup during hashing is a TLB
+// miss + page-walk. With 2 MiB huge pages the whole dataset fits in
+// ~1024 pages, comfortably in TLB. Measured on xmrig / Monero: ~10-20%
+// hashrate improvement with huge pages vs 4 KiB pages.
+//
+// RandomX handles the actual allocation internally (mmap MAP_HUGETLB
+// on Linux, VirtualAlloc MEM_LARGE_PAGES on Windows) via the
+// RANDOMX_FLAG_LARGE_PAGES flag. Failure is common (operator hasn't
+// reserved huge pages, insufficient privileges) so the wrapper
+// silently falls back to normal pages on alloc failure.
+// -------------------------------------------------------------------
+
+enum class LargePagesPref {
+    AUTO, //!< try large pages; fall back on failure without complaint (default)
+    ON,   //!< try large pages; log ERROR (still fall back) so operator sees the miss
+    OFF,  //!< do not attempt large pages
+};
+
+// Set the huge-pages preference for subsequent Cache / VM allocations.
+// Called by truenorth-miner after CLI parsing. Not concurrent-safe
+// with existing MinerThreads; set once at startup.
+void SetLargePagesPreference(LargePagesPref pref);
+
+// The preference most recently set (or AUTO if never set).
+LargePagesPref CurrentLargePagesPreference();
+
+// Short label for logging: "auto" / "on" / "off".
+const char* LargePagesPrefName(LargePagesPref pref);
+
+// Diagnostic: whether the main slot's cache actually got huge-page
+// backing. Returns std::optional -- empty if no cache is allocated
+// yet, otherwise true/false depending on whether the alloc succeeded
+// with LARGE_PAGES set. Test accessor + miner-startup diagnostic.
+bool RandomXCacheUsedLargePages();
+
+// -------------------------------------------------------------------
 // Two-slot cache accessors (test-only)
 //
 // The wrapper keeps a main + secondary cache slot per tevador/RandomX
@@ -103,14 +143,22 @@ uint256 RandomXLightHash(const uint256& seed_key,
 class MinerThread
 {
 public:
-    explicit MinerThread(const uint256& seed_key);
+    // Construct on the worker thread that will call Hash(). If NUMA
+    // is enabled (see truenorth::numa::ShouldEnable), the constructor
+    // pins the calling thread to `numa_node` BEFORE allocating the
+    // Cache, so RandomX memory lands on that node's local RAM. On
+    // NUMA-off / single-node systems, numa_node is effectively
+    // ignored and slot 0 is used.
+    explicit MinerThread(const uint256& seed_key, int numa_node = 0);
     ~MinerThread();
     MinerThread(const MinerThread&) = delete;
     MinerThread& operator=(const MinerThread&) = delete;
 
     // Compute the RandomX hash of `data` using this thread's VM. Output is
     // written to `out`. No locking; safe to call from one thread only (the
-    // one that constructed this MinerThread).
+    // one that constructed this MinerThread). For correct NUMA locality
+    // that thread must remain the same as the constructing thread (the
+    // constructor pinned it to the target node).
     void Hash(const unsigned char* data, std::size_t size, uint256& out);
 
 private:

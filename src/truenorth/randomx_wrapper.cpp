@@ -6,6 +6,7 @@
 
 #include <randomx.h>
 #include <threadsafety.h>
+#include <truenorth/numa.h>
 #include <truenorth/system_mem.h>
 
 #include <algorithm>
@@ -25,13 +26,21 @@ namespace {
 // Recommended host flags + RANDOMX_FLAG_V2 (program format v2).
 // randomx_get_flags() does not include V2 by default; we opt in
 // because TrueNorth uses the v2 program format from genesis.
-randomx_flags FlagsForMode(RandomXMode mode)
+//
+// `with_large_pages` opts into RANDOMX_FLAG_LARGE_PAGES for the alloc
+// this flag set will drive. Callers should retry without it if the
+// alloc fails (RandomX returns nullptr rather than aborting when the
+// huge page allocation is denied).
+randomx_flags FlagsForMode(RandomXMode mode, bool with_large_pages)
 {
     randomx_flags flags = randomx_get_flags() | RANDOMX_FLAG_V2;
     if (mode == RandomXMode::FAST) {
         // VMs must be told to use the dataset. Without this flag, they
         // ignore any dataset argument and run in light mode.
         flags |= RANDOMX_FLAG_FULL_MEM;
+    }
+    if (with_large_pages) {
+        flags |= RANDOMX_FLAG_LARGE_PAGES;
     }
     return flags;
 }
@@ -45,33 +54,74 @@ randomx_flags FlagsForMode(RandomXMode mode)
 class Cache
 {
 public:
-    Cache(const uint256& seed_key, RandomXMode mode)
+    Cache(const uint256& seed_key, RandomXMode mode, LargePagesPref lp_pref)
         : m_seed(seed_key), m_mode(mode)
     {
-        const randomx_flags cache_flags = FlagsForMode(mode);
-        m_cache = randomx_alloc_cache(cache_flags);
+        // Try huge pages first if requested; on any allocation failure
+        // fall back to normal pages. Track the state we ended up in
+        // so miner startup can log it. If pref==ON and we fall back,
+        // log at ERROR so the operator sees the failure to configure.
+        bool try_large = (lp_pref != LargePagesPref::OFF);
+        const bool must_have_large = (lp_pref == LargePagesPref::ON);
+
+        randomx_flags flags = FlagsForMode(mode, try_large);
+        m_cache = randomx_alloc_cache(flags);
+        if (m_cache == nullptr && try_large) {
+            std::fprintf(stderr,
+                         "TrueNorth: [%s] randomx_alloc_cache failed with LARGE_PAGES; "
+                         "retrying without huge pages (configure vm.nr_hugepages on Linux, "
+                         "or SeLockMemoryPrivilege on Windows, to get the ~10-20%% hashrate boost)\n",
+                         must_have_large ? "ERROR" : "INFO");
+            try_large = false;
+            flags = FlagsForMode(mode, try_large);
+            m_cache = randomx_alloc_cache(flags);
+        }
         if (m_cache == nullptr) {
             std::fprintf(stderr,
-                         "TrueNorth: randomx_alloc_cache failed (out of memory or unsupported flags)\n");
+                         "TrueNorth: randomx_alloc_cache failed even without LARGE_PAGES "
+                         "(out of memory or unsupported flags)\n");
             std::abort();
         }
         randomx_init_cache(m_cache, seed_key.begin(), 32);
 
         if (mode == RandomXMode::FAST) {
-            m_dataset = randomx_alloc_dataset(cache_flags);
+            m_dataset = randomx_alloc_dataset(flags);
+            if (m_dataset == nullptr && try_large) {
+                // Cache succeeded with LARGE_PAGES but dataset alloc
+                // failed -- likely not enough huge pages reserved for
+                // both. Retry the dataset alone without huge pages;
+                // keep the cache as-is (mixed configuration is fine).
+                std::fprintf(stderr,
+                             "TrueNorth: [%s] randomx_alloc_dataset failed with LARGE_PAGES; "
+                             "retrying without huge pages\n",
+                             must_have_large ? "ERROR" : "INFO");
+                randomx_flags ds_flags = FlagsForMode(mode, false);
+                m_dataset = randomx_alloc_dataset(ds_flags);
+                if (m_dataset != nullptr) {
+                    // Cache retains large pages but dataset does not.
+                    // Downgrade m_used_large_pages accounting to false
+                    // since the biggest allocation is on normal pages.
+                    try_large = false;
+                }
+            }
             if (m_dataset == nullptr) {
-                // Dataset alloc failed -- likely OOM on a machine that
-                // passed AutoDetectMinerMode at process start but is now
-                // under memory pressure. Fall back to LIGHT for this
-                // seed rather than abort; miner keeps making progress.
+                // Fall back to LIGHT mode for this seed rather than
+                // abort; miner keeps making progress at reduced speed.
                 std::fprintf(stderr,
                              "TrueNorth: randomx_alloc_dataset failed; falling back to LIGHT mode for this seed\n");
                 randomx_release_cache(m_cache);
                 m_mode = RandomXMode::LIGHT;
-                m_cache = randomx_alloc_cache(FlagsForMode(RandomXMode::LIGHT));
+                // Re-alloc the cache under LIGHT flags (may still try
+                // huge pages if we haven't hit OOM there yet).
+                randomx_flags light_flags = FlagsForMode(RandomXMode::LIGHT, try_large);
+                m_cache = randomx_alloc_cache(light_flags);
+                if (m_cache == nullptr && try_large) {
+                    try_large = false;
+                    light_flags = FlagsForMode(RandomXMode::LIGHT, false);
+                    m_cache = randomx_alloc_cache(light_flags);
+                }
                 if (m_cache == nullptr) {
-                    std::fprintf(stderr,
-                                 "TrueNorth: cache re-alloc for LIGHT fallback also failed\n");
+                    std::fprintf(stderr, "TrueNorth: cache re-alloc for LIGHT fallback also failed\n");
                     std::abort();
                 }
                 randomx_init_cache(m_cache, seed_key.begin(), 32);
@@ -80,12 +130,20 @@ public:
             }
         }
 
-        m_light_vm = randomx_create_vm(FlagsForMode(m_mode), m_cache, m_dataset);
+        // VM alloc: try with the same large-pages preference as the
+        // cache. VM scratchpad is 2 MiB (small), retry-without on
+        // failure is straightforward.
+        m_light_vm = randomx_create_vm(FlagsForMode(m_mode, try_large), m_cache, m_dataset);
+        if (m_light_vm == nullptr && try_large) {
+            m_light_vm = randomx_create_vm(FlagsForMode(m_mode, false), m_cache, m_dataset);
+        }
         if (m_light_vm == nullptr) {
             std::fprintf(stderr,
                          "TrueNorth: randomx_create_vm failed in Cache constructor\n");
             std::abort();
         }
+
+        m_used_large_pages = try_large;
     }
 
     ~Cache()
@@ -104,6 +162,7 @@ public:
     RandomXMode mode() const { return m_mode; }
     randomx_cache* raw_cache() const { return m_cache; }
     randomx_dataset* raw_dataset() const { return m_dataset; }
+    bool used_large_pages() const { return m_used_large_pages; }
 
     // Hash `data` against this cache's shared VM. Serialised on
     // m_vm_mutex; concurrent validation calls against the same seed
@@ -162,83 +221,113 @@ private:
     randomx_dataset* m_dataset{nullptr}; //!< nullptr in LIGHT mode
     randomx_vm* m_light_vm{nullptr};
     std::mutex m_vm_mutex;
+    bool m_used_large_pages{false};
 };
 
-// Two-slot LRU. g_main is the most-recently-used cache; g_secondary is
-// the previous main after promotion. shared_ptr semantics keep an
-// evicted Cache alive as long as any MinerThread or hash call holds it.
+// Per-NUMA-node two-slot LRU. On single-node systems (or when NUMA is
+// disabled), g_slots_by_node has one entry. On multi-socket systems
+// with NUMA on, one entry per node -- MinerThreads pin to a specific
+// node and use that node's slot; RandomX allocations happen on that
+// node's local memory (because the calling thread is pinned there
+// during the alloc, and the underlying mmap/VirtualAlloc respects
+// current-thread affinity).
+//
+// shared_ptr semantics keep an evicted Cache alive as long as any
+// MinerThread or hash call holds it, regardless of which node slot it
+// came from.
+struct NodeSlots {
+    std::shared_ptr<Cache> main;
+    std::shared_ptr<Cache> secondary;
+};
+
 std::mutex g_slot_mutex;
-std::shared_ptr<Cache> g_main GUARDED_BY(g_slot_mutex);
-std::shared_ptr<Cache> g_secondary GUARDED_BY(g_slot_mutex);
+std::vector<NodeSlots> g_slots_by_node GUARDED_BY(g_slot_mutex);
 
 RandomXMode g_active_mode GUARDED_BY(g_slot_mutex) = RandomXMode::LIGHT;
+LargePagesPref g_lp_pref GUARDED_BY(g_slot_mutex) = LargePagesPref::AUTO;
 
-// Releases both slots at process exit. Cosmetic in production -- the OS
+// Releases all slots at process exit. Cosmetic in production -- the OS
 // reclaims the memory at exit either way -- but eliminates leak reports
 // under AddressSanitizer / LeakSanitizer and gives us a tidy teardown
-// story. Constructed after g_slot_mutex so it is destroyed before, and
-// dropping shared_ptrs is thread-safe against concurrent slot access
-// which shouldn't be happening at process exit anyway.
+// story.
 struct GlobalCleanup {
     ~GlobalCleanup()
     {
         std::lock_guard<std::mutex> lock(g_slot_mutex);
-        g_secondary.reset();
-        g_main.reset();
+        g_slots_by_node.clear();
     }
 };
 const GlobalCleanup g_cleanup;
 
-// Look up an existing Cache by seed. Returns the shared_ptr if either
-// slot matches, else nullptr. On secondary hit, swaps main <-> secondary
-// so the just-used cache becomes main (LRU semantics).
-std::shared_ptr<Cache> LookupAndPromote(const uint256& seed_key)
+// Ensure g_slots_by_node has the right number of entries. Called at
+// the top of every slot-touching function. NUMA topology doesn't
+// change during process lifetime so resizing happens once at first
+// use.
+void EnsureSlotsInitialized() EXCLUSIVE_LOCKS_REQUIRED(g_slot_mutex)
+{
+    if (!g_slots_by_node.empty()) return;
+    const int n = numa::ShouldEnable() ? numa::NumNodes() : 1;
+    g_slots_by_node.resize(n);
+}
+
+// Clamp a caller-supplied node index into a valid slot index. NUMA-
+// off systems only have slot 0.
+int ClampNode(int node) EXCLUSIVE_LOCKS_REQUIRED(g_slot_mutex)
+{
+    if (node < 0) return 0;
+    if (static_cast<std::size_t>(node) >= g_slots_by_node.size()) return 0;
+    return node;
+}
+
+// Look up an existing Cache by seed within a specific node's slots.
+// Returns the shared_ptr on hit; nullptr on miss. Secondary hit
+// promotes to main (LRU) within that node.
+std::shared_ptr<Cache> LookupAndPromote(const uint256& seed_key, int node)
     EXCLUSIVE_LOCKS_REQUIRED(g_slot_mutex)
 {
-    if (g_main && g_main->seed() == seed_key) {
-        return g_main;
+    auto& slots = g_slots_by_node[node];
+    if (slots.main && slots.main->seed() == seed_key) {
+        return slots.main;
     }
-    if (g_secondary && g_secondary->seed() == seed_key) {
-        std::swap(g_main, g_secondary);
-        return g_main;
+    if (slots.secondary && slots.secondary->seed() == seed_key) {
+        std::swap(slots.main, slots.secondary);
+        return slots.main;
     }
     return nullptr;
 }
 
-// Miss handler: allocate a fresh Cache and install it as main; the
-// previous main becomes secondary; whatever was in secondary is
-// released from the slot map (shared_ptr may keep it alive if callers
-// still hold it).
-std::shared_ptr<Cache> InstallNewMain(const uint256& seed_key, RandomXMode mode)
+// Miss handler: allocate a fresh Cache for the given node. Because
+// the calling thread is expected to have been pinned to `node` by
+// its MinerThread constructor before this call, RandomX's underlying
+// mmap/VirtualAlloc lands on that node's local memory.
+std::shared_ptr<Cache> InstallNewMain(const uint256& seed_key, RandomXMode mode, int node)
     EXCLUSIVE_LOCKS_REQUIRED(g_slot_mutex)
 {
-    auto fresh = std::make_shared<Cache>(seed_key, mode);
-    g_secondary = std::move(g_main);
-    g_main = fresh;
-    return g_main;
+    auto fresh = std::make_shared<Cache>(seed_key, mode, g_lp_pref);
+    auto& slots = g_slots_by_node[node];
+    slots.secondary = std::move(slots.main);
+    slots.main = fresh;
+    return slots.main;
 }
 
-// Public-ish acquire: look up in slots, or install a new main. Callers
-// pass their preferred mode; if the existing cache has a stronger mode
-// (already FAST) that's returned as-is because the FAST cache also
-// serves LIGHT hashing correctly. If the existing cache is LIGHT and
-// the caller wants FAST, we don't upgrade in place -- we install a
-// fresh FAST main, the existing LIGHT demotes to secondary. That
-// double-holds the cache briefly (until the LIGHT one falls out of
-// secondary later) but avoids invalidating any in-flight users of the
-// LIGHT cache.
-std::shared_ptr<Cache> AcquireForSeed(const uint256& seed_key, RandomXMode preferred_mode)
+// Acquire a cache for the given seed on the given node. Callers pass
+// their preferred mode; if the existing cache has a stronger mode
+// (already FAST) that's returned as-is. If existing is LIGHT and
+// caller wants FAST, install a fresh FAST main and demote the LIGHT
+// to secondary within the same node.
+std::shared_ptr<Cache> AcquireForSeed(const uint256& seed_key, RandomXMode preferred_mode, int node)
 {
     std::lock_guard<std::mutex> lock(g_slot_mutex);
-    if (auto existing = LookupAndPromote(seed_key)) {
+    EnsureSlotsInitialized();
+    node = ClampNode(node);
+    if (auto existing = LookupAndPromote(seed_key, node)) {
         const bool need_upgrade =
             (preferred_mode == RandomXMode::FAST) && (existing->mode() == RandomXMode::LIGHT);
         if (!need_upgrade) {
             return existing;
         }
-        // Fall through to install a fresh FAST main.
     }
-    return InstallNewMain(seed_key, preferred_mode);
+    return InstallNewMain(seed_key, preferred_mode, node);
 }
 
 } // namespace
@@ -269,12 +358,49 @@ const char* ModeName(RandomXMode mode)
     return "?";
 }
 
+void SetLargePagesPreference(LargePagesPref pref)
+{
+    std::lock_guard<std::mutex> lock(g_slot_mutex);
+    g_lp_pref = pref;
+}
+
+LargePagesPref CurrentLargePagesPreference()
+{
+    std::lock_guard<std::mutex> lock(g_slot_mutex);
+    return g_lp_pref;
+}
+
+const char* LargePagesPrefName(LargePagesPref pref)
+{
+    switch (pref) {
+    case LargePagesPref::AUTO: return "auto";
+    case LargePagesPref::ON: return "on";
+    case LargePagesPref::OFF: return "off";
+    }
+    return "?";
+}
+
+bool RandomXCacheUsedLargePages()
+{
+    std::lock_guard<std::mutex> lock(g_slot_mutex);
+    // Report the state of the first populated main slot. If no slot
+    // is allocated yet, we haven't attempted an allocation, so
+    // effectively false. In practice all nodes have consistent
+    // large-pages state (they use the same g_lp_pref at alloc time).
+    for (const auto& slots : g_slots_by_node) {
+        if (slots.main) return slots.main->used_large_pages();
+    }
+    return false;
+}
+
 std::size_t RandomXCacheAllocations()
 {
     std::lock_guard<std::mutex> lock(g_slot_mutex);
     std::size_t n = 0;
-    if (g_main) ++n;
-    if (g_secondary) ++n;
+    for (const auto& slots : g_slots_by_node) {
+        if (slots.main) ++n;
+        if (slots.secondary) ++n;
+    }
     return n;
 }
 
@@ -282,8 +408,10 @@ std::uint64_t RandomXCacheAllocatedBytes()
 {
     std::lock_guard<std::mutex> lock(g_slot_mutex);
     std::uint64_t bytes = 0;
-    if (g_main) bytes += g_main->allocated_bytes();
-    if (g_secondary) bytes += g_secondary->allocated_bytes();
+    for (const auto& slots : g_slots_by_node) {
+        if (slots.main) bytes += slots.main->allocated_bytes();
+        if (slots.secondary) bytes += slots.secondary->allocated_bytes();
+    }
     return bytes;
 }
 
@@ -291,10 +419,12 @@ uint256 RandomXLightHash(const uint256& seed_key,
                          const unsigned char* data,
                          std::size_t size)
 {
-    // Validation always uses LIGHT preferred mode. If the miner already
-    // installed a FAST cache for this seed, AcquireForSeed reuses it
+    // Validation is single-threaded and doesn't benefit from NUMA
+    // pinning; always use node 0. If the miner already installed a
+    // FAST cache for this seed on node 0, AcquireForSeed reuses it
     // (correct -- fast-mode VMs also serve light hashing calls).
-    auto cache = AcquireForSeed(seed_key, RandomXMode::LIGHT);
+    // On NUMA-off / single-node systems this is the only slot anyway.
+    auto cache = AcquireForSeed(seed_key, RandomXMode::LIGHT, /*node=*/0);
     return cache->Hash(data, size);
 }
 
@@ -307,14 +437,35 @@ struct MinerThread::Impl {
     randomx_vm* vm{nullptr};
 };
 
-MinerThread::MinerThread(const uint256& seed_key)
+MinerThread::MinerThread(const uint256& seed_key, int numa_node)
     : m_impl(std::make_unique<Impl>())
 {
+    // Pin the constructing thread (which is expected to be the worker
+    // thread that will later call Hash()) to the requested NUMA node
+    // BEFORE we allocate the Cache. This ensures RandomX's internal
+    // mmap / VirtualAlloc land on that node's local memory. On single-
+    // node / NUMA-off systems this is a no-op.
+    if (numa::ShouldEnable()) {
+        numa::BindThreadToNode(numa_node);
+    }
+
     const RandomXMode mode = CurrentMinerMode();
-    m_impl->cache = AcquireForSeed(seed_key, mode);
-    m_impl->vm = randomx_create_vm(FlagsForMode(m_impl->cache->mode()),
+    m_impl->cache = AcquireForSeed(seed_key, mode, numa_node);
+
+    // Per-thread VM scratchpad is 2 MiB. Try huge pages if the
+    // underlying Cache uses them (consistency); retry without on
+    // failure (retry succeeding is expected because scratchpad is
+    // small enough that a huge page is usually available even after
+    // cache/dataset reservations).
+    const bool try_large = m_impl->cache->used_large_pages();
+    m_impl->vm = randomx_create_vm(FlagsForMode(m_impl->cache->mode(), try_large),
                                    m_impl->cache->raw_cache(),
                                    m_impl->cache->raw_dataset());
+    if (m_impl->vm == nullptr && try_large) {
+        m_impl->vm = randomx_create_vm(FlagsForMode(m_impl->cache->mode(), false),
+                                       m_impl->cache->raw_cache(),
+                                       m_impl->cache->raw_dataset());
+    }
     if (m_impl->vm == nullptr) {
         std::fprintf(stderr,
                      "TrueNorth: randomx_create_vm failed in MinerThread (out of memory or unsupported flags)\n");

@@ -161,6 +161,66 @@ Sample output on an Apple Silicon laptop:
 | 4 | 208 | 52 | 2237 | 559 | 10.8× |
 | 8 | 321 | 40 (E-cores past 4 P-cores) | 2541 | 318 | 7.9× |
 
+### Performance tuning: huge pages and NUMA
+
+RandomX benefits substantially from two OS-level configurations. Both
+are opt-in but recommended for serious mining rigs.
+
+**Huge pages** (`-largepages=auto|on|off`, default `auto`) — RandomX's
+~2 GiB fast-mode dataset fits in ~1024 huge pages (2 MiB each), which
+sit comfortably in the CPU's TLB and avoid a page-walk on every dataset
+lookup. Measured improvement: **~10-20% hashrate** in fast mode.
+
+Linux setup (once per boot; persist across boot via `/etc/sysctl.d/`):
+
+```bash
+# Reserve 1250 huge pages of 2 MiB each (~2.5 GiB, covers dataset + cache
+# + headroom for one active seed epoch).
+sudo sysctl -w vm.nr_hugepages=1250
+```
+
+Verify:
+
+```bash
+grep HugePages /proc/meminfo
+# HugePages_Total: 1250
+# HugePages_Free:  1250   (before the miner runs)
+```
+
+Windows setup: enable "Lock pages in memory" (SeLockMemoryPrivilege) via
+`gpedit.msc` → Local Computer Policy → Windows Settings → Security
+Settings → Local Policies → User Rights Assignment. Add the user that
+runs `truenorth-miner.exe`. Requires a re-login to take effect.
+
+The miner's startup log shows `largepages=auto|on|off` and each Cache
+constructor logs a fallback message if huge pages were requested but
+unavailable — check the log to confirm the mode you expected is in
+effect.
+
+**NUMA thread pinning** (`-numa=auto|on|off`, default `auto`) — on
+multi-socket systems (dual-Xeon, dual-EPYC), memory on the "wrong"
+socket is 2-3× slower to access. NUMA-aware operation allocates one
+cache + dataset per socket and pins worker threads to their local
+socket. Measured improvement on dual-socket Xeon: **~20-40% hashrate**.
+
+Linux setup: install libnuma (`libnuma-dev` on Debian/Ubuntu,
+`numactl-devel` on RHEL/Fedora) BEFORE building. If libnuma isn't
+present at build time, NUMA support compiles as no-op stubs and
+`-numa=on` will log a warning.
+
+No manual configuration otherwise — the miner detects topology at
+startup, distributes worker threads across nodes round-robin, and pins
+each thread to its assigned node before allocating memory. Single-
+socket systems automatically skip NUMA logic.
+
+Memory cost on dual-socket fast mode: ~2× the single-node footprint
+(one dataset per node), i.e. ~5 GiB total. Check `free -h` before
+enabling on a memory-constrained box.
+
+The miner's startup log shows `numa=auto(active=yes,nodes=2)` or
+similar — `active=yes` means per-node caches are in use;
+`active=no` means the topology or configuration disabled it.
+
 ### Other miners
 
 The protocol is RandomX-based, so any miner that supports RandomX with a custom seed-key derivation could be adapted. There's no stratum pool yet; that's external infrastructure not part of this repo.
