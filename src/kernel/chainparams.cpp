@@ -128,9 +128,11 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_TAPROOT].threshold = 1815; // 90%
         consensus.vDeployments[Consensus::DEPLOYMENT_TAPROOT].period = 2016;
 
-        // TrueNorth: no accumulated chain work or assumeValid checkpoint yet.
-        consensus.nMinimumChainWork = uint256{};
-        consensus.defaultAssumeValid = uint256{};
+        // Mainnet defense-in-depth values (nMinimumChainWork,
+        // defaultAssumeValid, m_checkpoint_data) are assigned below,
+        // after the genesis block is created and its hash is known.
+        // Post-launch releases update the first two to a recent
+        // checkpoint's chain work + hash per doc/checkpoint-process.md.
 
         /**
          * The message start string is designed to be unlikely to occur in normal data.
@@ -155,6 +157,20 @@ public:
         consensus.hashGenesisBlock = genesis.GetHash();
         assert(consensus.hashGenesisBlock == uint256{"8158970ee7fc58bb987aca8f87671fafddb1c3107a522b1b741b1fc23be0c151"});
         assert(genesis.hashMerkleRoot == uint256{"bedb5be1cd03ead77e25a27dbf4ffbd4fe8496f085cf42e4d1ce935b153dc565"});
+
+        // Pre-launch: no accumulated chain work; assumeValid anchors
+        // to genesis (skips no signatures, since there are no blocks
+        // below it). m_checkpoint_data has only the genesis entry --
+        // consensus rules already enforce genesis identity, so the
+        // effective protection is zero until post-launch releases
+        // add higher-height checkpoints per doc/checkpoint-process.md.
+        consensus.nMinimumChainWork = uint256{};
+        consensus.defaultAssumeValid = consensus.hashGenesisBlock;
+        m_checkpoint_data = {
+            /* .mapCheckpoints = */ {
+                {0, consensus.hashGenesisBlock},
+            },
+        };
 
         // Note that of those which support the service bits prefix, most only support a subset of
         // possible options.

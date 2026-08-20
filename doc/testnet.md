@@ -29,6 +29,13 @@ the differences here are: `-testnet4` instead of `-testnet=3`, addresses
 prefixed `tnorth4` instead of `tnorth1q`, ports in the 49000s instead of
 19000s.
 
+Note: **testnet4 is not checkpointed**. Mainnet uses hardcoded
+block-hash checkpoints for early-launch attack resistance
+(see [`doc/checkpoint-process.md`](checkpoint-process.md)); testnet
+deliberately does not, so testers can exercise reorg scenarios,
+chain splits, and edge-case behaviour without hitting checkpoint
+rejections. Regtest is similarly checkpoint-free.
+
 ## Requirements
 
 - Linux x86_64, macOS arm64, or Windows x86_64 (all supported by the pre-built release binaries); or build-from-source on anything else

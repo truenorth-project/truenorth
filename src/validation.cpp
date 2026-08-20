@@ -9,6 +9,7 @@
 
 #include <arith_uint256.h>
 #include <chain.h>
+#include <checkpoints.h>
 #include <checkqueue.h>
 #include <clientversion.h>
 #include <consensus/amount.h>
@@ -4257,6 +4258,15 @@ static bool ContextualCheckBlockHeader(const CBlockHeader& block, BlockValidatio
     const Consensus::Params& consensusParams = chainman.GetConsensus();
     if (block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
         return state.Invalid(BlockValidationResult::BLOCK_INVALID_HEADER, "bad-diffbits", "incorrect proof of work");
+
+    // Check that the block hash matches any hardcoded checkpoint at
+    // this height. Rejects deep-reorg attempts that would substitute
+    // a different block for one the release maintainer has pinned.
+    // See src/checkpoints.h + doc/checkpoint-process.md.
+    if (!Checkpoints::CheckBlock(chainman.GetParams().Checkpoints(), nHeight, block.GetHash())) {
+        return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-fork-prior-to-checkpoint",
+                             strprintf("block at height %d does not match hardcoded checkpoint hash", nHeight));
+    }
 
     // Check timestamp against prev
     if (block.GetBlockTime() <= pindexPrev->GetMedianTimePast())
