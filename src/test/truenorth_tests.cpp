@@ -127,8 +127,7 @@ BOOST_AUTO_TEST_CASE(lwma_constant_solvetime_is_a_fixed_point)
     arith_uint256 t_initial, t_result;
     t_initial.SetCompact(initial);
     t_result.SetCompact(result);
-    const arith_uint256 diff = (t_initial > t_result) ? t_initial - t_result
-                                                      : t_result - t_initial;
+    const arith_uint256 diff = (t_initial > t_result) ? t_initial - t_result : t_result - t_initial;
     BOOST_CHECK(diff < t_initial / 100);
 }
 
@@ -553,7 +552,7 @@ struct QRHSpendFixture {
     CMutableTransaction txCredit;
     CMutableTransaction txSpend;
     PrecomputedTransactionData txdata;
-    std::vector<unsigned char> sig;  // 64-byte Schnorr signature over BIP-341 sighash
+    std::vector<unsigned char> sig; // 64-byte Schnorr signature over BIP-341 sighash
 };
 
 std::unique_ptr<QRHSpendFixture> MakeValidQRHSpend()
@@ -591,8 +590,8 @@ std::unique_ptr<QRHSpendFixture> MakeValidQRHSpend()
     sed.m_annex_present = false;
     uint256 sighash;
     BOOST_REQUIRE(SignatureHashSchnorr(sighash, sed, CTransaction(f->txSpend), 0,
-                                        SIGHASH_DEFAULT, SigVersion::TAPROOT, f->txdata,
-                                        MissingDataBehavior::FAIL));
+                                       SIGHASH_DEFAULT, SigVersion::TAPROOT, f->txdata,
+                                       MissingDataBehavior::FAIL));
     f->sig.assign(64, 0);
     uint256 aux{}; // deterministic aux for reproducible tests
     BOOST_REQUIRE(f->key.SignSchnorr(sighash, f->sig, /*merkle_root=*/nullptr, aux));
@@ -610,12 +609,12 @@ std::pair<bool, ScriptError> RunVerify(const QRHSpendFixture& f,
     witness.stack = witness_stack;
     ScriptError err = SCRIPT_ERR_OK;
     const bool ok = VerifyScript(
-        CScript{},  // scriptSig empty (native segwit)
+        CScript{}, // scriptSig empty (native segwit)
         scriptPubKey_override,
         &witness,
         flags,
         MutableTransactionSignatureChecker{&f.txSpend, 0, f.amount, f.txdata,
-                                            MissingDataBehavior::ASSERT_FAIL},
+                                           MissingDataBehavior::ASSERT_FAIL},
         &err);
     return {ok, err};
 }
@@ -791,7 +790,9 @@ BOOST_AUTO_TEST_CASE(qrh_sign_step_produces_valid_witness)
         std::span<const unsigned char>(f->xpk.begin(), f->xpk.end()),
         truenorth::QRH_EMPTY_SCRIPT_ROOT);
     provider.qrh_spend_data[commitment] = QRHSpendData{
-        truenorth::QRH_SCHEME_SCHNORR, f->xpk, truenorth::QRH_EMPTY_SCRIPT_ROOT,
+        truenorth::QRH_SCHEME_SCHNORR,
+        f->xpk,
+        truenorth::QRH_EMPTY_SCRIPT_ROOT,
     };
 
     // Sign via the same code path the wallet uses at spend time.
