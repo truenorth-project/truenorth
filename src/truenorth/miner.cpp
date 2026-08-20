@@ -653,9 +653,17 @@ int main(int argc, char* argv[])
                      block.nNonce, static_cast<long long>(elapsed_ms), hps);
 
         const std::string hex = HexBlock(block);
-        UniValue res = CallRPC(cfg, "submitblock " + hex);
-        if (!res.isNull()) {
-            std::fprintf(stderr, "  submitblock rejected: %s\n", res.get_str().c_str());
+        // submitblock returns null on success and a bare string rejection
+        // reason on failure ("inconclusive" for a valid-but-stale block,
+        // "duplicate" for a resubmission, "invalid" for a validation
+        // failure, "high-hash", "rejected", ...). bitcoin-cli / truenorth-cli
+        // prints string RPC results unquoted, which is not valid JSON, so
+        // route submitblock through CallCLI directly instead of CallRPC
+        // (which would Die() on the non-JSON string). This is the same
+        // pattern already used by getblockhash above.
+        const std::string res = CallCLI(cfg, "submitblock " + hex);
+        if (!res.empty() && res != "null") {
+            std::fprintf(stderr, "  submitblock rejected: %s\n", res.c_str());
             continue;
         }
         std::fprintf(stderr, "  submitblock accepted; new tip at h=%d\n", height);
