@@ -394,8 +394,21 @@ bool MineOnce(CBlock& block,
                     break;
                 }
 
-                // Cheap budget check every 256 iters per thread.
-                if ((nonce & 0xff) == 0) {
+                // Cheap budget check every 256 iterations per thread.
+                // MUST key off local_hashes, not nonce -- each worker
+                // strides the nonce space by num_threads from its own
+                // starting offset t, so `nonce & 0xff == 0` only fires
+                // for threads whose offset t satisfies
+                // gcd(num_threads, 256) | t. At -threads=12 that's 3
+                // of 12 threads; at -threads=8 (or any power of two up
+                // to 128) it's exactly 1. The other threads never
+                // reach a nonce that's a multiple of 256, ignore the
+                // budget entirely, and MineOnce's w.join() hangs on
+                // them for the full block-solve time -- hours on hard
+                // targets. local_hashes increments by 1 per iteration
+                // regardless of stride, so every thread checks every
+                // 256 of its own hashes.
+                if ((local_hashes & 0xff) == 0) {
                     if (std::chrono::steady_clock::now() > t_deadline) break;
                 }
             }
