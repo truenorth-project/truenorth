@@ -132,6 +132,16 @@ Used by the regression scripts under [`test/truenorth/`](test/truenorth/).
     -threads=<N>
 ```
 
+`-datadir` is required — the miner reads the RPC cookie file at
+`<datadir>/<chain-subdir>/.cookie` for auth. For a remote node, use
+`-rpcuser=<user> -rpcpassword=<pass>` explicitly instead (and
+`-rpchost=<host> -rpcport=<port>` to point at it).
+
+The miner talks HTTP JSON-RPC to `truenorthd` directly via libevent —
+no `truenorth-cli` subprocess. If you have systemd units still passing
+`-cli=<path>`, that flag now emits a deprecation warning and is
+ignored; remove it at your convenience.
+
 `-threads=N` distributes nonce-grinding across N worker threads, each holding its own RandomX VM. Hashing is lock-free on the hot path; per-thread rate holds within about 5% across 1-4 threads.
 
 **Mode selection** (`-mode=auto|light|fast`, default `auto`):

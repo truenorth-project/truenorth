@@ -4,10 +4,11 @@
 
 // truenorth-miner: solo CPU miner for RandomX-based TrueNorth.
 //
-// Talks to a running bitcoind via popen() to bitcoin-cli (on PATH or
-// passed with -cli=...). The popen overhead is 10-30ms per call but we
-// only make one call per block template, so it's noise next to the
-// hashing cost. Hashing goes through src/truenorth/randomx_wrapper.
+// Talks to a running truenorthd via HTTP JSON-RPC (same libevent-based
+// transport truenorth-cli uses -- no more shell-out). Auth defaults to
+// the cookie file at <datadir>/<chain-subdir>/.cookie; fall back to
+// -rpcuser/-rpcpassword for remote-node setups. Hashing goes through
+// src/truenorth/randomx_wrapper.
 //
 // Workers stride the nonce space (-threads=N). Builds full block
 // templates including the BIP141 witness commitment. Hash rate and
@@ -26,10 +27,17 @@
 // Usage:
 //   truenorth-miner -chain=regtest -datadir=/path/to/dd
 //                   -address=bcrt1q... [-threads=N] [-maxblocks=N]
-//                   [-budgetseconds=N] [-cli=/path/to/bitcoin-cli]
+//                   [-budgetseconds=N]
+//                   [-rpchost=127.0.0.1] [-rpcport=<port>]
+//                   [-rpcuser=<u>] [-rpcpassword=<p>]
 //                   [-mode=auto|light|fast]
+//                   [-largepages=auto|on|off] [-numa=auto|on|off]
 //   truenorth-miner -benchmark=1 -threads=N [-budgetseconds=N]
 //                   [-mode=auto|light|fast]
+//
+// -datadir is required (miner reads the cookie file there).
+// -cli=<path> is deprecated (was used for the shell-out design); the
+//   flag is still accepted but ignored, with a warning at startup.
 
 #include <addresstype.h>
 #include <arith_uint256.h>
@@ -43,9 +51,11 @@
 #include <key_io.h>
 #include <primitives/block.h>
 #include <primitives/transaction.h>
+#include <rpc/request.h>
 #include <script/script.h>
 #include <serialize.h>
 #include <streams.h>
+#include <support/events.h>
 #include <truenorth/numa.h>
 #include <truenorth/randomx_wrapper.h>
 #include <truenorth/seed_key.h>
@@ -54,7 +64,13 @@
 #include <util/strencodings.h>
 #include <util/translation.h>
 
+#include <event2/buffer.h>
+#include <event2/http.h>
+#include <event2/keyvalq_struct.h>
 #include <univalue.h>
+
+#include <filesystem>
+#include <fstream>
 
 // Every standalone executable that links bitcoin_common (which pulls in
 // clientversion.cpp / the bilingual-string machinery) must define the
@@ -88,92 +104,73 @@ void OnSignal(int /*sig*/) { g_stop.store(true); }
     std::exit(1);
 }
 
-// ---- bitcoin-cli RPC shell-out -------------------------------------------
+// ---- HTTP JSON-RPC client ------------------------------------------------
+//
+// Talks directly to truenorthd over HTTP-RPC via libevent (same transport
+// truenorth-cli uses; pattern lifted from truenorth-cli.cpp). No more
+// popen() + parse-cli-output. Kills three classes of bug:
+//
+//   - CLI unquoted-string output breaking JSON parsing (the class the
+//     submitblock "inconclusive" crash was in). HTTP responses are always
+//     valid JSON with strings properly quoted.
+//   - fork+exec cost per RPC call (~5-10 ms). Direct HTTP is a few hundred
+//     microseconds.
+//   - Shell-injection attack surface. There's no shell command any more.
+//
+// Auth: cookie file by default (single-box deployment), rpcuser/password
+// fallback for remote nodes.
 
-struct CliConfig {
-    std::string cli_path;  // "bitcoin-cli" or absolute path
-    std::string chain_arg; // "-regtest" / "-testnet=3" / "-signet" / ""
-    std::string datadir;   // empty -> use default
-    std::string rpcport;   // empty -> bitcoin-cli's default for the chain
-    std::string rpchost;   // empty -> 127.0.0.1
+struct RpcConfig {
+    std::string host{"127.0.0.1"};
+    int port{0};             //!< 0 -> BaseParams().RPCPort()
+    std::string user;        //!< empty -> use cookie
+    std::string password;    //!< empty -> use cookie
+    std::string cookie_path; //!< resolved from datadir + chain
 };
 
-// POSIX shell single-quote escape. Wraps `s` in single quotes; any embedded
-// single quote becomes the four-character sequence '\'' (close-quote,
-// escaped-quote, open-quote). After escaping, the resulting string is
-// guaranteed safe to embed in a /bin/sh command line as a single argument
-// regardless of the input contents -- no shell metacharacter can escape
-// the wrapping quotes.
-static std::string ShellQuote(const std::string& s)
+struct HTTPReply {
+    int status{0};
+    int error{-1};
+    std::string body;
+};
+
+void RpcHttpDone(struct evhttp_request* req, void* ctx)
 {
-    std::string out;
-    out.reserve(s.size() + 2);
-    out += '\'';
-    for (char c : s) {
-        if (c == '\'') {
-            out += "'\\''";
-        } else {
-            out += c;
-        }
+    HTTPReply* reply = static_cast<HTTPReply*>(ctx);
+    if (req == nullptr) {
+        reply->status = 0;
+        return;
     }
-    out += '\'';
-    return out;
+    reply->status = evhttp_request_get_response_code(req);
+    struct evbuffer* buf = evhttp_request_get_input_buffer(req);
+    if (buf) {
+        size_t size = evbuffer_get_length(buf);
+        const char* data = reinterpret_cast<const char*>(evbuffer_pullup(buf, size));
+        if (data) reply->body = std::string(data, size);
+        evbuffer_drain(buf, size);
+    }
 }
 
-std::string CallCLI(const CliConfig& cfg, const std::string& argv_tail)
+void RpcHttpError(enum evhttp_request_error err, void* ctx)
 {
-    // cli_path is an operator-supplied path (typically "bitcoin-cli" or an
-    // absolute path); we leave it un-quoted so the shell can do PATH
-    // resolution + globbing if the operator wants. chain_arg is one of a
-    // small set of code-controlled string literals. The operator-supplied
-    // datadir / rpcport / rpchost fields can contain anything, so we
-    // shell-escape each value -- this is the boundary that prevents
-    // `truenorth-miner -datadir='; rm -rf ~'` from being a command-injection.
-    // argv_tail is also code-controlled (built from getblocktemplate /
-    // submitblock arguments) and may intentionally contain single quotes
-    // for JSON literals; do not shell-escape it.
-    std::string cmd = cfg.cli_path;
-    if (!cfg.chain_arg.empty()) cmd += " " + cfg.chain_arg;
-    if (!cfg.datadir.empty()) cmd += " -datadir=" + ShellQuote(cfg.datadir);
-    if (!cfg.rpcport.empty()) cmd += " -rpcport=" + ShellQuote(cfg.rpcport);
-    if (!cfg.rpchost.empty()) cmd += " -rpcconnect=" + ShellQuote(cfg.rpchost);
-    cmd += " " + argv_tail;
+    static_cast<HTTPReply*>(ctx)->error = static_cast<int>(err);
+}
 
-    FILE* p = popen(cmd.c_str(), "r");
-    if (!p) Die("popen failed for: " + cmd);
-    std::string out;
-    char buf[4096];
-    while (std::fgets(buf, sizeof(buf), p))
-        out.append(buf);
-    const int status = pclose(p);
-    if (status != 0) {
-        Die("RPC failed (exit=" + std::to_string(status) + "): " + cmd +
-            "\n--> " + out);
-    }
-    while (!out.empty() && (out.back() == '\n' || out.back() == '\r'))
+// Read the cookie file at `path`. Cookie format is a single line
+// "__cookie__:<random_password>" written by bitcoind at startup. Return
+// true on success and fill `out` with the raw user:pass string ready for
+// base64 encoding.
+bool ReadCookieFile(const std::string& path, std::string& out)
+{
+    std::ifstream f(path);
+    if (!f) return false;
+    std::getline(f, out);
+    while (!out.empty() && (out.back() == '\n' || out.back() == '\r')) {
         out.pop_back();
-    return out;
-}
-
-UniValue CallRPC(const CliConfig& cfg, const std::string& argv_tail)
-{
-    const std::string raw = CallCLI(cfg, argv_tail);
-    UniValue v;
-    if (!v.read(raw)) {
-        // Some RPCs return bare null (submitblock on success). UniValue::read
-        // should handle "null"; if it doesn't, treat empty-after-trim as null.
-        if (raw.empty() || raw == "null") {
-            v.setNull();
-            return v;
-        }
-        Die("could not parse RPC response as JSON: <" + raw + ">");
     }
-    return v;
+    return !out.empty();
 }
 
-// uint256{string_literal} is consteval -- only good for compile-time
-// literals. For runtime hex (RPC responses), use uint256::FromHex and
-// die loudly on parse failure.
 uint256 Uint256FromHexOrDie(const std::string& hex, const char* what)
 {
     auto v = uint256::FromHex(hex);
@@ -181,13 +178,87 @@ uint256 Uint256FromHexOrDie(const std::string& hex, const char* what)
     return *v;
 }
 
-uint256 GetBlockHashAt(const CliConfig& cfg, int height)
+// Single RPC call over HTTP. `method` + `params` are encoded into a
+// JSON-RPC 1.0 request body; the response `result` is returned. On any
+// transport / HTTP / JSON-RPC error, throws std::runtime_error with a
+// clear message. Callers that want to distinguish (e.g. submitblock's
+// "inconclusive" string result on rejection) inspect the returned value.
+UniValue RpcCall(const RpcConfig& cfg, const std::string& method, const UniValue& params)
 {
-    // bitcoin-cli prints string-valued RPC results unquoted (just the raw
-    // hex), which is not valid JSON, so don't go through CallRPC -- take
-    // the raw line directly.
-    const std::string raw = CallCLI(cfg, "getblockhash " + std::to_string(height));
-    return Uint256FromHexOrDie(raw, "block hash");
+    raii_event_base base = obtain_event_base();
+    raii_evhttp_connection evcon = obtain_evhttp_connection_base(base.get(), cfg.host, cfg.port);
+    evhttp_connection_set_timeout(evcon.get(), 30); // seconds
+
+    HTTPReply response;
+    raii_evhttp_request req = obtain_evhttp_request(RpcHttpDone, &response);
+    if (!req) throw std::runtime_error("obtain_evhttp_request failed");
+    evhttp_request_set_error_cb(req.get(), RpcHttpError);
+
+    // Auth: explicit user/password if given, else cookie file. Fail with
+    // a clear pointer at the exact cookie path we tried.
+    std::string user_colon_pass;
+    if (!cfg.password.empty()) {
+        user_colon_pass = cfg.user + ":" + cfg.password;
+    } else if (!ReadCookieFile(cfg.cookie_path, user_colon_pass)) {
+        throw std::runtime_error(
+            "no -rpcpassword given and cookie file not readable at " + cfg.cookie_path +
+            " (start truenorthd first, or pass -rpcuser/-rpcpassword for a remote node)");
+    }
+
+    struct evkeyvalq* headers = evhttp_request_get_output_headers(req.get());
+    evhttp_add_header(headers, "Host", cfg.host.c_str());
+    evhttp_add_header(headers, "Connection", "close");
+    evhttp_add_header(headers, "Content-Type", "application/json");
+    evhttp_add_header(headers, "Authorization", ("Basic " + EncodeBase64(user_colon_pass)).c_str());
+
+    // JSON-RPC 1.0 request body.
+    UniValue request_obj(UniValue::VOBJ);
+    request_obj.pushKV("jsonrpc", "1.0");
+    request_obj.pushKV("id", "truenorth-miner");
+    request_obj.pushKV("method", method);
+    request_obj.pushKV("params", params);
+    const std::string body = request_obj.write() + "\n";
+
+    struct evbuffer* output = evhttp_request_get_output_buffer(req.get());
+    evbuffer_add(output, body.data(), body.size());
+
+    const int r = evhttp_make_request(evcon.get(), req.get(), EVHTTP_REQ_POST, "/");
+    req.release(); // ownership moved to evcon
+    if (r != 0) throw std::runtime_error("evhttp_make_request failed");
+
+    event_base_dispatch(base.get());
+
+    if (response.status == 0) {
+        throw std::runtime_error("could not connect to truenorthd at " + cfg.host + ":" +
+                                 std::to_string(cfg.port) + " (is the daemon running?)");
+    }
+    if (response.status == 401) {
+        throw std::runtime_error("RPC 401 Unauthorized -- bad -rpcuser/-rpcpassword or stale cookie");
+    }
+    if (response.status >= 400 && response.status != 500 && response.status != 404) {
+        throw std::runtime_error("RPC HTTP " + std::to_string(response.status) + ": " + response.body);
+    }
+
+    UniValue reply;
+    if (!reply.read(response.body)) {
+        throw std::runtime_error("RPC returned unparseable JSON: " + response.body);
+    }
+    const UniValue& err = reply["error"];
+    if (!err.isNull()) {
+        const std::string msg = err["message"].isStr() ? err["message"].get_str() : err.write();
+        throw std::runtime_error("RPC method " + method + " returned error: " + msg);
+    }
+    return reply["result"];
+}
+
+// Convenience: getblockhash returns a hex string; parse it or die.
+uint256 GetBlockHashAt(const RpcConfig& cfg, int height)
+{
+    UniValue params(UniValue::VARR);
+    params.push_back(height);
+    UniValue res = RpcCall(cfg, "getblockhash", params);
+    if (!res.isStr()) Die("getblockhash returned non-string: " + res.write());
+    return Uint256FromHexOrDie(res.get_str(), "block hash");
 }
 
 // ---- Per-template seed key -----------------------------------------------
@@ -195,7 +266,7 @@ uint256 GetBlockHashAt(const CliConfig& cfg, int height)
 // Compute the RandomX seed key for the block at next_height. For the genesis
 // epoch + lag window, returns kGenesisSeed. Otherwise looks up the seed
 // block's hash via getblockhash RPC.
-uint256 SeedKeyForNextHeight(const CliConfig& cfg, int next_height)
+uint256 SeedKeyForNextHeight(const RpcConfig& cfg, int next_height)
 {
     const int seed_height = truenorth::SeedHeightForNextHeight(next_height);
     if (seed_height == 0) return truenorth::kGenesisSeed;
@@ -520,19 +591,36 @@ void RunBenchmark(int num_threads, int budget_seconds)
 
 // ---- chain helpers -------------------------------------------------------
 
-std::string CLIChainArg(ChainType c)
+// Data-directory subdirectory used per chain for the .cookie file (and
+// everything else). Matches Bitcoin Core's per-chain layout. Mainnet has
+// no subdirectory.
+std::string ChainDataSubdir(ChainType c)
 {
-    // Match the chain-selector flag forms documented in bitcoin-cli --help.
-    // -testnet=4 is NOT valid (-testnet takes only "3" or no value); the
-    // documented forms for testnet4 are -testnet4 or -chain=testnet4.
     switch (c) {
     case ChainType::MAIN: return "";
-    case ChainType::TESTNET: return "-testnet=3";
-    case ChainType::TESTNET4: return "-testnet4";
-    case ChainType::SIGNET: return "-signet";
-    case ChainType::REGTEST: return "-regtest";
+    case ChainType::TESTNET: return "testnet3";
+    case ChainType::TESTNET4: return "testnet4";
+    case ChainType::SIGNET: return "signet";
+    case ChainType::REGTEST: return "regtest";
     }
     return "";
+}
+
+// Resolve the cookie file path: <datadir>/<chain-subdir>/.cookie.
+// -datadir is required (miner won't guess a platform default -- the
+// cookie is read at startup and we want a loud failure over silent
+// fallback if the operator forgot to point us at their node's data
+// directory).
+std::string ResolveCookiePath(const std::string& datadir, ChainType chain)
+{
+    if (datadir.empty()) {
+        Die("-datadir=<path> required (miner needs it to locate the RPC cookie file)");
+    }
+    std::filesystem::path base(datadir);
+    const std::string sub = ChainDataSubdir(chain);
+    if (!sub.empty()) base /= sub;
+    base /= ".cookie";
+    return base.string();
 }
 
 } // namespace
@@ -542,9 +630,10 @@ int main(int argc, char* argv[])
     std::string chain_str = "main";
     std::string address;
     std::string datadir;
-    std::string cli_path = "bitcoin-cli";
     std::string rpcport;
-    std::string rpchost;
+    std::string rpchost = "127.0.0.1";
+    std::string rpcuser;     //!< optional; empty -> cookie-file auth
+    std::string rpcpassword; //!< optional; empty -> cookie-file auth
     int max_blocks = 0;
     int budget_seconds = 30;
     int num_threads = 1;
@@ -565,12 +654,23 @@ int main(int argc, char* argv[])
             address = val;
         else if (key == "-datadir")
             datadir = val;
-        else if (key == "-cli")
-            cli_path = val;
-        else if (key == "-rpcport")
+        else if (key == "-cli") {
+            // Deprecated in the HTTP-RPC refactor. Miner no longer shells
+            // out to truenorth-cli; talks HTTP-RPC directly. Kept as a
+            // no-op with a warning for one release cycle.
+            std::fprintf(stderr,
+                         "warning: -cli=%s is deprecated and ignored -- "
+                         "miner now talks HTTP JSON-RPC directly to truenorthd. "
+                         "Remove -cli= from your invocation.\n",
+                         val.c_str());
+        } else if (key == "-rpcport")
             rpcport = val;
         else if (key == "-rpchost")
             rpchost = val;
+        else if (key == "-rpcuser")
+            rpcuser = val;
+        else if (key == "-rpcpassword")
+            rpcpassword = val;
         else if (key == "-maxblocks")
             max_blocks = std::stoi(val);
         else if (key == "-budgetseconds")
@@ -658,12 +758,21 @@ int main(int argc, char* argv[])
     }
     const CScript pay = GetScriptForDestination(dest);
 
-    const CliConfig cfg{cli_path, CLIChainArg(chain), datadir, rpcport, rpchost};
+    // Resolve RPC endpoint. Port defaults to chain's RPC port (via
+    // BaseParams, which was just selected). Cookie file resolved from
+    // -datadir. rpcuser/rpcpassword override the cookie if given.
+    RpcConfig cfg;
+    cfg.host = rpchost;
+    cfg.port = rpcport.empty() ? BaseParams().RPCPort() : std::stoi(rpcport);
+    cfg.user = rpcuser;
+    cfg.password = rpcpassword;
+    cfg.cookie_path = ResolveCookiePath(datadir, chain);
 
     std::fprintf(stderr,
-                 "truenorth-miner -- chain=%s address=%s datadir=%s threads=%d maxblocks=%d budget=%ds mode=%s largepages=%s numa=%s(active=%s,nodes=%d)\n",
+                 "truenorth-miner -- chain=%s address=%s datadir=%s rpc=%s:%d threads=%d maxblocks=%d budget=%ds mode=%s largepages=%s numa=%s(active=%s,nodes=%d)\n",
                  chain_str.c_str(), address.c_str(),
                  datadir.empty() ? "<default>" : datadir.c_str(),
+                 cfg.host.c_str(), cfg.port,
                  num_threads, max_blocks, budget_seconds,
                  truenorth::ModeName(truenorth::CurrentMinerMode()),
                  truenorth::LargePagesPrefName(truenorth::CurrentLargePagesPreference()),
@@ -674,7 +783,16 @@ int main(int argc, char* argv[])
     int blocks_found = 0;
     uint64_t extranonce = 0;
     while (!g_stop.load()) {
-        UniValue tmpl = CallRPC(cfg, "getblocktemplate '{\"rules\":[\"segwit\"]}'");
+        // getblocktemplate takes one params-object arg specifying which
+        // BIPs the miner supports. We claim segwit; the node fills in
+        // the witness commitment for us.
+        UniValue gbt_params(UniValue::VARR);
+        UniValue rules(UniValue::VARR);
+        rules.push_back("segwit");
+        UniValue gbt_arg(UniValue::VOBJ);
+        gbt_arg.pushKV("rules", rules);
+        gbt_params.push_back(gbt_arg);
+        UniValue tmpl = RpcCall(cfg, "getblocktemplate", gbt_params);
         const int height = tmpl["height"].getInt<int>();
         const uint256 seed = SeedKeyForNextHeight(cfg, height);
 
@@ -716,14 +834,15 @@ int main(int argc, char* argv[])
         // submitblock returns null on success and a bare string rejection
         // reason on failure ("inconclusive" for a valid-but-stale block,
         // "duplicate" for a resubmission, "invalid" for a validation
-        // failure, "high-hash", "rejected", ...). bitcoin-cli / truenorth-cli
-        // prints string RPC results unquoted, which is not valid JSON, so
-        // route submitblock through CallCLI directly instead of CallRPC
-        // (which would Die() on the non-JSON string). This is the same
-        // pattern already used by getblockhash above.
-        const std::string res = CallCLI(cfg, "submitblock " + hex);
-        if (!res.empty() && res != "null") {
-            std::fprintf(stderr, "  submitblock rejected: %s\n", res.c_str());
+        // failure, "high-hash", "rejected", ...). Over HTTP-RPC the
+        // string comes back as a proper JSON string value -- no
+        // CLI-unquoting quirk to work around.
+        UniValue submit_params(UniValue::VARR);
+        submit_params.push_back(hex);
+        UniValue res = RpcCall(cfg, "submitblock", submit_params);
+        if (!res.isNull()) {
+            const std::string reason = res.isStr() ? res.get_str() : res.write();
+            std::fprintf(stderr, "  submitblock rejected: %s\n", reason.c_str());
             continue;
         }
         std::fprintf(stderr, "  submitblock accepted; new tip at h=%d\n", height);

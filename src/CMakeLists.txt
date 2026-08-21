@@ -441,16 +441,19 @@ target_link_libraries(truenorth-mine-genesis
 )
 
 # TrueNorth standalone solo CPU miner for RandomNorth (RandomX) PoW. Talks
-# to a running bitcoind via bitcoin-cli over RPC. EXCLUDE_FROM_ALL; build
-# with:
+# to a running truenorthd over HTTP JSON-RPC via libevent (same transport
+# truenorth-cli uses). EXCLUDE_FROM_ALL; build with:
 #   cmake --build build --target truenorth-miner
 add_executable(truenorth-miner EXCLUDE_FROM_ALL truenorth/miner.cpp)
 target_link_libraries(truenorth-miner
   PRIVATE
     core_interface
+    bitcoin_cli
     bitcoin_common
     bitcoin_consensus
     bitcoin_util
+    libevent::core
+    libevent::extra
     univalue
 )
 
