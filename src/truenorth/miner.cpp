@@ -156,6 +156,51 @@ void RpcHttpError(enum evhttp_request_error err, void* ctx)
     static_cast<HTTPReply*>(ctx)->error = static_cast<int>(err);
 }
 
+// Read <datadir>/truenorth.conf line by line and fill any of
+// (rpcuser, rpcpassword) that are still empty. CLI args take
+// precedence; the config file only fills in what CLI didn't set.
+// Sections ([main], [test], [regtest], ...) are ignored -- flat config
+// is assumed, which matches basic operator usage. Advanced multi-chain
+// setups should pass -rpcuser/-rpcpassword explicitly.
+//
+// Comments (lines starting with '#' after leading whitespace, or '#'
+// mid-line) are stripped. Missing conf file is not an error -- the
+// caller falls back to cookie auth in that case.
+void ReadDatadirConfFile(const std::string& datadir, std::string& rpcuser, std::string& rpcpassword)
+{
+    if (datadir.empty()) return;
+    const std::filesystem::path conf_path = std::filesystem::path(datadir) / "truenorth.conf";
+    std::ifstream f(conf_path);
+    if (!f) return;
+
+    auto trim = [](std::string& s) {
+        const auto nonspace_l = s.find_first_not_of(" \t\r\n");
+        s = (nonspace_l == std::string::npos) ? std::string{} : s.substr(nonspace_l);
+        const auto nonspace_r = s.find_last_not_of(" \t\r\n");
+        if (nonspace_r != std::string::npos) s.resize(nonspace_r + 1);
+    };
+
+    std::string line;
+    while (std::getline(f, line)) {
+        // Strip mid-line comments and section headers.
+        const auto hash = line.find('#');
+        if (hash != std::string::npos) line = line.substr(0, hash);
+        trim(line);
+        if (line.empty() || line.front() == '[') continue;
+
+        const auto eq = line.find('=');
+        if (eq == std::string::npos) continue;
+        std::string key = line.substr(0, eq);
+        std::string val = line.substr(eq + 1);
+        trim(key);
+        trim(val);
+        if (key == "rpcuser" && rpcuser.empty())
+            rpcuser = val;
+        else if (key == "rpcpassword" && rpcpassword.empty())
+            rpcpassword = val;
+    }
+}
+
 // Read the cookie file at `path`. Cookie format is a single line
 // "__cookie__:<random_password>" written by bitcoind at startup. Return
 // true on success and fill `out` with the raw user:pass string ready for
@@ -757,6 +802,12 @@ int main(int argc, char* argv[])
         Die("invalid address for chain=" + chain_str + ": " + address);
     }
     const CScript pay = GetScriptForDestination(dest);
+
+    // If CLI didn't provide rpcuser / rpcpassword, try to read them
+    // from <datadir>/truenorth.conf (matches how truenorth-cli
+    // resolves credentials). Falls back to cookie auth if the conf
+    // file is absent or doesn't set them.
+    ReadDatadirConfFile(datadir, rpcuser, rpcpassword);
 
     // Resolve RPC endpoint. Port defaults to chain's RPC port (via
     // BaseParams, which was just selected). Cookie file resolved from
