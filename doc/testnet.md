@@ -137,7 +137,6 @@ ADDR=$(./truenorth-cli -testnet4 -rpcwallet=mywallet getnewaddress)
 ./truenorth-miner \
     -chain=testnet4 \
     -datadir=$HOME/.truenorth \
-    -cli=$(realpath ./truenorth-cli) \
     -address=$ADDR \
     -threads=$(nproc) \
     -budgetseconds=300
