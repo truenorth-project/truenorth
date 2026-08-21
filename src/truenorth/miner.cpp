@@ -65,6 +65,7 @@ const TranslateFn G_TRANSLATION_FUN{nullptr};
 
 #include <atomic>
 #include <cassert>
+#include <cctype>
 #include <chrono>
 #include <csignal>
 #include <cstdint>
@@ -76,6 +77,10 @@ const TranslateFn G_TRANSLATION_FUN{nullptr};
 #include <string>
 #include <thread>
 #include <vector>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 namespace {
 
@@ -98,6 +103,7 @@ struct CliConfig {
     std::string rpchost;   // empty -> 127.0.0.1
 };
 
+#ifndef _WIN32
 // POSIX shell single-quote escape. Wraps `s` in single quotes; any embedded
 // single quote becomes the four-character sequence '\'' (close-quote,
 // escaped-quote, open-quote). After escaping, the resulting string is
@@ -119,9 +125,185 @@ static std::string ShellQuote(const std::string& s)
     out += '\'';
     return out;
 }
+#endif // !_WIN32
+
+#ifdef _WIN32
+
+// Quote a single argv element per the MSVCRT / CommandLineToArgvW
+// convention (the algorithm Microsoft documents for producing a command
+// line that its own argv parser will split back apart correctly -- the
+// same one used by Python's subprocess.list2cmdline and Rust's
+// std::process). Always quotes, even when unnecessary, which keeps the
+// logic branch-free and correctly preserves empty-string arguments (which
+// would otherwise vanish into the surrounding whitespace).
+std::string WinQuoteArg(const std::string& s)
+{
+    std::string out = "\"";
+    std::size_t i = 0;
+    while (i < s.size()) {
+        std::size_t backslashes = 0;
+        while (i < s.size() && s[i] == '\\') { ++backslashes; ++i; }
+        if (i == s.size()) {
+            out.append(backslashes * 2, '\\');
+            break;
+        } else if (s[i] == '"') {
+            out.append(backslashes * 2 + 1, '\\');
+            out += '"';
+            ++i;
+        } else {
+            out.append(backslashes, '\\');
+            out += s[i];
+            ++i;
+        }
+    }
+    out += '"';
+    return out;
+}
+
+// Minimal POSIX-shell-style word splitter: splits `s` on unquoted
+// whitespace and unwraps single-quoted sections, faithfully reversing
+// ShellQuote()'s escaping (an embedded literal quote becomes the
+// four-character sequence '\'' -- close-quote, backslash-escaped-quote,
+// re-open-quote). argv_tail is built using exactly that convention
+// (see the getblocktemplate / submitblock / getblockhash call sites); on
+// POSIX /bin/sh does this splitting for us, but the Windows path below
+// bypasses any shell entirely, so we have to do it ourselves.
+std::vector<std::string> PosixWordSplit(const std::string& s)
+{
+    std::vector<std::string> words;
+    std::string cur;
+    bool in_word = false;
+    std::size_t i = 0;
+    while (i < s.size()) {
+        const char c = s[i];
+        if (!in_word && std::isspace(static_cast<unsigned char>(c))) { ++i; continue; }
+        in_word = true;
+        if (c == '\'') {
+            ++i;
+            while (i < s.size() && s[i] != '\'') { cur += s[i]; ++i; }
+            if (i < s.size()) ++i;
+        } else if (c == '\\' && i + 1 < s.size()) {
+            cur += s[i + 1];
+            i += 2;
+        } else if (std::isspace(static_cast<unsigned char>(c))) {
+            words.push_back(cur);
+            cur.clear();
+            in_word = false;
+            ++i;
+        } else {
+            cur += c;
+            ++i;
+        }
+    }
+    if (in_word) words.push_back(cur);
+    return words;
+}
+
+// Windows implementation of the truenorth-cli shell-out. popen() on
+// Windows shells through cmd.exe, but ShellQuote() above produces
+// /bin/sh-style single-quoted arguments -- cmd.exe does not treat a
+// single quote as a quoting character at all, so e.g. -datadir='C:\foo'
+// arrives at truenorth-cli.exe as the literal 10-character path
+// 'C:\foo' (quotes included), which naturally never exists.
+//
+// Rather than layering a second, cmd.exe-specific escaping pass on top
+// (the "two escaping layers" trap behind most real-world Windows
+// argument-injection bugs: get the interaction between the shell's own
+// metacharacters -- &, |, ^, %, ... -- and the child's argv parsing
+// wrong in either direction and you have either breakage or an
+// injection), we skip cmd.exe entirely: build the argv vector ourselves,
+// quote each element with the exact algorithm the child's own C runtime
+// will use to split them back apart, and hand the result straight to
+// CreateProcess. There is no shell in this path to interpret metacharacters
+// in the first place.
+std::string CallCLIWindows(const CliConfig& cfg, const std::string& argv_tail)
+{
+    std::vector<std::string> argv;
+    argv.push_back(cfg.cli_path);
+    if (!cfg.chain_arg.empty()) argv.push_back(cfg.chain_arg);
+    if (!cfg.datadir.empty()) argv.push_back("-datadir=" + cfg.datadir);
+    if (!cfg.rpcport.empty()) argv.push_back("-rpcport=" + cfg.rpcport);
+    if (!cfg.rpchost.empty()) argv.push_back("-rpcconnect=" + cfg.rpchost);
+    for (const auto& tok : PosixWordSplit(argv_tail)) argv.push_back(tok);
+
+    std::string cmdline;
+    for (std::size_t i = 0; i < argv.size(); ++i) {
+        if (i) cmdline += ' ';
+        cmdline += WinQuoteArg(argv[i]);
+    }
+
+    SECURITY_ATTRIBUTES sa{};
+    sa.nLength = sizeof(sa);
+    sa.bInheritHandle = TRUE;
+
+    HANDLE read_pipe = nullptr, write_pipe = nullptr;
+    if (!CreatePipe(&read_pipe, &write_pipe, &sa, 0))
+        Die("CreatePipe failed for: " + cmdline);
+    // The parent's read end must not be inherited by the child, or the
+    // child's copy of the write end never closes and our ReadFile loop
+    // below blocks forever waiting for EOF that never comes.
+    SetHandleInformation(read_pipe, HANDLE_FLAG_INHERIT, 0);
+
+    // STARTF_USESTDHANDLES requires all three standard handles to be
+    // valid; GetStdHandle(STD_INPUT_HANDLE) can return an invalid handle
+    // when we're not attached to a console (e.g. launched hidden/as a
+    // background task), so open an explicit handle to NUL instead of
+    // relying on it.
+    HANDLE stdin_null = CreateFileA("NUL", GENERIC_READ,
+                                     FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                     &sa, OPEN_EXISTING, 0, nullptr);
+
+    STARTUPINFOA si{};
+    si.cb = sizeof(si);
+    si.dwFlags = STARTF_USESTDHANDLES;
+    si.hStdOutput = write_pipe;
+    si.hStdError = write_pipe;
+    si.hStdInput = stdin_null;
+
+    PROCESS_INFORMATION pi{};
+    // CreateProcessA requires a mutable buffer for the command line.
+    std::vector<char> cmdline_buf(cmdline.begin(), cmdline.end());
+    cmdline_buf.push_back('\0');
+    const BOOL ok = CreateProcessA(
+        nullptr, cmdline_buf.data(), nullptr, nullptr, /*bInheritHandles=*/TRUE,
+        CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi);
+
+    CloseHandle(write_pipe);
+    if (stdin_null != INVALID_HANDLE_VALUE) CloseHandle(stdin_null);
+    if (!ok) {
+        CloseHandle(read_pipe);
+        Die("CreateProcess failed for: " + cmdline);
+    }
+    CloseHandle(pi.hThread);
+
+    std::string out;
+    char buf[4096];
+    DWORD n = 0;
+    while (ReadFile(read_pipe, buf, sizeof(buf), &n, nullptr) && n > 0)
+        out.append(buf, n);
+    CloseHandle(read_pipe);
+
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    DWORD exit_code = 1;
+    GetExitCodeProcess(pi.hProcess, &exit_code);
+    CloseHandle(pi.hProcess);
+
+    if (exit_code != 0) {
+        Die("RPC failed (exit=" + std::to_string(exit_code) + "): " + cmdline +
+            "\n--> " + out);
+    }
+    while (!out.empty() && (out.back() == '\n' || out.back() == '\r'))
+        out.pop_back();
+    return out;
+}
+
+#endif // _WIN32
 
 std::string CallCLI(const CliConfig& cfg, const std::string& argv_tail)
 {
+#ifdef _WIN32
+    return CallCLIWindows(cfg, argv_tail);
+#else
     // cli_path is an operator-supplied path (typically "bitcoin-cli" or an
     // absolute path); we leave it un-quoted so the shell can do PATH
     // resolution + globbing if the operator wants. chain_arg is one of a
@@ -153,6 +335,7 @@ std::string CallCLI(const CliConfig& cfg, const std::string& argv_tail)
     while (!out.empty() && (out.back() == '\n' || out.back() == '\r'))
         out.pop_back();
     return out;
+#endif // _WIN32
 }
 
 UniValue CallRPC(const CliConfig& cfg, const std::string& argv_tail)
