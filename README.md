@@ -233,7 +233,7 @@ similar — `active=yes` means per-node caches are in use;
 
 ### Other miners
 
-The protocol is RandomX-based, so any miner that supports RandomX with a custom seed-key derivation could be adapted. There's no stratum pool yet; that's external infrastructure not part of this repo.
+The protocol is RandomX-based, so any miner that supports RandomX with a custom seed-key derivation could be adapted. There's no stratum pool yet; that's external infrastructure not part of this repo. See [`doc/mining-policy.md`](doc/mining-policy.md) for the project's stance on pool topology (short version: solo and P2Pool preferred, centralized pools welcome but with eyes open on the tradeoffs).
 
 ---
 
