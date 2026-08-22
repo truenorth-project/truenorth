@@ -257,6 +257,7 @@ Opt out for a specific address if you need P2WPKH for interop with older tooling
 |---|---|
 | [`doc/p2qrh.md`](doc/p2qrh.md) | P2QRH (witness v2) quantum-resistant output type: spec, scheme registry, activation |
 | [`doc/testnet.md`](doc/testnet.md) | Testnet4 bootstrap: seed `.onion`, sample config |
+| [`doc/windows-testnet.md`](doc/windows-testnet.md) | Windows-specific testnet4 setup: Tor Expert Bundle, PowerShell paths, unattended idle-priority mining |
 | [`test/truenorth/`](test/truenorth/) | End-to-end regression scripts (sync, multitx, seed rotation, reorg, IBD, QRH) |
 | [`doc/`](doc/) | Inherited Bitcoin Core docs. Build instructions per platform live here; consensus and RPC reference notes also apply largely unchanged |
 
