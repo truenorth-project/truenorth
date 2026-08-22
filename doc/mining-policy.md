@@ -70,6 +70,45 @@ reasoning, and let operators make informed choices.
   possible. Above 33% enables selfish-mining strategies; above 50%
   enables reorg attacks.
 
+## Protocol-level mitigations
+
+The chain ships one selfish-mining backstop today:
+
+- **72-block max reorg depth cap** (in the validation module). Any
+  reorg attempting to disconnect more than 72 blocks from the
+  current tip is refused, regardless of accumulated work. This
+  bounds the worst-case damage from selfish mining (or any
+  block-withholding attack) to roughly 2.4 hours of rewritten chain
+  history, and does so with a small, well-understood rule.
+
+Additional protocol-level mitigations from the academic literature
+— Freshness Preferred (Zhang & Preneel 2019 and variants),
+Ethereum-style uncle/ommer rewards, DECOR-style orphan penalties,
+weak-blocks / pre-consensus signalling — are **considered and
+deferred**. Reasons:
+
+- Threshold-raising mitigations (like Freshness Preferred) are
+  designed for chains where a single pool creeps toward ~33% of
+  network hash. On a small chain with few active miners, every
+  participant is already above that threshold; the mitigation
+  does not bind.
+- The 72-block reorg cap already caps worst-case damage.
+- Consensus rules added pre-launch have zero real-world validation;
+  timestamp-based mechanisms in particular have adversarial
+  subtleties (timestamp manipulation, clock-skew abuse, MTP
+  interactions) that need careful modelling and testnet burn-in.
+- If selfish mining becomes an observed problem post-launch, a
+  scheduled release can add the appropriate mitigation with
+  community coordination — an asymmetric-reversibility argument in
+  favour of shipping less rather than more.
+
+Revisit approximately 6-12 months post-launch when the miner
+distribution is measurable and any live pool-concentration behaviour
+is observable. At that point Freshness Preferred is the leading
+candidate: fork-choice tiebreak change, no tokenomic impact, targets
+the specific propagation-advantage weakness that makes selfish
+mining profitable.
+
 ## What this document does not say
 
 - It does not restrict who may mine, on what pool, or via what
