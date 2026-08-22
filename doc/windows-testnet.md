@@ -51,6 +51,9 @@ Windows' equivalent of `~/.truenorth/truenorth.conf` is
 
 ```powershell
 New-Item -ItemType Directory -Force "$env:APPDATA\TrueNorth" | Out-Null
+$bytes = New-Object byte[] 32
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+$RpcPass = -join ($bytes | ForEach-Object { $_.ToString('x2') })
 @"
 testnet4=1
 proxy=127.0.0.1:9050
@@ -64,7 +67,7 @@ listenonion=0
 rpcbind=127.0.0.1
 rpcallowip=127.0.0.1
 rpcuser=tn_user
-rpcpassword=$(-join ((48..57)+(97..102)|Get-Random -Count 64|%{[char]$_}))
+rpcpassword=$RpcPass
 "@ | Set-Content "$env:APPDATA\TrueNorth\truenorth.conf"
 ```
 
@@ -173,7 +176,9 @@ Write-Host "Tor is up."
 # --- 1. Ensure datadir + conf exist ------------------------------------
 if (-not (Test-Path $DataDir)) { New-Item -ItemType Directory -Path $DataDir | Out-Null }
 if (-not (Test-Path $ConfPath)) {
-    $RpcPass = -join ((48..57) + (97..102) | Get-Random -Count 64 | ForEach-Object { [char]$_ })
+    $bytes = New-Object byte[] 32
+    [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+    $RpcPass = -join ($bytes | ForEach-Object { $_.ToString('x2') })
     @"
 testnet4=1
 proxy=127.0.0.1:9050
