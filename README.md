@@ -251,6 +251,24 @@ Opt out for a specific address if you need P2WPKH for interop with older tooling
 
 ---
 
+## Community
+
+Real-time discussion happens on the OFTC IRC network:
+
+- **`#truenorth`** — general testnet4 discussion, operator questions, tester onboarding
+- **`#truenorth-dev`** — developer coordination, release cuts, bug triage, launch planning
+
+Connect via:
+
+- **IRC over Tor** (recommended): OFTC's onion service at `ircs://oftcnet6xg6roj6d7id4y4cu6dchysacqj2ldgea73qzdagufflqxrid.onion:6697`
+- **IRC over clearnet** with SSL: `ircs://irc.oftc.net:6697`
+
+OFTC allows nick registration over Tor without prior clearnet connection (unlike some other networks). Register with NickServ (`/msg NickServ REGISTER <password> <email>`) if you want a persistent identity; anonymous participation via a random nick is fine too. See [oftc.net/UsingTor](https://www.oftc.net/UsingTor/) for Tor-specific connection guidance.
+
+Bug reports and feature discussion also go through [GitHub Issues](https://github.com/truenorth-project/truenorth/issues). Security-sensitive matters: contact channel ops directly (topic pinned in `#truenorth-dev`).
+
+---
+
 ## Documentation
 
 | File | What |
@@ -258,6 +276,7 @@ Opt out for a specific address if you need P2WPKH for interop with older tooling
 | [`doc/p2qrh.md`](doc/p2qrh.md) | P2QRH (witness v2) quantum-resistant output type: spec, scheme registry, activation |
 | [`doc/testnet.md`](doc/testnet.md) | Testnet4 bootstrap: seed `.onion`, sample config |
 | [`doc/windows-testnet.md`](doc/windows-testnet.md) | Windows-specific testnet4 setup: Tor Expert Bundle, PowerShell paths, unattended idle-priority mining |
+| [`doc/mining-policy.md`](doc/mining-policy.md) | Project stance on mining topology: solo + P2Pool preferred, centralized pools not restricted, 33% single-pool norm |
 | [`test/truenorth/`](test/truenorth/) | End-to-end regression scripts (sync, multitx, seed rotation, reorg, IBD, QRH) |
 | [`doc/`](doc/) | Inherited Bitcoin Core docs. Build instructions per platform live here; consensus and RPC reference notes also apply largely unchanged |
 

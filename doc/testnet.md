@@ -188,6 +188,18 @@ Tx propagation across the Tor-routed onion network is what we want to see
 working under load. Mempool size, fee estimation behaviour, and reorg
 handling are all interesting to stress.
 
+## Real-time coordination
+
+For "is the seed up?" checks, questions during setup, coordinating tx tests
+with other testers, or anything that isn't quite a bug worth filing:
+
+- IRC: `#truenorth` (general) and `#truenorth-dev` (dev coordination) on
+  the OFTC network
+- See the [README's Community section](../README.md#community) for
+  connection details (including OFTC's onion service)
+
+Bug reports still go through GitHub Issues, below.
+
 ## What to look for and report
 
 Open a GitHub issue at
