@@ -277,6 +277,7 @@ Bug reports and feature discussion also go through [GitHub Issues](https://githu
 | [`doc/testnet.md`](doc/testnet.md) | Testnet4 bootstrap: seed `.onion`, sample config |
 | [`doc/windows-testnet.md`](doc/windows-testnet.md) | Windows-specific testnet4 setup: Tor Expert Bundle, PowerShell paths, unattended idle-priority mining |
 | [`doc/mining-policy.md`](doc/mining-policy.md) | Project stance on mining topology: solo + P2Pool preferred, centralized pools not restricted, 33% single-pool norm |
+| [`doc/public-seed-setup.md`](doc/public-seed-setup.md) | Operator guide for running a public dual-stack (clearnet + Tor onion) seed node |
 | [`test/truenorth/`](test/truenorth/) | End-to-end regression scripts (sync, multitx, seed rotation, reorg, IBD, QRH) |
 | [`doc/`](doc/) | Inherited Bitcoin Core docs. Build instructions per platform live here; consensus and RPC reference notes also apply largely unchanged |
 
