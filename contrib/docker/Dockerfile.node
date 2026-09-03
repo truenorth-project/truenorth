@@ -1,0 +1,47 @@
+# Reference Dockerfile for `tn-node` — TrueNorth full node compiled from
+# source. Companion to doc/public-seed-setup.md.
+#
+# Multi-stage: build truenorthd + truenorth-cli + truenorth-miner from
+# source using CMake in stage 1, ship a slim runtime in stage 2.
+#
+# Build context must include this repository (or a checkout of it) at
+# `src/` — from the repo root:
+#
+#     docker build -f contrib/docker/Dockerfile.node -t truenorth-node:local \
+#         --build-context src=. .
+#
+# For an operator setup where this Dockerfile lives outside the repo
+# checkout (e.g. in an ops repo), point `src/` at the truenorth checkout:
+#
+#     docker build -f Dockerfile.node -t truenorth-node:local /path/to/truenorth
+#
+# The runtime image starts as `truenorthd` by default. Override the
+# ENTRYPOINT for the miner or CLI containers in your compose file.
+
+FROM ubuntu:24.04 AS build
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      build-essential cmake pkgconf python3 \
+      libevent-dev libboost-dev libsqlite3-dev libcapnp-dev capnproto \
+      ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
+COPY src/ /src/
+RUN cmake -B build -DCMAKE_BUILD_TYPE=Release \
+ && cmake --build build -j"$(nproc)" --target truenorthd truenorth-cli truenorth-miner \
+ && strip build/bin/truenorthd build/bin/truenorth-cli build/bin/truenorth-miner
+
+FROM ubuntu:24.04 AS runtime
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libevent-2.1-7t64 libevent-extra-2.1-7t64 libevent-pthreads-2.1-7t64 \
+      libsqlite3-0 libcapnp-1.0.1 ca-certificates \
+ && rm -rf /var/lib/apt/lists/* \
+ && (userdel -r ubuntu 2>/dev/null || true) \
+ && useradd -m -u 1001 -s /usr/sbin/nologin tn
+COPY --from=build /src/build/bin/truenorthd     /usr/local/bin/
+COPY --from=build /src/build/bin/truenorth-cli  /usr/local/bin/
+COPY --from=build /src/build/bin/truenorth-miner /usr/local/bin/
+USER tn
+WORKDIR /home/tn
+ENTRYPOINT ["truenorthd"]

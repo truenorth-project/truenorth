@@ -1,0 +1,22 @@
+# Reference Dockerfile for `tn-tor` — Debian's tor package, with a
+# repository-provided torrc that exposes SocksPort 9050 for the node's
+# outbound onion traffic and one hidden service for public seed inbound.
+#
+# Companion to doc/public-seed-setup.md. Build from anywhere:
+#
+#     docker build -f contrib/docker/Dockerfile.tor -t truenorth-tor:local \
+#         contrib/docker/
+#
+# The hidden-service key material is NOT baked in — mount a persistent
+# volume at /var/lib/tor/tn-seed/ so your `.onion` hostname survives
+# container rebuilds. See doc/public-seed-setup.md for the compose
+# example and volume layout.
+
+FROM debian:bookworm-slim
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends tor ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+COPY torrc /etc/tor/torrc
+USER debian-tor
+EXPOSE 9050
+CMD ["tor", "-f", "/etc/tor/torrc"]

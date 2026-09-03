@@ -404,3 +404,20 @@ Healthy seed indicators:
   wallet operations happen). The `wallets/` directory should stay empty.
 - **Nothing here needs a Keycloak / SSO / TLS layer** — P2P is a raw TCP
   protocol, not HTTP. Do not put a reverse proxy in front.
+
+---
+
+## Known operator seeds
+
+The following seed currently follows the patterns in this guide and is open to
+public peering. Add your own via PR to this list once your seed has been
+continuously online for at least 7 days on both endpoints (clearnet + onion).
+
+### Topology A — direct public IP
+
+| Operator | Clearnet | Onion | Notes |
+|---|---|---|---|
+| robert-pathy | `138.197.97.151:49555` | `qpjxqbcp4vkoalprpzuvvzyos7lej6qi3muhpsycgfmog6tlluayctad.onion:49555` | DigitalOcean droplet (nyc3, `s-1vcpu-1gb`), Debian 12, direct public IP bound to the NIC. |
+
+Both endpoints are compiled in via `contrib/seeds/nodes_testnet4.txt`, so a
+freshly-installed node with no `-addnode=` config will find them on cold boot.

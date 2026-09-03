@@ -1,0 +1,13 @@
+# tor SOCKS proxy — bound to all interfaces so peers on the Docker
+# network can dial it as `tor:9050` for outbound onion traffic.
+SocksPort 0.0.0.0:9050
+
+# Hidden service for inbound seed peers on port 49555.
+# HiddenServiceDir must be persisted across container restarts, or
+# the onion address rotates and every `addnode=<hs>.onion:49555`
+# entry pointing at this seed breaks.
+HiddenServiceDir /var/lib/tor/tn-seed/
+HiddenServicePort 49555 tn-node:49555
+
+# Silence per-request logs; keep only warnings + errors.
+Log notice stdout
