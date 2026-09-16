@@ -192,7 +192,7 @@ int main(int argc, char* argv[])
 
     // Default per-chain nTimes.
     //
-    // Mainnet nTime is set to 2026-10-05 00:00:00 UTC (1759622400), the
+    // Mainnet nTime is set to 2026-10-05 00:00:00 UTC (1791158400), the
     // coordinated launch instant. This matches Consensus::Params::nLaunchTime
     // in kernel/chainparams.cpp, so the genesis block's timestamp equals
     // the point after which post-genesis blocks are permitted. See
@@ -204,7 +204,7 @@ int main(int argc, char* argv[])
     // chainparams.cpp's CreateGenesisBlock(NTIME, ...) call and the mine
     // here agree by construction.
     std::array<ChainSpec, 5> chains{{
-        {"main", 1759622400, 0x207fffffu},
+        {"main", 1791158400, 0x207fffffu},
         {"testnet3", 1748000010, 0x207fffffu},
         {"testnet4", 1748000020, 0x207fffffu},
         {"signet", 1748000030, 0x207fffffu},

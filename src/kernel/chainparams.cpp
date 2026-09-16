@@ -174,7 +174,10 @@ public:
         // Blocks with nTime < this are rejected — prevents pre-launch
         // shadow mining from RC binaries. See src/consensus/params.h
         // and src/validation.cpp::ContextualCheckBlockHeader.
-        consensus.nLaunchTime = 1759622400;
+        //
+        // Verify with: date -u -d @1791158400
+        // (previous value 1759622400 was 2025-10-05 — off by a year).
+        consensus.nLaunchTime = 1791158400;
         m_checkpoint_data = {
             /* .mapCheckpoints = */ {
                 {0, consensus.hashGenesisBlock},
