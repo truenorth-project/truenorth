@@ -411,7 +411,10 @@ Healthy seed indicators:
 
 The following seed currently follows the patterns in this guide and is open to
 public peering. Add your own via PR to this list once your seed has been
-continuously online for at least 7 days on both endpoints (clearnet + onion).
+stable and reachable at both endpoints (clearnet + onion) for at least 7 days.
+Brief scheduled interruptions for binary upgrades or config reloads don't
+reset the clock — the intent is filtering out flake-y seeds, not penalizing
+routine maintenance.
 
 ### Topology A — direct public IP
 
