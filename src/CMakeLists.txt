@@ -187,26 +187,26 @@ if(ENABLE_WALLET)
   add_subdirectory(wallet)
 
   if(BUILD_WALLET_TOOL)
-    add_executable(bitcoin-wallet
-      bitcoin-wallet.cpp
-      init/bitcoin-wallet.cpp
+    add_executable(truenorth-wallet
+      truenorth-wallet.cpp
+      init/truenorth-wallet.cpp
       wallet/wallettool.cpp
     )
-    add_windows_resources(bitcoin-wallet bitcoin-wallet-res.rc)
-    add_windows_application_manifest(bitcoin-wallet)
-    target_link_libraries(bitcoin-wallet
+    add_windows_resources(truenorth-wallet truenorth-wallet-res.rc)
+    add_windows_application_manifest(truenorth-wallet)
+    target_link_libraries(truenorth-wallet
       core_interface
       bitcoin_wallet
       bitcoin_common
       bitcoin_util
       Boost::headers
     )
-    install_binary_component(bitcoin-wallet HAS_MANPAGE)
+    install_binary_component(truenorth-wallet HAS_MANPAGE)
   endif()
 endif()
 
 
-# P2P and RPC server functionality used by `bitcoind` and `bitcoin-qt` executables.
+# P2P and RPC server functionality used by `truenorthd` and `bitcoin-qt` executables.
 add_library(bitcoin_node STATIC EXCLUDE_FROM_ALL
   addrdb.cpp
   addrman.cpp
@@ -321,11 +321,11 @@ target_link_libraries(bitcoin_node
 
 # Bitcoin wrapper executable that can call other executables.
 if(BUILD_BITCOIN_BIN)
-  add_executable(bitcoin bitcoin.cpp)
-  add_windows_resources(bitcoin bitcoin-res.rc)
-  add_windows_application_manifest(bitcoin)
-  target_link_libraries(bitcoin core_interface bitcoin_common bitcoin_util)
-  install_binary_component(bitcoin HAS_MANPAGE)
+  add_executable(truenorth truenorth.cpp)
+  add_windows_resources(truenorth truenorth-res.rc)
+  add_windows_application_manifest(truenorth)
+  target_link_libraries(truenorth core_interface bitcoin_common bitcoin_util)
+  install_binary_component(truenorth HAS_MANPAGE)
 endif()
 
 # TrueNorth daemon (was bitcoind in upstream Bitcoin Core).
@@ -344,17 +344,17 @@ if(BUILD_DAEMON)
   install_binary_component(truenorthd HAS_MANPAGE)
 endif()
 if(ENABLE_IPC AND BUILD_DAEMON)
-  add_executable(bitcoin-node
+  add_executable(truenorth-node
     truenorthd.cpp
-    init/bitcoin-node.cpp
+    init/truenorth-node.cpp
   )
-  target_link_libraries(bitcoin-node
+  target_link_libraries(truenorth-node
     core_interface
     bitcoin_node
     bitcoin_ipc
     $<TARGET_NAME_IF_EXISTS:bitcoin_wallet>
   )
-  install_binary_component(bitcoin-node INTERNAL)
+  install_binary_component(truenorth-node INTERNAL)
 endif()
 
 if(ENABLE_IPC AND BUILD_TESTS)
@@ -403,29 +403,29 @@ endif()
 
 
 if(BUILD_TX)
-  add_executable(bitcoin-tx bitcoin-tx.cpp)
-  add_windows_resources(bitcoin-tx bitcoin-tx-res.rc)
-  add_windows_application_manifest(bitcoin-tx)
-  target_link_libraries(bitcoin-tx
+  add_executable(truenorth-tx truenorth-tx.cpp)
+  add_windows_resources(truenorth-tx truenorth-tx-res.rc)
+  add_windows_application_manifest(truenorth-tx)
+  target_link_libraries(truenorth-tx
     core_interface
     bitcoin_common
     bitcoin_util
     univalue
   )
-  install_binary_component(bitcoin-tx HAS_MANPAGE)
+  install_binary_component(truenorth-tx HAS_MANPAGE)
 endif()
 
 
 if(BUILD_UTIL)
-  add_executable(bitcoin-util bitcoin-util.cpp)
-  add_windows_resources(bitcoin-util bitcoin-util-res.rc)
-  add_windows_application_manifest(bitcoin-util)
-  target_link_libraries(bitcoin-util
+  add_executable(truenorth-util truenorth-util.cpp)
+  add_windows_resources(truenorth-util truenorth-util-res.rc)
+  add_windows_application_manifest(truenorth-util)
+  target_link_libraries(truenorth-util
     core_interface
     bitcoin_common
     bitcoin_util
   )
-  install_binary_component(bitcoin-util HAS_MANPAGE)
+  install_binary_component(truenorth-util HAS_MANPAGE)
 endif()
 
 
@@ -468,8 +468,8 @@ if(BUILD_KERNEL_LIB)
 endif()
 
 if(BUILD_UTIL_CHAINSTATE)
-  add_executable(bitcoin-chainstate
-    bitcoin-chainstate.cpp
+  add_executable(truenorth-chainstate
+    truenorth-chainstate.cpp
   )
   # TODO: The `SKIP_BUILD_RPATH` property setting can be deleted
   #       in the future after reordering Guix script commands to
@@ -477,15 +477,15 @@ if(BUILD_UTIL_CHAINSTATE)
   # Relevant discussions:
   # - https://github.com/hebasto/bitcoin/pull/236#issuecomment-2183120953
   # - https://github.com/bitcoin/bitcoin/pull/30312#issuecomment-2191235833
-  set_target_properties(bitcoin-chainstate PROPERTIES
+  set_target_properties(truenorth-chainstate PROPERTIES
     SKIP_BUILD_RPATH OFF
   )
-  target_link_libraries(bitcoin-chainstate
+  target_link_libraries(truenorth-chainstate
     PRIVATE
       core_interface
       bitcoinkernel
   )
-  install_binary_component(bitcoin-chainstate INTERNAL)
+  install_binary_component(truenorth-chainstate INTERNAL)
 endif()
 
 

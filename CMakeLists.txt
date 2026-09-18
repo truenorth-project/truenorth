@@ -94,16 +94,16 @@ endif()
 #=============================
 include(CMakeDependentOption)
 # When adding a new option, end the <help_text> with a full stop for consistency.
-option(BUILD_BITCOIN_BIN "Build bitcoin executable." ON)
-option(BUILD_DAEMON "Build bitcoind executable." ON)
+option(BUILD_BITCOIN_BIN "Build truenorth executable." ON)
+option(BUILD_DAEMON "Build truenorthd executable." ON)
 option(BUILD_GUI "Build bitcoin-qt executable." OFF)
-option(BUILD_CLI "Build bitcoin-cli executable." ON)
+option(BUILD_CLI "Build truenorth-cli executable." ON)
 
 option(BUILD_TESTS "Build test_bitcoin and other unit test executables." ON)
-option(BUILD_TX "Build bitcoin-tx executable." ${BUILD_TESTS})
-option(BUILD_UTIL "Build bitcoin-util executable." ${BUILD_TESTS})
+option(BUILD_TX "Build truenorth-tx executable." ${BUILD_TESTS})
+option(BUILD_UTIL "Build truenorth-util executable." ${BUILD_TESTS})
 
-option(BUILD_UTIL_CHAINSTATE "Build experimental bitcoin-chainstate executable." OFF)
+option(BUILD_UTIL_CHAINSTATE "Build experimental truenorth-chainstate executable." OFF)
 option(BUILD_KERNEL_LIB "Build experimental bitcoinkernel library." ${BUILD_UTIL_CHAINSTATE})
 
 option(ENABLE_WALLET "Enable wallet." ON)
