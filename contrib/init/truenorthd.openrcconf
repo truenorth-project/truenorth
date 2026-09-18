@@ -1,4 +1,4 @@
-# /etc/conf.d/bitcoind: config file for /etc/init.d/bitcoind
+# /etc/conf.d/truenorthd: config file for /etc/init.d/truenorthd
 
 # Config file location
 #TRUENORTHD_CONFIGFILE="/etc/truenorth/truenorth.conf"
@@ -20,7 +20,7 @@
 #TRUENORTHD_BIN="/usr/bin/truenorthd"
 
 # Nice value to run truenorthd under
-#BITCOIND_NICE=0
+#TRUENORTHD_NICE=0
 
 # Additional options (avoid -conf and -datadir, use flags above)
 #TRUENORTHD_OPTS=""
@@ -30,4 +30,4 @@
 # Note that this will be mapped as argument to start-stop-daemon's
 # '--retry' option, which means you can specify a retry schedule
 # here. For more information see man 8 start-stop-daemon.
-BITCOIND_SIGTERM_TIMEOUT=600
+TRUENORTHD_SIGTERM_TIMEOUT=600

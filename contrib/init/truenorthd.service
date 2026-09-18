@@ -1,7 +1,7 @@
 # It is not recommended to modify this file in-place, because it will
 # be overwritten during package upgrades. If you want to add further
 # options or overwrite existing ones then use
-# $ systemctl edit bitcoind.service
+# $ systemctl edit truenorthd.service
 # See "man systemd.service" for details.
 
 # Note that almost all daemon options could be specified in
@@ -41,7 +41,7 @@ TimeoutStopSec=600
 # Directory creation and permissions
 ####################################
 
-# Run as bitcoin:bitcoin
+# Run as truenorth:truenorth
 User=truenorth
 
 # /run/truenorthd
@@ -49,7 +49,7 @@ RuntimeDirectory=truenorthd
 RuntimeDirectoryMode=0710
 
 # /etc/truenorth
-ConfigurationDirectory=bitcoin
+ConfigurationDirectory=truenorth
 ConfigurationDirectoryMode=0710
 
 # /var/lib/truenorthd

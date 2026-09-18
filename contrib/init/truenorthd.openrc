@@ -1,25 +1,17 @@
 #!/sbin/openrc-run
 
-# backward compatibility for existing gentoo layout 
-#
-if [ -d "/var/lib/bitcoin/.bitcoin" ]; then
-	BITCOIND_DEFAULT_DATADIR="/var/lib/bitcoin/.bitcoin"
-else
-	BITCOIND_DEFAULT_DATADIR="/var/lib/truenorthd"
-fi
-
 TRUENORTHD_CONFIGFILE=${TRUENORTHD_CONFIGFILE:-/etc/truenorth/truenorth.conf}
 TRUENORTHD_PIDDIR=${TRUENORTHD_PIDDIR:-/var/run/truenorthd}
 TRUENORTHD_PIDFILE=${TRUENORTHD_PIDFILE:-${TRUENORTHD_PIDDIR}/truenorthd.pid}
-TRUENORTHD_DATADIR=${TRUENORTHD_DATADIR:-${BITCOIND_DEFAULT_DATADIR}}
-TRUENORTHD_USER=${TRUENORTHD_USER:-${BITCOIN_USER:-bitcoin}}
-TRUENORTHD_GROUP=${TRUENORTHD_GROUP:-bitcoin}
+TRUENORTHD_DATADIR=${TRUENORTHD_DATADIR:-/var/lib/truenorthd}
+TRUENORTHD_USER=${TRUENORTHD_USER:-truenorth}
+TRUENORTHD_GROUP=${TRUENORTHD_GROUP:-truenorth}
 TRUENORTHD_BIN=${TRUENORTHD_BIN:-/usr/bin/truenorthd}
-BITCOIND_NICE=${BITCOIND_NICE:-${NICELEVEL:-0}}
-TRUENORTHD_OPTS="${TRUENORTHD_OPTS:-${BITCOIN_OPTS}}"
+TRUENORTHD_NICE=${TRUENORTHD_NICE:-${NICELEVEL:-0}}
+TRUENORTHD_OPTS="${TRUENORTHD_OPTS:-}"
 
 name="TrueNorth Core Daemon"
-description="Bitcoin cryptocurrency P2P network daemon"
+description="TrueNorth cryptocurrency P2P network daemon"
 
 command="/usr/bin/truenorthd"
 command_args="-pid=\"${TRUENORTHD_PIDFILE}\" \
@@ -30,13 +22,13 @@ command_args="-pid=\"${TRUENORTHD_PIDFILE}\" \
 
 required_files="${TRUENORTHD_CONFIGFILE}"
 start_stop_daemon_args="-u ${TRUENORTHD_USER} \
-			-N ${BITCOIND_NICE} -w 2000"
+			-N ${TRUENORTHD_NICE} -w 2000"
 pidfile="${TRUENORTHD_PIDFILE}"
 
 # The retry schedule to use when stopping the daemon. Could be either
 # a timeout in seconds or multiple signal/timeout pairs (like
 # "SIGKILL/180 SIGTERM/300")
-retry="${BITCOIND_SIGTERM_TIMEOUT}"
+retry="${TRUENORTHD_SIGTERM_TIMEOUT}"
 
 depend() {
 	need localmount net
@@ -72,7 +64,7 @@ checkconfig()
 	if grep -qs '^rpcuser=' "${TRUENORTHD_CONFIGFILE}" && \
 		! grep -qs '^rpcpassword=' "${TRUENORTHD_CONFIGFILE}" ; then
 		eerror ""
-		eerror "ERROR: You must set a secure rpcpassword to run bitcoind."
+		eerror "ERROR: You must set a secure rpcpassword to run truenorthd."
 		eerror "The setting must appear in ${TRUENORTHD_CONFIGFILE}"
 		eerror ""
 		eerror "This password is security critical to securing wallets "
@@ -85,7 +77,7 @@ checkconfig()
 		eerror "It is recommended that you also set alertnotify so you are "
 		eerror "notified of problems:"
 		eerror ""
-		eerror "ie: alertnotify=echo %%s | mail -s \"Bitcoin Alert\"" \
+		eerror "ie: alertnotify=echo %%s | mail -s \"TrueNorth Alert\"" \
 			"admin@foo.com"
 		eerror ""
 		return 1
