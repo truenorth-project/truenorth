@@ -1,3 +1,5 @@
 138.197.97.151:49555
 qpjxqbcp4vkoalprpzuvvzyos7lej6qi3muhpsycgfmog6tlluayctad.onion:49555
+132.145.111.0:49555
+mggupu2hkgxxv67wdizwgjcwg24yzydznwjsbeja27f36ojsjcqfeoad.onion:49555
 6vquc5sijturhtd6gx3wvhphytf7kroq7w5yd244jxsc74ygowy7mwyd.onion:49555
