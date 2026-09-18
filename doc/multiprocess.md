@@ -4,7 +4,7 @@ _This document describes usage of the multiprocess feature. For design informati
 
 ## Build Option
 
-The `-DENABLE_IPC=ON` build option, supported and enabled by default on Unix systems, can be passed to build the supplemental `bitcoin-node` and `bitcoin-gui` multiprocess executables.
+The `-DENABLE_IPC=ON` build option, supported and enabled by default on Unix systems, can be passed to build the supplemental `truenorth-node` and `bitcoin-gui` multiprocess executables.
 
 ## Debugging
 
@@ -25,8 +25,8 @@ make -C depends NO_QT=1
 HOST_PLATFORM="x86_64-pc-linux-gnu"
 cmake -B build --toolchain=depends/$HOST_PLATFORM/toolchain.cmake
 cmake --build build
-build/bin/bitcoin -m node -regtest -printtoconsole -debug=ipc
-BITCOIN_CMD="bitcoin -m" build/test/functional/test_runner.py
+build/bin/truenorth -m node -regtest -printtoconsole -debug=ipc
+BITCOIN_CMD="truenorth -m" build/test/functional/test_runner.py
 ```
 
 The `cmake` build will pick up settings and library locations from the depends directory, so there is no need to pass `-DENABLE_IPC=ON` as a separate flag when using the depends system (it's controlled by the `NO_IPC=1` option).
@@ -41,11 +41,11 @@ By default when `-DENABLE_IPC=ON` is enabled, the libmultiprocess sources at [..
 
 ## Usage
 
-Recommended way to use multiprocess binaries is to invoke `bitcoin` CLI like `bitcoin -m node -debug=ipc` or `bitcoin -m gui -printtoconsole -debug=ipc`.
+Recommended way to use multiprocess binaries is to invoke `bitcoin` CLI like `truenorth -m node -debug=ipc` or `truenorth -m gui -printtoconsole -debug=ipc`.
 
-When the `-m` (`--multiprocess`) option is used the `bitcoin` command will execute multiprocess binaries instead of monolithic ones (`bitcoin-node` instead of `truenorthd`, and `bitcoin-gui` instead of `bitcoin-qt`). The multiprocess binaries can also be invoked directly, but this is not recommended as they may change or be renamed in the future, and they are not installed in the PATH.
+When the `-m` (`--multiprocess`) option is used the `truenorth` command will execute multiprocess binaries instead of monolithic ones (`truenorth-node` instead of `truenorthd`, and `bitcoin-gui` instead of `bitcoin-qt`). The multiprocess binaries can also be invoked directly, but this is not recommended as they may change or be renamed in the future, and they are not installed in the PATH.
 
 The multiprocess binaries currently function the same as the monolithic binaries, except they support an `-ipcbind` option.
 
-In the future, after [#10102](https://github.com/bitcoin/bitcoin/pull/10102) they will have other differences. Specifically `bitcoin-gui` will spawn a `bitcoin-node` process to run P2P and RPC code, communicating with it across a socket pair, and `bitcoin-node` will spawn `bitcoin-wallet` to run wallet code, also communicating over a socket pair. This will let node, wallet, and GUI code run in separate address spaces for better isolation, and allow future improvements like being able to start and stop components independently on different machines and environments. [#19460](https://github.com/bitcoin/bitcoin/pull/19460) also adds a new `bitcoin-wallet -ipcconnect` option to allow new wallet processes to connect to an existing node process.
+In the future, after [#10102](https://github.com/bitcoin/bitcoin/pull/10102) they will have other differences. Specifically `bitcoin-gui` will spawn a `truenorth-node` process to run P2P and RPC code, communicating with it across a socket pair, and `truenorth-node` will spawn `truenorth-wallet` to run wallet code, also communicating over a socket pair. This will let node, wallet, and GUI code run in separate address spaces for better isolation, and allow future improvements like being able to start and stop components independently on different machines and environments. [#19460](https://github.com/bitcoin/bitcoin/pull/19460) also adds a new `truenorth-wallet -ipcconnect` option to allow new wallet processes to connect to an existing node process.
 And [#19461](https://github.com/bitcoin/bitcoin/pull/19461) adds a new `bitcoin-gui -ipcconnect` option to allow new GUI processes to connect to an existing node process.

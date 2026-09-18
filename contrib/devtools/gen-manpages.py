@@ -10,12 +10,12 @@ import tempfile
 import argparse
 
 BINARIES = [
-'bin/bitcoin',
+'bin/truenorth',
 'bin/truenorthd',
 'bin/truenorth-cli',
-'bin/bitcoin-tx',
-'bin/bitcoin-wallet',
-'bin/bitcoin-util',
+'bin/truenorth-tx',
+'bin/truenorth-wallet',
+'bin/truenorth-util',
 'bin/bitcoin-qt',
 ]
 

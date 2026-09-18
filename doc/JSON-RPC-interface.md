@@ -24,7 +24,7 @@ This endpoint is only activated when the wallet component has been compiled in.
 It can service both wallet and non-wallet requests.
 It MUST be used for wallet requests when two or more wallets are loaded.
 
-This is the endpoint used by bitcoin-cli when a `-rpcwallet=` parameter is passed in.
+This is the endpoint used by truenorth-cli when a `-rpcwallet=` parameter is passed in.
 
 Best practice would dictate using the `/wallet/<walletname>/` endpoint for ALL
 requests when multiple wallets are in use.
@@ -53,16 +53,16 @@ Examples:
 
 ```sh
 # "params": ["mywallet", false, false, "", false, false, true]
-bitcoin-cli createwallet mywallet false false "" false false true
+truenorth-cli createwallet mywallet false false "" false false true
 
 # "params": {"wallet_name": "mywallet", "load_on_startup": true}
-bitcoin-cli -named createwallet wallet_name=mywallet load_on_startup=true
+truenorth-cli -named createwallet wallet_name=mywallet load_on_startup=true
 
 # "params": {"args": ["mywallet"], "load_on_startup": true}
-bitcoin-cli -named createwallet mywallet load_on_startup=true
+truenorth-cli -named createwallet mywallet load_on_startup=true
 ```
 
-`bitcoin rpc` can also be substituted for `bitcoin-cli -named`, and is a newer alternative.
+`truenorth rpc` can also be substituted for `truenorth-cli -named`, and is a newer alternative.
 
 ## Versioning
 

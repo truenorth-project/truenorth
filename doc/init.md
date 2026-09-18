@@ -65,7 +65,7 @@ All three configurations assume several paths that might need to be adjusted.
 The PID directory (if applicable) and data directory should both be owned by the
 bitcoin user and group. It is advised for security reasons to make the
 configuration file and data directory only readable by the bitcoin user and
-group. Access to bitcoin-cli and other truenorthd rpc clients can then be
+group. Access to truenorth-cli and other truenorthd rpc clients can then be
 controlled by group membership.
 
 NOTE: When using the systemd .service file, the creation of the aforementioned

@@ -186,9 +186,9 @@ cmake --build build --target deploy
 Bitcoin Core should now be available at `./build/bin/truenorthd`.
 If you compiled support for the GUI, it should be available at `./build/bin/bitcoin-qt`.
 
-There is also a multifunction command line interface at `./build/bin/bitcoin`
-supporting subcommands like `bitcoin node`, `bitcoin gui`, `bitcoin rpc`, and
-others that can be listed with `bitcoin help`.
+There is also a multifunction command line interface at `./build/bin/truenorth`
+supporting subcommands like `truenorth node`, `truenorth gui`, `truenorth rpc`, and
+others that can be listed with `truenorth help`.
 
 The first time you run `truenorthd` or `bitcoin-qt`, it will start downloading the blockchain.
 This process could take many hours, or even days on slower than average systems.
@@ -221,5 +221,5 @@ tail -f $HOME/Library/Application\ Support/Bitcoin/debug.log
 ./build/bin/truenorthd -daemon      # Starts the bitcoin daemon.
 ./build/bin/truenorth-cli --help    # Outputs a list of command-line options.
 ./build/bin/truenorth-cli help      # Outputs a list of RPC commands when the daemon is running.
-./build/bin/bitcoin-qt -server # Starts the bitcoin-qt server mode, allows bitcoin-cli control
+./build/bin/bitcoin-qt -server # Starts the bitcoin-qt server mode, allows truenorth-cli control
 ```

@@ -19,8 +19,8 @@
 # Tunables (env overrides):
 #   AMOUNT       payout per address     (default: 100, i.e. 100 tNORTH)
 #   WALLET       wallet name to send from (default: faucet)
-#   CHAIN        bitcoin-cli chain arg  (default: -testnet=3)
-#   BITCOINCLI   bitcoin-cli path       (default: ./build/bin/truenorth-cli)
+#   CHAIN        truenorth-cli chain arg  (default: -testnet=3)
+#   BITCOINCLI   truenorth-cli path       (default: ./build/bin/truenorth-cli)
 #   LOG          CSV log file           (default: ./faucet.log.csv)
 #   DRY_RUN=1    print what would be sent without actually sending
 #   MIN_INTERVAL_S  seconds between sends (default: 1, anti-flood)
@@ -31,7 +31,7 @@
 #     ALLOW_REPEATS=1 to override.
 #   - BALANCE CHECK: refuses to start if wallet balance < (AMOUNT * count
 #     of pending recipients). Helps catch "I forgot to fund the wallet".
-#   - VALIDATION: each address is dry-checked via bitcoin-cli
+#   - VALIDATION: each address is dry-checked via truenorth-cli
 #     validateaddress before sending. Invalid addresses are skipped.
 
 set -euo pipefail

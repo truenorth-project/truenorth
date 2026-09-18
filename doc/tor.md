@@ -25,9 +25,9 @@ CLI `-addrinfo` returns the number of addresses known to your node per
 network. This can be useful to see how many onion peers your node knows,
 e.g. for `-onlynet=onion`.
 
-You can use the `getnodeaddresses` RPC to fetch a number of onion peers known to your node; run `bitcoin-cli help getnodeaddresses` for details.
+You can use the `getnodeaddresses` RPC to fetch a number of onion peers known to your node; run `truenorth-cli help getnodeaddresses` for details.
 
-`bitcoin rpc` can also be substituted for `truenorth-cli`.
+`truenorth rpc` can also be substituted for `truenorth-cli`.
 
 ## 1. Run Bitcoin Core behind a Tor proxy
 
@@ -86,7 +86,7 @@ In a typical situation, this suffices to run behind a Tor proxy:
 
     truenorthd -proxy=127.0.0.1:9050
 
-`bitcoin node` or `bitcoin gui` can also be substituted for `truenorthd`.
+`truenorth node` or `truenorth gui` can also be substituted for `truenorthd`.
 
 ## 2. Automatically create a Bitcoin Core onion service
 

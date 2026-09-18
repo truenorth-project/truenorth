@@ -378,8 +378,8 @@ compiler flags. You may also enable it manually by building with `-DDEBUG_LOCKCO
 added to your CPPFLAGS, i.e. `-DAPPEND_CPPFLAGS="-DDEBUG_LOCKCONTENTION"`.
 
 You can then use the `-debug=lock` configuration option at truenorthd startup or
-`bitcoin-cli logging '["lock"]'` at runtime to turn on lock contention logging.
-It can be toggled off again with `bitcoin-cli logging [] '["lock"]'`.
+`truenorth-cli logging '["lock"]'` at runtime to turn on lock contention logging.
+It can be toggled off again with `truenorth-cli logging [] '["lock"]'`.
 
 ### Assertions and Checks
 

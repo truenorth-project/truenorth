@@ -139,19 +139,19 @@ This table describes the files installed by Bitcoin Core across different platfo
 |------------------------------------------------------------|-----------------------------------------------------------------------------|
 | [README.md](README.md) or [readme.txt](README_windows.txt) | Project information and instructions                                        |
 | bitcoin.conf                                               | [Generated](../contrib/devtools/gen-bitcoin-conf.sh) configuration file     |
-| bin/bitcoin                                                | Command-line tool for interacting with Bitcoin. Calls other binaries below. |
+| bin/truenorth                                               | Command-line tool for interacting with TrueNorth|bin/truenorth                                               | Command-line tool for interacting with TrueNorth. Calls other binaries below. |
 | bin/truenorth-cli                                            | Tool for making node and wallet RPC calls.                                  |
 | bin/bitcoin-qt                                             | Bitcoin node and wallet GUI                                                 |
-| bin/bitcoin-tx                                             | Tool for creating and modifying transactions                                |
-| bin/bitcoin-util                                           | Miscellaneous utilities                                                     |
-| bin/bitcoin-wallet                                         | Bitcoin wallet tool                                                         |
+| bin/truenorth-tx                                             | Tool for creating and modifying transactions                                |
+| bin/truenorth-util                                           | Miscellaneous utilities                                                     |
+| bin/truenorth-wallet                                         | Bitcoin wallet tool                                                         |
 | bin/truenorthd                                               | Bitcoin node and wallet daemon                                              |
 | *lib/libbitcoinkernel.so*                                  | Shared library containing core consensus and validation code                |
 | *lib/pkgconfig/libbitcoinkernel.pc*                        | Pkg-config metadata for linking to `libbitcoinkernel`                       |
 | *libexec/bench_bitcoin*                                    | Benchmarking tool for measuring node performance                            |
-| *libexec/bitcoin-chainstate*                               | Tool to validate and connect blocks                                         |
+| *libexec/truenorth-chainstate*                               | Tool to validate and connect blocks                                         |
 | libexec/bitcoin-gui                                        | IPC-enabled alternative to `bitcoin-qt`                                     |
-| libexec/bitcoin-node                                       | IPC-enabled alternative to `truenorthd`                                       |
+| libexec/truenorth-node                                       | IPC-enabled alternative to `truenorthd`                                       |
 | libexec/test_bitcoin                                       | Unit test binary                                                            |
 | *libexec/test_bitcoin-qt*                                  | GUI-specific unit tests                                                     |
 | share/man/man1/                                            | Man pages for command-line tools like `truenorth-cli`, `truenorthd`, and others |
@@ -161,7 +161,7 @@ This table describes the files installed by Bitcoin Core across different platfo
 
 - *Italicized* files are only installed in source builds if relevant CMake options are enabled. They are not included in binary releases.
 - README and bitcoin.conf files are included in binary releases but not installed in source builds.
-- On Windows, binaries have a `.exe` suffix (e.g., `bitcoin-cli.exe`).
+- On Windows, binaries have a `.exe` suffix (e.g., `truenorth-cli.exe`).
 
 ## Filesystem recommendations
 
