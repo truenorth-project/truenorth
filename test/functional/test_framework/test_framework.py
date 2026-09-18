@@ -77,34 +77,34 @@ class Binaries:
         self.bin_dir = bin_dir
 
     def node_argv(self, **kwargs):
-        "Return argv array that should be used to invoke bitcoind"
+        "Return argv array that should be used to invoke truenorthd"
         return self._argv("node", self.paths.bitcoind, **kwargs)
 
     def rpc_argv(self):
-        "Return argv array that should be used to invoke bitcoin-cli"
-        # Add -nonamed because "bitcoin rpc" enables -named by default, but bitcoin-cli doesn't
+        "Return argv array that should be used to invoke truenorth-cli"
+        # Add -nonamed because "truenorth rpc" enables -named by default, but truenorth-cli doesn't
         return self._argv("rpc", self.paths.bitcoincli) + ["-nonamed"]
 
     def tx_argv(self):
-        "Return argv array that should be used to invoke bitcoin-tx"
+        "Return argv array that should be used to invoke truenorth-tx"
         return self._argv("tx", self.paths.bitcointx)
 
     def util_argv(self):
-        "Return argv array that should be used to invoke bitcoin-util"
+        "Return argv array that should be used to invoke truenorth-util"
         return self._argv("util", self.paths.bitcoinutil)
 
     def wallet_argv(self):
-        "Return argv array that should be used to invoke bitcoin-wallet"
+        "Return argv array that should be used to invoke truenorth-wallet"
         return self._argv("wallet", self.paths.bitcoinwallet)
 
     def chainstate_argv(self):
-        "Return argv array that should be used to invoke bitcoin-chainstate"
+        "Return argv array that should be used to invoke truenorth-chainstate"
         return self._argv("chainstate", self.paths.bitcoinchainstate)
 
     def _argv(self, command, bin_path, need_ipc=False):
         """Return argv array that should be used to invoke the command. It
-        either uses the bitcoin wrapper executable (if BITCOIN_CMD is set or
-        need_ipc is True), or the direct binary path (bitcoind, etc). When
+        either uses the truenorth wrapper executable (if BITCOIN_CMD is set or
+        need_ipc is True), or the direct binary path (truenorthd, etc). When
         bin_dir is set (by tests calling binaries from previous releases) it
         always uses the direct path."""
         if self.bin_dir is not None:
@@ -243,7 +243,7 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
         parser.add_argument("--pdbonfailure", dest="pdbonfailure", default=False, action="store_true",
                             help="Attach a python debugger if test fails")
         parser.add_argument("--usecli", dest="usecli", default=False, action="store_true",
-                            help="use bitcoin-cli instead of RPC for all commands")
+                            help="use truenorth-cli instead of RPC for all commands")
         parser.add_argument("--perf", dest="perf", default=False, action="store_true",
                             help="profile running nodes with perf for the duration of the test")
         parser.add_argument("--valgrind", dest="valgrind", default=False, action="store_true",
@@ -282,13 +282,13 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
 
         paths = types.SimpleNamespace()
         binaries = {
-            "bitcoin": "BITCOIN_BIN",
-            "bitcoind": "BITCOIND",
-            "bitcoin-cli": "BITCOINCLI",
-            "bitcoin-util": "BITCOINUTIL",
-            "bitcoin-tx": "BITCOINTX",
-            "bitcoin-chainstate": "BITCOINCHAINSTATE",
-            "bitcoin-wallet": "BITCOINWALLET",
+            "truenorth": "BITCOIN_BIN",
+            "truenorthd": "BITCOIND",
+            "truenorth-cli": "BITCOINCLI",
+            "truenorth-util": "BITCOINUTIL",
+            "truenorth-tx": "BITCOINTX",
+            "truenorth-chainstate": "BITCOINCHAINSTATE",
+            "truenorth-wallet": "BITCOINWALLET",
         }
         # Set paths to bitcoin core binaries allowing overrides with environment
         # variables.
@@ -1011,29 +1011,29 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
             raise SkipTest("wallet has not been compiled.")
 
     def skip_if_no_wallet_tool(self):
-        """Skip the running test if bitcoin-wallet has not been compiled."""
+        """Skip the running test if truenorth-wallet has not been compiled."""
         if not self.is_wallet_tool_compiled():
-            raise SkipTest("bitcoin-wallet has not been compiled")
+            raise SkipTest("truenorth-wallet has not been compiled")
 
-    def skip_if_no_bitcoin_tx(self):
-        """Skip the running test if bitcoin-tx has not been compiled."""
-        if not self.is_bitcoin_tx_compiled():
-            raise SkipTest("bitcoin-tx has not been compiled")
+    def skip_if_no_truenorth_tx(self):
+        """Skip the running test if truenorth-tx has not been compiled."""
+        if not self.is_truenorth_tx_compiled():
+            raise SkipTest("truenorth-tx has not been compiled")
 
-    def skip_if_no_bitcoin_util(self):
-        """Skip the running test if bitcoin-util has not been compiled."""
-        if not self.is_bitcoin_util_compiled():
-            raise SkipTest("bitcoin-util has not been compiled")
+    def skip_if_no_truenorth_util(self):
+        """Skip the running test if truenorth-util has not been compiled."""
+        if not self.is_truenorth_util_compiled():
+            raise SkipTest("truenorth-util has not been compiled")
 
-    def skip_if_no_bitcoin_chainstate(self):
-        """Skip the running test if bitcoin-chainstate has not been compiled."""
-        if not self.is_bitcoin_chainstate_compiled():
-            raise SkipTest("bitcoin-chainstate has not been compiled")
+    def skip_if_no_truenorth_chainstate(self):
+        """Skip the running test if truenorth-chainstate has not been compiled."""
+        if not self.is_truenorth_chainstate_compiled():
+            raise SkipTest("truenorth-chainstate has not been compiled")
 
     def skip_if_no_cli(self):
-        """Skip the running test if bitcoin-cli has not been compiled."""
+        """Skip the running test if truenorth-cli has not been compiled."""
         if not self.is_cli_compiled():
-            raise SkipTest("bitcoin-cli has not been compiled.")
+            raise SkipTest("truenorth-cli has not been compiled.")
 
     def skip_if_no_ipc(self):
         """Skip the running test if ipc is not compiled."""
@@ -1064,7 +1064,7 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
             raise SkipTest("This test is not compatible with Valgrind.")
 
     def is_cli_compiled(self):
-        """Checks whether bitcoin-cli was compiled."""
+        """Checks whether truenorth-cli was compiled."""
         return self.config["components"].getboolean("ENABLE_CLI")
 
     def is_external_signer_compiled(self):
@@ -1076,19 +1076,19 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
         return self.config["components"].getboolean("ENABLE_WALLET")
 
     def is_wallet_tool_compiled(self):
-        """Checks whether bitcoin-wallet was compiled."""
+        """Checks whether truenorth-wallet was compiled."""
         return self.config["components"].getboolean("ENABLE_WALLET_TOOL")
 
-    def is_bitcoin_tx_compiled(self):
-        """Checks whether bitcoin-tx was compiled."""
+    def is_truenorth_tx_compiled(self):
+        """Checks whether truenorth-tx was compiled."""
         return self.config["components"].getboolean("BUILD_BITCOIN_TX")
 
-    def is_bitcoin_util_compiled(self):
-        """Checks whether bitcoin-util was compiled."""
+    def is_truenorth_util_compiled(self):
+        """Checks whether truenorth-util was compiled."""
         return self.config["components"].getboolean("ENABLE_BITCOIN_UTIL")
 
-    def is_bitcoin_chainstate_compiled(self):
-        """Checks whether bitcoin-chainstate was compiled."""
+    def is_truenorth_chainstate_compiled(self):
+        """Checks whether truenorth-chainstate was compiled."""
         return self.config["components"].getboolean("ENABLE_BITCOIN_CHAINSTATE")
 
     def is_zmq_compiled(self):
