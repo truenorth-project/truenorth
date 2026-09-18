@@ -418,6 +418,7 @@ continuously online for at least 7 days on both endpoints (clearnet + onion).
 | Operator | Clearnet | Onion | Notes |
 |---|---|---|---|
 | robert-pathy | `seed.nyc.tncoin.xyz:49555` | `qpjxqbcp4vkoalprpzuvvzyos7lej6qi3muhpsycgfmog6tlluayctad.onion:49555` | DigitalOcean droplet (nyc3, `s-1vcpu-1gb`), Debian 12, direct public IP bound to the NIC. Hostname is an A record for `138.197.97.151`. The compiled-in fallback uses the raw IP; the hostname is a friendlier alias for operators adding this seed manually via `-addnode=`. |
+| crellinj | `132.145.111.0:49555` | `mggupu2hkgxxv67wdizwgjcwg24yzydznwjsbeja27f36ojsjcqfeoad.onion:49555` | Oracle Cloud "Always Free" tier (Toronto region), Ubuntu, direct public IP bound to the NIC. `truenorthd` runs under a systemd unit with `Restart=on-failure`; `dbcache`/`maxmempool` tuned down per this guide's low-memory stanza for the 1 GiB shape. |
 
 ### Topology B — onion-only
 
@@ -434,3 +435,15 @@ All endpoints above are compiled in via `contrib/seeds/nodes_testnet4.txt`,
 so a freshly-installed node with no `-addnode=` config will find them on
 cold boot — including nodes started with `-onlynet=onion`, which have no
 Topology-A endpoints available.
+
+### Mainnet (pre-launch reservation)
+
+The 7-day uptime bar above is a testnet4 policy and can't apply here yet —
+there's no live mainnet chain to be continuously online against until
+launch. This is a reservation, not a claim of meeting that bar: the
+endpoint is staged and reachable now, but `truenorthd` itself is not
+running and won't be until genesis.
+
+| Operator | Clearnet | Onion | Notes |
+|---|---|---|---|
+| crellinj | `132.145.109.161:9555` | `ufa3acqngpjtthlfadii7q3ir6ojghlhsykgc7acjtjzqi6kfmqvexqd.onion:9555` | Oracle Cloud "Always Free" tier, direct public IP bound to the NIC. Separate box from the testnet4 seed above — the 1 GiB shape can't run both chains reliably at once. `truenorthd` is built and configured, systemd unit staged but disabled (won't start on reboot); will be started manually at or after the mainnet genesis ceremony. |
