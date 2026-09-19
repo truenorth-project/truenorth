@@ -61,10 +61,11 @@
 - **RPC port:** 9554
 - **Network magic bytes:** TBD (4 bytes, unique)
 - **Address prefixes:**
-  - P2PKH version byte: chosen so legacy addresses begin with **N** (exact byte set at network-params time)
-  - P2SH version byte: TBD
+  - P2PKH version byte: **53** — legacy addresses always begin with **N**
+  - P2SH version byte: **65** — P2SH addresses begin with **T**
+  - WIF secret-key byte: **180** — compressed WIF keys begin with **T**
   - Bech32 HRP: `north`. Native-segwit addresses look like `north1q...`
-- **BIP32 extended-key prefixes:** TBD
+- **BIP32 extended-key prefixes:** `0x7E5D5A83` / `0x7E5C6544` — extended keys encode as `Tpub...` / `Tprv...`
 
 ## 6. Genesis Block
 - **Coinbase message:** TBD. A real Canadian newspaper headline dated to launch day

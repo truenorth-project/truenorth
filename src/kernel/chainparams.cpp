@@ -193,13 +193,17 @@ public:
 
         // TrueNorth address prefixes -- deliberately distinct from Bitcoin's
         // to prevent cross-chain address confusion and wallet-restore mistakes.
-        //   P2PKH version byte 52 -> legacy addresses start with 'N'.
+        //   P2PKH version byte 53 -> legacy addresses start with 'N'.
+        //     (52 would give 'M' or 'N' depending on the hash; 53 is the
+        //     only byte whose full 25-byte range encodes to 'N'.)
         //   P2SH  version byte 65 -> P2SH addresses start with 'T'.
-        //   SECRET_KEY follows the convention PUBKEY_ADDRESS + 128 (= 180).
+        //   SECRET_KEY 180 -> compressed WIF keys start with 'T'. (Originally
+        //     PUBKEY_ADDRESS + 128 when P2PKH was 52; left at 180 since 181
+        //     encodes identically.)
         //   BIP32 extended keys encode as "Tpub..." / "Tprv..." (visible
         //   4-char prefix in base58), verified consistent across random
         //   payloads via contrib/seeds-style precomputation.
-        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 52);
+        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 53);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 65);
         base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1, 180);
         base58Prefixes[EXT_PUBLIC_KEY] = {0x7E, 0x5D, 0x5A, 0x83};
