@@ -24,6 +24,7 @@ import time
 import types
 
 from .address import create_deterministic_address_bcrt1_p2tr_op_true
+from . import randomx
 from .authproxy import JSONRPCException
 from . import coverage
 from .p2p import NetworkThread
@@ -318,6 +319,8 @@ class BitcoinTestFramework(metaclass=BitcoinTestMetaClass):
             os.path.join(self.config["environment"]["BUILDDIR"], "bin"),
             os.environ['PATH']
         ])
+        # RandomX PoW hashing for blocks the framework builds itself.
+        os.environ.setdefault('TRUENORTH_POW_LIB', randomx.library_path_for_builddir(self.config["environment"]["BUILDDIR"]))
 
         # Set up temp directory and start logging
         if self.options.tmpdir:

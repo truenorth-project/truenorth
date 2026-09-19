@@ -495,6 +495,14 @@ if(BUILD_BENCH)
 endif()
 
 if(BUILD_TESTS)
+  # RandomX PoW hash for the Python functional test framework, which solves
+  # blocks itself; see test/functional/test_framework/randomx.py.
+  add_library(truenorth_pow_testlib SHARED test/truenorth_pow_testlib.cpp)
+  target_link_libraries(truenorth_pow_testlib PRIVATE core_interface bitcoin_consensus)
+  target_include_directories(truenorth_pow_testlib PRIVATE ${CMAKE_SOURCE_DIR}/src/randomx/src)
+  set_target_properties(truenorth_pow_testlib PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib
+  )
   add_subdirectory(test)
 endif()
 

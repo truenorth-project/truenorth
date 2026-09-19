@@ -656,7 +656,7 @@ class FullBlockTest(BitcoinTestFramework):
         self.move_tip(44)
         b47 = self.next_block(47)
         target = uint256_from_compact(b47.nBits)
-        while b47.hash_int <= target:
+        while b47.pow_hash_int <= target:
             # Rehash nonces until an invalid too-high-hash block is found.
             b47.nNonce += 1
         self.send_blocks([b47], False, force_send=True, reject_reason='high-hash', reconnect=True)

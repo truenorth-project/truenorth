@@ -29,6 +29,7 @@ import time
 import unittest
 
 from test_framework.crypto.siphash import siphash256
+from test_framework import randomx
 from test_framework.util import assert_equal
 
 MAX_LOCATOR_SZ = 101
@@ -708,9 +709,13 @@ class CTransaction:
 
 class CBlockHeader:
     __slots__ = ("hashMerkleRoot", "hashPrevBlock", "nBits", "nNonce",
-                 "nTime", "nVersion")
+                 "nTime", "nVersion", "pow_seed")
 
     def __init__(self, header=None):
+        # RandomX seed override (32 bytes, uint256 internal order). Only
+        # needed at heights >= RANDOMX_EPOCH_LENGTH + RANDOMX_SEED_LAG; see
+        # get_pow_seed() and test_framework/randomx.py.
+        self.pow_seed = getattr(header, "pow_seed", None)
         if header is None:
             self.set_null()
         else:
@@ -759,6 +764,43 @@ class CBlockHeader:
     def hash_int(self):
         """Return block header hash as integer."""
         return uint256_from_str(hash256(self._serialize_header()))
+
+    def coinbase_height(self):
+        """Height from the BIP34 push in the coinbase scriptSig, or None."""
+        vtx = getattr(self, "vtx", None)
+        if not vtx or not vtx[0].vin:
+            return None
+        script = vtx[0].vin[0].scriptSig
+        if not script:
+            return None
+        op = script[0]
+        if op == 0:
+            return 0
+        if 0x51 <= op <= 0x60:
+            return op - 0x50
+        if 1 <= op <= 5 and len(script) > op:
+            return int.from_bytes(script[1:1 + op], "little")
+        return None
+
+    def get_pow_seed(self):
+        """RandomX seed for this block's PoW check.
+
+        Uses pow_seed if set. Otherwise the genesis seed, which is only
+        correct below RANDOMX_EPOCH_LENGTH + RANDOMX_SEED_LAG; above that,
+        set pow_seed (e.g. randomx.seed_for_height(node, height)).
+        """
+        if self.pow_seed is not None:
+            return self.pow_seed
+        height = self.coinbase_height()
+        if height is not None and randomx.seed_height_for_height(height) != 0:
+            raise ValueError("block at height %d is past the RandomX genesis epoch; "
+                             "set block.pow_seed = randomx.seed_for_height(node, %d)" % (height, height))
+        return randomx.GENESIS_SEED
+
+    @property
+    def pow_hash_int(self):
+        """RandomX proof-of-work hash as integer (block identity stays hash_int)."""
+        return uint256_from_str(randomx.pow_hash(self.get_pow_seed(), self._serialize_header()))
 
     def __repr__(self):
         return "CBlockHeader(nVersion=%i hashPrevBlock=%064x hashMerkleRoot=%064x nTime=%s nBits=%08x nNonce=%08x)" \
@@ -818,7 +860,7 @@ class CBlock(CBlockHeader):
 
     def is_valid(self):
         target = uint256_from_compact(self.nBits)
-        if self.hash_int > target:
+        if self.pow_hash_int > target:
             return False
         for tx in self.vtx:
             if not tx.is_valid():
@@ -829,8 +871,11 @@ class CBlock(CBlockHeader):
 
     def solve(self):
         target = uint256_from_compact(self.nBits)
-        while self.hash_int > target:
+        seed = self.get_pow_seed()
+        header = bytearray(self._serialize_header())
+        while uint256_from_str(randomx.pow_hash(seed, header)) > target:
             self.nNonce += 1
+            header[76:80] = self.nNonce.to_bytes(4, "little")
 
     # Calculate the block weight using witness and non-witness
     # serialization size (does NOT use sigops).
