@@ -659,6 +659,18 @@ public:
 
     OutputType TransactionChangeType(const std::optional<OutputType>& change_type, const std::vector<CRecipient>& vecSend) const;
 
+    /**
+     * Resolve the address type to use when the caller did not request one.
+     * Returns `preferred` if the wallet has an active descriptor for it.
+     * Otherwise falls back to the first type it can produce, in the order
+     * bech32m, bech32, p2sh-segwit, legacy. This covers wallets with no
+     * P2QRH descriptor (external signers, imported descriptors), which
+     * would otherwise fail getnewaddress under the P2QRH default.
+     * Returns `preferred` unchanged if nothing else is available, so the
+     * caller's error names the configured default.
+     */
+    OutputType ResolveDefaultOutputType(OutputType preferred, bool internal) const;
+
     /** Fetch the inputs and sign with SIGHASH_ALL. */
     bool SignTransaction(CMutableTransaction& tx) const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
     /** Sign the tx given the input coins and sighash. */

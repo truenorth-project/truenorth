@@ -2219,6 +2219,15 @@ SigningResult CWallet::SignMessage(const std::string& message, const PKHash& pkh
     return SigningResult::PRIVATE_KEY_NOT_AVAILABLE;
 }
 
+OutputType CWallet::ResolveDefaultOutputType(OutputType preferred, bool internal) const
+{
+    if (GetScriptPubKeyMan(preferred, internal)) return preferred;
+    for (const OutputType type : {OutputType::BECH32M, OutputType::BECH32, OutputType::P2SH_SEGWIT, OutputType::LEGACY}) {
+        if (GetScriptPubKeyMan(type, internal)) return type;
+    }
+    return preferred;
+}
+
 OutputType CWallet::TransactionChangeType(const std::optional<OutputType>& change_type, const std::vector<CRecipient>& vecSend) const
 {
     // If -changetype is specified, always use that change type.

@@ -168,6 +168,24 @@ enables P2SH, WITNESS, and TAPROOT unconditionally.
    the default for `getnewaddress`, new wallet setup, and all address-generation
    flows. Users can opt back to P2WPKH via `-addresstype=bech32` if needed for
    external interop as the ecosystem develops.
+4. **Derivation path.** Wallet-generated `qrh()` descriptors use BIP32
+   purpose `88h`: `m/88h/<coin_type>/0h/<0|1>/<index>`, with change on
+   branch `1`, following the BIP44/84/86 layout. `<coin_type>` is `0h` on
+   mainnet and `1h` on test chains (`src/wallet/walletutil.cpp`). Purpose
+   `88h` is TrueNorth-specific and not registered as a BIP. Recovery tools and other
+   wallets must scan this path to find P2QRH funds from a TrueNorth seed.
+5. **Fallback when a wallet has no P2QRH descriptor.** External signers
+   (hardware wallets via HWI) and wallets built from imported descriptors
+   usually have no `qrh()` descriptor, because current devices don't support
+   P2QRH. When `getnewaddress` or `getrawchangeaddress` is called without an
+   `address_type` and the wallet has no active descriptor for the default,
+   it falls back to the first type the wallet can produce, in the order
+   `bech32m`, `bech32`, `p2sh-segwit`, `legacy`. An explicitly requested
+   type is never substituted; if the wallet can't produce it, the call
+   fails. Transaction change already follows the same preference in
+   `CWallet::TransactionChangeType`. These fallback addresses are **not**
+   quantum-resistant at rest; hardware-wallet users get P2QRH once their
+   device and HWI support `qrh()`.
 
 ## Rationale — key design decisions
 

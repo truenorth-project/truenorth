@@ -27,7 +27,7 @@ RPCHelpMan getnewaddress()
                 "so payments received with the address will be associated with 'label'.\n",
                 {
                     {"label", RPCArg::Type::STR, RPCArg::Default{""}, "The label name for the address to be linked to. It can also be set to the empty string \"\" to represent the default label. The label does not need to exist, it will be created if there is no label by the given name."},
-                    {"address_type", RPCArg::Type::STR, RPCArg::DefaultHint{"set by -addresstype"}, "The address type to use. Options are " + FormatAllOutputTypes() + "."},
+                    {"address_type", RPCArg::Type::STR, RPCArg::DefaultHint{"set by -addresstype"}, "The address type to use. Options are " + FormatAllOutputTypes() + ". If omitted and the wallet has no descriptor for the default type (e.g. an external signer with no P2QRH descriptor), falls back to the first available of bech32m, bech32, p2sh-segwit, legacy."},
                 },
                 RPCResult{
                     RPCResult::Type::STR, "address", "The new TrueNorth address"
@@ -50,7 +50,9 @@ RPCHelpMan getnewaddress()
     // Parse the label first so we don't generate a key if there's an error
     const std::string label{LabelFromValue(request.params[0])};
 
-    OutputType output_type = pwallet->m_default_address_type;
+    // No type requested: use the default, or fall back if this wallet has no
+    // descriptor for it (e.g. external signers have no P2QRH descriptor).
+    OutputType output_type = pwallet->ResolveDefaultOutputType(pwallet->m_default_address_type, /*internal=*/false);
     if (!request.params[1].isNull()) {
         std::optional<OutputType> parsed = ParseOutputType(request.params[1].get_str());
         if (!parsed) {
@@ -76,7 +78,7 @@ RPCHelpMan getrawchangeaddress()
         "Returns a new TrueNorth address, for receiving change.\n"
                 "This is for use with raw transactions, NOT normal use.\n",
                 {
-                    {"address_type", RPCArg::Type::STR, RPCArg::DefaultHint{"set by -changetype"}, "The address type to use. Options are " + FormatAllOutputTypes() + "."},
+                    {"address_type", RPCArg::Type::STR, RPCArg::DefaultHint{"set by -changetype"}, "The address type to use. Options are " + FormatAllOutputTypes() + ". If omitted and the wallet has no descriptor for the default type, falls back as in getnewaddress."},
                 },
                 RPCResult{
                     RPCResult::Type::STR, "address", "The address"
@@ -96,7 +98,7 @@ RPCHelpMan getrawchangeaddress()
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: This wallet has no available keys");
     }
 
-    OutputType output_type = pwallet->m_default_change_type.value_or(pwallet->m_default_address_type);
+    OutputType output_type = pwallet->ResolveDefaultOutputType(pwallet->m_default_change_type.value_or(pwallet->m_default_address_type), /*internal=*/true);
     if (!request.params[0].isNull()) {
         std::optional<OutputType> parsed = ParseOutputType(request.params[0].get_str());
         if (!parsed) {
