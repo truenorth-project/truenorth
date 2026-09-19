@@ -349,7 +349,20 @@ public:
     }
 
     UniValue operator()(const WitnessV1Taproot& id) const { return UniValue(UniValue::VOBJ); }
-    UniValue operator()(const WitnessV2QRH& id) const { return UniValue(UniValue::VOBJ); }
+    UniValue operator()(const WitnessV2QRH& id) const
+    {
+        // P2QRH is the default address type, so report its key the way
+        // P2WPKH does; callers rely on getaddressinfo(getnewaddress())["pubkey"].
+        UniValue obj(UniValue::VOBJ);
+        CPubKey pubkey;
+        if (provider) {
+            const CKeyID key_id{GetKeyForDestination(*provider, CTxDestination{id})};
+            if (!key_id.IsNull() && provider->GetPubKey(key_id, pubkey)) {
+                obj.pushKV("pubkey", HexStr(pubkey));
+            }
+        }
+        return obj;
+    }
     UniValue operator()(const PayToAnchor& id) const { return UniValue(UniValue::VOBJ); }
     UniValue operator()(const WitnessUnknown& id) const { return UniValue(UniValue::VOBJ); }
 };

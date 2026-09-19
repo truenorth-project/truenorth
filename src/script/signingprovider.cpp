@@ -225,7 +225,7 @@ bool FillableSigningProvider::GetCScript(const CScriptID &hash, CScript& redeemS
 CKeyID GetKeyForDestination(const SigningProvider& store, const CTxDestination& dest)
 {
     // Only supports destinations which map to single public keys:
-    // P2PKH, P2WPKH, P2SH-P2WPKH, P2TR
+    // P2PKH, P2WPKH, P2SH-P2WPKH, P2TR, P2QRH (key-path)
     if (auto id = std::get_if<PKHash>(&dest)) {
         return ToKeyID(*id);
     }
@@ -248,6 +248,19 @@ CKeyID GetKeyForDestination(const SigningProvider& store, const CTxDestination& 
         if (store.GetTaprootSpendData(*output_key, spenddata)
             && !spenddata.internal_key.IsNull()
             && spenddata.merkle_root.IsNull()
+            && store.GetPubKeyByXOnly(spenddata.internal_key, pub)) {
+            return pub.GetID();
+        }
+    }
+    if (auto qrh = std::get_if<WitnessV2QRH>(&dest)) {
+        // Key-path P2QRH commits to (scheme_id, x-only key, empty script
+        // root). The descriptor records that triple as QRH spend data keyed
+        // by the on-chain commitment; see doc/p2qrh.md.
+        const uint256 commitment{std::span<const unsigned char>{qrh->begin(), qrh->end()}};
+        QRHSpendData spenddata;
+        CPubKey pub;
+        if (store.GetQRHSpendData(commitment, spenddata)
+            && spenddata.script_root.IsNull()
             && store.GetPubKeyByXOnly(spenddata.internal_key, pub)) {
             return pub.GetID();
         }
