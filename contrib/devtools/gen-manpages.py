@@ -16,7 +16,6 @@ BINARIES = [
 'bin/truenorth-tx',
 'bin/truenorth-wallet',
 'bin/truenorth-util',
-'bin/bitcoin-qt',
 ]
 
 parser = argparse.ArgumentParser(

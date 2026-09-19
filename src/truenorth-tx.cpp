@@ -113,8 +113,8 @@ static int AppInitRawTx(int argc, char* argv[])
             strUsage += FormatParagraph(LicenseInfo());
         } else {
             strUsage += "\n"
-                "The truenorth-tx tool is used for creating and modifying bitcoin transactions.\n\n"
-                "truenorth-tx can be used with \"<hex-tx> [commands]\" to update a hex-encoded bitcoin transaction, or with \"-create [commands]\" to create a hex-encoded bitcoin transaction.\n"
+                "The truenorth-tx tool is used for creating and modifying TrueNorth transactions.\n\n"
+                "truenorth-tx can be used with \"<hex-tx> [commands]\" to update a hex-encoded TrueNorth transaction, or with \"-create [commands]\" to create a hex-encoded TrueNorth transaction.\n"
                 "\n"
                 "Usage: truenorth-tx [options] <hex-tx> [commands]\n"
                 "or:    truenorth-tx [options] -create [commands]\n"
@@ -812,7 +812,7 @@ static int CommandLineRawTx(int argc, char* argv[])
             if (argc < 2)
                 throw std::runtime_error("too few parameters");
 
-            // param: hex-encoded bitcoin transaction
+            // param: hex-encoded TrueNorth transaction
             std::string strHexTx(argv[1]);
             if (strHexTx == "-")                 // "-" implies standard input
                 strHexTx = readStdin();

@@ -58,7 +58,7 @@ static int AppInitUtil(ArgsManager& args, int argc, char* argv[])
             strUsage += FormatParagraph(LicenseInfo());
         } else {
             strUsage += "\n"
-                "The truenorth-util tool provides bitcoin related functionality that does not rely on the ability to access a running node. Available [commands] are listed below.\n"
+                "The truenorth-util tool provides TrueNorth-related functionality that does not rely on the ability to access a running node. Available [commands] are listed below.\n"
                 "\n"
                 "Usage:  truenorth-util [options] [command]\n"
                 "or:     truenorth-util [options] grind <hex-block-header>\n";
