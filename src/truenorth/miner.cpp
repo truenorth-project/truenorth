@@ -785,6 +785,7 @@ try {
         Die("unknown -largepages=" + largepages_str + " (expected auto | on | off)");
     }
     truenorth::SetLargePagesPreference(lp_pref);
+    truenorth::SetRandomXFallbackNotices(true);
 
     // Resolve NUMA preference before any MinerThread constructs, so the
     // first alloc sees the right topology.

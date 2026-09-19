@@ -76,6 +76,11 @@ enum class LargePagesPref {
 // with existing MinerThreads; set once at startup.
 void SetLargePagesPreference(LargePagesPref pref);
 
+// Print [INFO]-level huge-pages fallback notices to stderr (default off).
+// truenorth-miner enables this so operators see the hugepages hint;
+// truenorthd leaves it off. [ERROR] notices always print.
+void SetRandomXFallbackNotices(bool enabled);
+
 // The preference most recently set (or AUTO if never set).
 LargePagesPref CurrentLargePagesPreference();
 

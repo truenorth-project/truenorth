@@ -10,6 +10,7 @@
 #include <truenorth/system_mem.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -22,6 +23,12 @@
 namespace truenorth {
 
 namespace {
+
+// Whether to print [INFO]-level huge-pages fallback notices to stderr.
+// Off by default so truenorthd (light-mode verification, where huge
+// pages barely matter) stays quiet; truenorth-miner turns it on.
+// [ERROR] notices (-largepages=on that couldn't be honoured) always print.
+std::atomic<bool> g_fallback_notices{false};
 
 // Recommended host flags + RANDOMX_FLAG_V2 (program format v2).
 // randomx_get_flags() does not include V2 by default; we opt in
@@ -67,11 +74,13 @@ public:
         randomx_flags flags = FlagsForMode(mode, try_large);
         m_cache = randomx_alloc_cache(flags);
         if (m_cache == nullptr && try_large) {
-            std::fprintf(stderr,
-                         "TrueNorth: [%s] randomx_alloc_cache failed with LARGE_PAGES; "
-                         "retrying without huge pages (configure vm.nr_hugepages on Linux, "
-                         "or SeLockMemoryPrivilege on Windows, to get the ~10-20%% hashrate boost)\n",
-                         must_have_large ? "ERROR" : "INFO");
+            if (must_have_large || g_fallback_notices) {
+                std::fprintf(stderr,
+                             "TrueNorth: [%s] randomx_alloc_cache failed with LARGE_PAGES; "
+                             "retrying without huge pages (configure vm.nr_hugepages on Linux, "
+                             "or SeLockMemoryPrivilege on Windows, to get the ~10-20%% hashrate boost)\n",
+                             must_have_large ? "ERROR" : "INFO");
+            }
             try_large = false;
             flags = FlagsForMode(mode, try_large);
             m_cache = randomx_alloc_cache(flags);
@@ -91,10 +100,12 @@ public:
                 // failed -- likely not enough huge pages reserved for
                 // both. Retry the dataset alone without huge pages;
                 // keep the cache as-is (mixed configuration is fine).
-                std::fprintf(stderr,
-                             "TrueNorth: [%s] randomx_alloc_dataset failed with LARGE_PAGES; "
-                             "retrying without huge pages\n",
-                             must_have_large ? "ERROR" : "INFO");
+                if (must_have_large || g_fallback_notices) {
+                    std::fprintf(stderr,
+                                 "TrueNorth: [%s] randomx_alloc_dataset failed with LARGE_PAGES; "
+                                 "retrying without huge pages\n",
+                                 must_have_large ? "ERROR" : "INFO");
+                }
                 randomx_flags ds_flags = FlagsForMode(mode, false);
                 m_dataset = randomx_alloc_dataset(ds_flags);
                 if (m_dataset != nullptr) {
@@ -362,6 +373,11 @@ void SetLargePagesPreference(LargePagesPref pref)
 {
     std::lock_guard<std::mutex> lock(g_slot_mutex);
     g_lp_pref = pref;
+}
+
+void SetRandomXFallbackNotices(bool enabled)
+{
+    g_fallback_notices = enabled;
 }
 
 LargePagesPref CurrentLargePagesPreference()
