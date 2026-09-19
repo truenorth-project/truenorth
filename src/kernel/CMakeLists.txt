@@ -20,6 +20,7 @@ add_library(bitcoinkernel
   mempool_removal_reason.cpp
   ../arith_uint256.cpp
   ../chain.cpp
+  ../checkpoints.cpp
   ../coins.cpp
   ../compressor.cpp
   ../consensus/merkle.cpp
@@ -57,6 +58,11 @@ add_library(bitcoinkernel
   ../streams.cpp
   ../support/lockedpool.cpp
   ../sync.cpp
+  ../truenorth/numa.cpp
+  ../truenorth/qrh.cpp
+  ../truenorth/randomx_wrapper.cpp
+  ../truenorth/seed_key.cpp
+  ../truenorth/system_mem.cpp
   ../txdb.cpp
   ../txmempool.cpp
   ../uint256.cpp
@@ -88,6 +94,7 @@ target_link_libraries(bitcoinkernel
   PRIVATE
     core_interface
     secp256k1_objs
+    randomx
     $<$<PLATFORM_ID:Windows>:bcrypt>
     $<TARGET_NAME_IF_EXISTS:USDT::headers>
   PUBLIC
@@ -95,6 +102,14 @@ target_link_libraries(bitcoinkernel
 )
 
 target_include_directories(bitcoinkernel PRIVATE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/leveldb/include>)
+# TrueNorth PoW: RandomX headers aren't exported by the vendored target
+# (see bitcoin_consensus in src/CMakeLists.txt), and numa.cpp needs
+# HAVE_LIBNUMA to match the consensus library's build when libnuma exists.
+target_include_directories(bitcoinkernel PRIVATE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/randomx/src>)
+if(NUMA_LIBRARY)
+  target_link_libraries(bitcoinkernel PRIVATE ${NUMA_LIBRARY})
+  target_compile_definitions(bitcoinkernel PRIVATE HAVE_LIBNUMA=1)
+endif()
 
 # libbitcoinkernel requires default symbol visibility, explicitly
 # specify that here so that things still work even when user
