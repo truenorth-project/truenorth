@@ -67,7 +67,7 @@ class ToolWalletTest(BitcoinTestFramework):
 
     def get_expected_info_output(self, name="", transactions=0, keypool=2, address=0, imported_privs=0):
         wallet_name = self.default_wallet_name if name == "" else name
-        output_types = 4  # p2pkh, p2sh, segwit, bech32m
+        output_types = 5  # p2pkh, p2sh, segwit, bech32m, p2qrh
         return textwrap.dedent('''\
             Wallet info
             ===========
@@ -122,7 +122,7 @@ class ToolWalletTest(BitcoinTestFramework):
         self.assert_tool_output(load_output, *args)
         assert (self.nodes[0].wallets_path / wallet_name).is_dir()
 
-        self.assert_tool_output("The dumpfile may contain private keys. To ensure the safety of your Bitcoin, do not share the dumpfile.\n", '-wallet={}'.format(wallet_name), '-dumpfile={}'.format(rt_dumppath), 'dump')
+        self.assert_tool_output("The dumpfile may contain private keys. To ensure the safety of your TrueNorth coins, do not share the dumpfile.\n", '-wallet={}'.format(wallet_name), '-dumpfile={}'.format(rt_dumppath), 'dump')
 
         wallet_dat = self.nodes[0].wallets_path / wallet_name / "wallet.dat"
         self.assert_is_sqlite(wallet_dat)
@@ -236,8 +236,8 @@ class ToolWalletTest(BitcoinTestFramework):
         self.log.debug('Wallet file timestamp after calling getwalletinfo: {}'.format(timestamp_after))
 
         assert_equal(0, out['txcount'])
-        assert_equal(4000, out['keypoolsize'])
-        assert_equal(4000, out['keypoolsize_hd_internal'])
+        assert_equal(5000, out['keypoolsize'])
+        assert_equal(5000, out['keypoolsize_hd_internal'])
 
         self.log_wallet_timestamp_comparison(timestamp_before, timestamp_after)
         assert_equal(timestamp_before, timestamp_after)
@@ -256,7 +256,7 @@ class ToolWalletTest(BitcoinTestFramework):
 
         self.log.info('Checking basic dump')
         wallet_dump = self.nodes[0].datadir_path / "wallet.dump"
-        self.assert_tool_output('The dumpfile may contain private keys. To ensure the safety of your Bitcoin, do not share the dumpfile.\n', '-wallet=todump', '-dumpfile={}'.format(wallet_dump), 'dump')
+        self.assert_tool_output('The dumpfile may contain private keys. To ensure the safety of your TrueNorth coins, do not share the dumpfile.\n', '-wallet=todump', '-dumpfile={}'.format(wallet_dump), 'dump')
 
         dump_data = self.read_dump(wallet_dump)
         orig_dump = dump_data.copy()
@@ -377,7 +377,7 @@ class ToolWalletTest(BitcoinTestFramework):
             Descriptors: yes
             Encrypted: no
             HD (hd seed available): yes
-            Keypool Size: 8
+            Keypool Size: 10
             Transactions: 4
             Address Book: 4
         ''')
@@ -411,7 +411,7 @@ class ToolWalletTest(BitcoinTestFramework):
         self.stop_node(0)
 
         wallet_dump = self.nodes[0].datadir_path / "bigrecords.dump"
-        self.assert_tool_output("The dumpfile may contain private keys. To ensure the safety of your Bitcoin, do not share the dumpfile.\n", "-wallet=bigrecords", f"-dumpfile={wallet_dump}", "dump")
+        self.assert_tool_output("The dumpfile may contain private keys. To ensure the safety of your TrueNorth coins, do not share the dumpfile.\n", "-wallet=bigrecords", f"-dumpfile={wallet_dump}", "dump")
         dump = self.read_dump(wallet_dump)
         for k,v in dump.items():
             if tx["hex"] in v:
