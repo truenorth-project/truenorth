@@ -182,10 +182,19 @@ enables P2SH, WITNESS, and TAPROOT unconditionally.
    it falls back to the first type the wallet can produce, in the order
    `bech32m`, `bech32`, `p2sh-segwit`, `legacy`. An explicitly requested
    type is never substituted; if the wallet can't produce it, the call
-   fails. Transaction change already follows the same preference in
-   `CWallet::TransactionChangeType`. These fallback addresses are **not**
-   quantum-resistant at rest; hardware-wallet users get P2QRH once their
-   device and HWI support `qrh()`.
+   fails. Fallback addresses are **not** quantum-resistant at rest;
+   hardware-wallet users get P2QRH once their device and HWI support
+   `qrh()`.
+6. **Change outputs.** When the wallet has a P2QRH descriptor and P2QRH is
+   the default (or any recipient is P2QRH), change always goes to a P2QRH
+   address, even when paying a Taproot or SegWit address. Bitcoin Core
+   matches change to the recipient type for privacy; TrueNorth prefers
+   keeping change quantum-resistant at rest.
+7. **PSBTs with external inputs.** The `scheme_id=0x01` sighash follows
+   BIP-341 and commits to the amounts and scripts of every input. A wallet
+   cannot sign its own P2QRH input in a PSBT that also spends inputs it
+   doesn't know until the PSBT carries UTXO data (`witness_utxo`) for all
+   inputs. This matches Taproot's behavior in Bitcoin Core.
 
 ## Rationale — key design decisions
 

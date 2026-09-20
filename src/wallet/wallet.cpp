@@ -2240,13 +2240,16 @@ OutputType CWallet::TransactionChangeType(const std::optional<OutputType>& chang
         return OutputType::LEGACY;
     }
 
+    bool any_qrh{false};
     bool any_tr{false};
     bool any_wpkh{false};
     bool any_sh{false};
     bool any_pkh{false};
 
     for (const auto& recipient : vecSend) {
-        if (std::get_if<WitnessV1Taproot>(&recipient.dest)) {
+        if (std::get_if<WitnessV2QRH>(&recipient.dest)) {
+            any_qrh = true;
+        } else if (std::get_if<WitnessV1Taproot>(&recipient.dest)) {
             any_tr = true;
         } else if (std::get_if<WitnessV0KeyHash>(&recipient.dest)) {
             any_wpkh = true;
@@ -2255,6 +2258,16 @@ OutputType CWallet::TransactionChangeType(const std::optional<OutputType>& chang
         } else if (std::get_if<PKHash>(&recipient.dest)) {
             any_pkh = true;
         }
+    }
+
+    // P2QRH change whenever the wallet can produce it and either P2QRH is the
+    // default or a recipient is P2QRH. Unlike the matching rules below, this
+    // applies even when paying a non-P2QRH address: keeping change
+    // quantum-resistant at rest outweighs the small privacy gain of matching
+    // the recipient's type. See doc/p2qrh.md.
+    const bool has_qrh_spkman(GetScriptPubKeyMan(OutputType::BECH32M_QRH, /*internal=*/true));
+    if (has_qrh_spkman && (any_qrh || m_default_address_type == OutputType::BECH32M_QRH)) {
+        return OutputType::BECH32M_QRH;
     }
 
     const bool has_bech32m_spkman(GetScriptPubKeyMan(OutputType::BECH32M, /*internal=*/true));
