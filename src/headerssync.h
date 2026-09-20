@@ -15,6 +15,8 @@
 #include <util/hasher.h>
 
 #include <deque>
+#include <map>
+#include <optional>
 #include <vector>
 
 // A compressed CBlockHeader, which leaves out the prevhash
@@ -126,6 +128,18 @@ public:
 
     /** Return the amount of work in the chain received during the PRESYNC phase. */
     arith_uint256 GetPresyncWork() const { return m_current_chain_work; }
+
+    /** If `first_prev_hash` is the tip of the chain received so far in this
+     *  sync (PRESYNC or REDOWNLOAD), return the height the next header would
+     *  have. Lets the RandomX proof-of-work pre-check find the right seed for
+     *  batches that don't connect to the block index. */
+    std::optional<int64_t> NextHeightIfContinuation(const uint256& first_prev_hash) const;
+
+    /** Hash of the block at `height` on the peer's chain, if known: from the
+     *  block index at or below the sync's starting point, otherwise as
+     *  recorded at a RandomX seed height (a multiple of
+     *  RANDOMX_EPOCH_LENGTH) while validating this sync's headers. */
+    std::optional<uint256> GetHashAtHeight(int64_t height) const;
 
     /** Construct a HeadersSyncState object representing a headers sync via this
      *  download-twice mechanism).
@@ -241,6 +255,12 @@ private:
 
     /** Height of m_last_header_received */
     int64_t m_current_height{0};
+
+    /** Block hashes at RandomX seed heights (multiples of
+     *  RANDOMX_EPOCH_LENGTH) above m_chain_start on the peer's chain, recorded
+     *  as headers are validated in either phase. One entry per epoch, so it
+     *  stays small; bounded by m_max_commitments / RANDOMX_EPOCH_LENGTH. */
+    std::map<int64_t, uint256> m_seed_hashes;
 
     /** During phase 2 (REDOWNLOAD), we buffer redownloaded headers in memory
      *  until enough commitments have been verified; those are stored in

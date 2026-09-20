@@ -644,7 +644,8 @@ private:
         EXCLUSIVE_LOCKS_REQUIRED(!m_peer_mutex, !m_headers_presync_mutex, g_msgproc_mutex);
     /** Various helpers for headers processing, invoked by ProcessHeadersMessage() */
     /** Return true if headers are continuous and have valid proof-of-work (DoS points assigned on failure) */
-    bool CheckHeadersPoW(const std::vector<CBlockHeader>& headers, const Consensus::Params& consensusParams, Peer& peer);
+    bool CheckHeadersPoW(const std::vector<CBlockHeader>& headers, const Consensus::Params& consensusParams, Peer& peer)
+        EXCLUSIVE_LOCKS_REQUIRED(!peer.m_headers_sync_mutex);
     /** Calculate an anti-DoS work threshold for headers chains */
     arith_uint256 GetAntiDoSWorkThreshold();
     /** Deal with state tracking and headers sync for peers that send
@@ -2482,7 +2483,24 @@ void PeerManagerImpl::SendBlockTransactions(CNode& pfrom, Peer& peer, const CBlo
 bool PeerManagerImpl::CheckHeadersPoW(const std::vector<CBlockHeader>& headers, const Consensus::Params& consensusParams, Peer& peer)
 {
     // Do these headers have proof-of-work matching what's claimed?
-    if (!HasValidProofOfWork(headers, m_chainman.m_blockman, consensusParams)) {
+    // Batches continuing a low-work headers sync don't connect to our block
+    // index, so their RandomX seeds come from the sync state instead.
+    bool pow_ok;
+    {
+        LOCK(peer.m_headers_sync_mutex);
+        std::optional<UnanchoredHeadersPoWContext> unanchored;
+        if (peer.m_headers_sync && !headers.empty()) {
+            const HeadersSyncState* sync{peer.m_headers_sync.get()};
+            if (auto next_height = sync->NextHeightIfContinuation(headers[0].hashPrevBlock)) {
+                unanchored = UnanchoredHeadersPoWContext{
+                    *next_height,
+                    [sync](int64_t height) { return sync->GetHashAtHeight(height); },
+                };
+            }
+        }
+        pow_ok = HasValidProofOfWork(headers, m_chainman.m_blockman, consensusParams, unanchored);
+    }
+    if (!pow_ok) {
         Misbehaving(peer, "header with invalid proof of work");
         return false;
     }

@@ -41,6 +41,7 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <functional>
 #include <optional>
 #include <set>
 #include <span>
@@ -410,17 +411,32 @@ BlockValidationState TestBlockValidity(
     bool check_pow,
     bool check_merkle_root) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
+/** Where to find RandomX seeds for a headers batch that doesn't connect to
+ *  the block index, such as a continuation batch during headers presync.
+ *  `start_height` is the height of headers[0]; `hash_at_height` returns the
+ *  hash of the block at a given height on the sending peer's chain, if known. */
+struct UnanchoredHeadersPoWContext {
+    int64_t start_height;
+    std::function<std::optional<uint256>(int64_t)> hash_at_height;
+};
+
 /** Check with the proof of work on each blockheader matches the value in
- *  nBits, using the per-epoch RandomX seed key derived from `blockman`'s
- *  index. Intended for anti-DoS pre-validation of an inbound peer header
- *  batch; deeper validation in AcceptBlockHeader runs the same check with
- *  the same seed.
- *  If the batch's anchor parent isn't in the index, falls back to the
- *  genesis seed (matches pre-#8 behaviour and lets deeper validation catch
- *  bogus headers). */
+ *  nBits, using the per-epoch RandomX seed key for each header's height.
+ *  Intended for anti-DoS pre-validation of an inbound peer header batch;
+ *  deeper validation in AcceptBlockHeader runs the same check with the same
+ *  seed. Headers already in `blockman`'s index are skipped: they passed this
+ *  check when accepted.
+ *  If the batch connects to `blockman`'s index, seeds come from the index.
+ *  Otherwise they come from `unanchored` when given (e.g. an in-progress
+ *  headers sync with this peer). With neither, the correct seed can't be
+ *  determined, so the check is skipped and returns true: such headers are
+ *  never stored (they can't start or continue a headers sync and are
+ *  handled as unconnecting), and checking them against a guessed seed would
+ *  wrongly punish honest peers past the genesis epoch. */
 bool HasValidProofOfWork(const std::vector<CBlockHeader>& headers,
                          const node::BlockManager& blockman,
-                         const Consensus::Params& consensusParams);
+                         const Consensus::Params& consensusParams,
+                         const std::optional<UnanchoredHeadersPoWContext>& unanchored = std::nullopt);
 
 /** Check if a block has been mutated (with respect to its merkle root and witness commitments). */
 bool IsBlockMutated(const CBlock& block, bool check_witness_root);

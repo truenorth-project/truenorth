@@ -5,6 +5,7 @@
 #include <headerssync.h>
 #include <logging.h>
 #include <pow.h>
+#include <truenorth/seed_key.h>
 #include <util/check.h>
 #include <util/time.h>
 #include <util/vector.h>
@@ -59,6 +60,7 @@ void HeadersSyncState::Finalize()
     m_redownload_buffer_first_prev_hash.SetNull();
     m_process_all_remaining_headers = false;
     m_current_height = 0;
+    m_seed_hashes.clear();
 
     m_download_state = State::FINAL;
 }
@@ -209,6 +211,9 @@ bool HeadersSyncState::ValidateAndProcessSingleHeader(const CBlockHeader& curren
     m_current_chain_work += GetBlockProof(CBlockIndex(current));
     m_last_header_received = current;
     m_current_height = next_height;
+    if (next_height % truenorth::RANDOMX_EPOCH_LENGTH == 0) {
+        m_seed_hashes[next_height] = current.GetHash();
+    }
 
     return true;
 }
@@ -274,6 +279,11 @@ bool HeadersSyncState::ValidateAndStoreRedownloadedHeader(const CBlockHeader& he
     m_redownloaded_headers.emplace_back(header);
     m_redownload_buffer_last_height = next_height;
     m_redownload_buffer_last_hash = header.GetHash();
+    if (next_height % truenorth::RANDOMX_EPOCH_LENGTH == 0) {
+        // Same chain as PRESYNC if commitments hold; record what we actually
+        // received so seeds for later redownload batches match it.
+        m_seed_hashes[next_height] = m_redownload_buffer_last_hash;
+    }
 
     return true;
 }
@@ -315,4 +325,28 @@ CBlockLocator HeadersSyncState::NextHeadersRequestLocator() const
     locator.insert(locator.end(), chain_start_locator.begin(), chain_start_locator.end());
 
     return CBlockLocator{std::move(locator)};
+}
+
+std::optional<int64_t> HeadersSyncState::NextHeightIfContinuation(const uint256& first_prev_hash) const
+{
+    if (m_download_state == State::PRESYNC && first_prev_hash == m_last_header_received.GetHash()) {
+        return m_current_height + 1;
+    }
+    if (m_download_state == State::REDOWNLOAD && first_prev_hash == m_redownload_buffer_last_hash) {
+        return m_redownload_buffer_last_height + 1;
+    }
+    return std::nullopt;
+}
+
+std::optional<uint256> HeadersSyncState::GetHashAtHeight(int64_t height) const
+{
+    if (m_download_state == State::FINAL || height < 0) return std::nullopt;
+    if (height <= m_chain_start->nHeight) {
+        const CBlockIndex* ancestor{m_chain_start->GetAncestor(height)};
+        if (ancestor == nullptr) return std::nullopt;
+        return ancestor->GetBlockHash();
+    }
+    const auto it{m_seed_hashes.find(height)};
+    if (it == m_seed_hashes.end()) return std::nullopt;
+    return it->second;
 }

@@ -76,6 +76,7 @@
 #include <span>
 #include <string>
 #include <tuple>
+#include <functional>
 #include <unordered_map>
 #include <utility>
 
@@ -4169,59 +4170,77 @@ std::vector<unsigned char> ChainstateManager::GenerateCoinbaseCommitment(CBlock&
 
 bool HasValidProofOfWork(const std::vector<CBlockHeader>& headers,
                          const node::BlockManager& blockman,
-                         const Consensus::Params& consensusParams)
+                         const Consensus::Params& consensusParams,
+                         const std::optional<UnanchoredHeadersPoWContext>& unanchored)
 {
     if (headers.empty()) return true;
 
-    // Anchor the batch to our chain: look up the first header's parent.
-    // If we can't anchor, we don't know what seed to use for any header
-    // in the batch -- fall back to the genesis-seed check (matches the
-    // pre-#8 anti-DoS behaviour). The deeper validation in AcceptBlockHeader
-    // uses the correct per-epoch seed and still rejects bogus headers.
+    // Work out headers[0]'s height and how to look up the block hash at a
+    // seed height on the sender's chain. Prefer anchoring to our index.
     const CBlockIndex* anchor_parent = nullptr;
+    // Headers already in our index passed this same check (with the same
+    // seed) in AcceptBlockHeader. RandomX costs ~20-30 ms per header, so
+    // re-checking headers a peer resends (or several peers send during IBD)
+    // would stall the message handler for no benefit.
+    std::vector<bool> already_known(headers.size(), false);
     {
         LOCK(::cs_main);
         anchor_parent = blockman.LookupBlockIndex(headers[0].hashPrevBlock);
+        for (size_t i = 0; i < headers.size(); ++i) {
+            already_known[i] = blockman.LookupBlockIndex(headers[i].GetHash()) != nullptr;
+        }
     }
-    if (anchor_parent == nullptr) {
-        return std::all_of(headers.cbegin(), headers.cend(),
-            [&](const auto& h) { return CheckProofOfWork(h.GetPoWHash(), h.nBits, consensusParams);});
+    int64_t next_height;
+    std::function<std::optional<uint256>(int64_t)> hash_at_height;
+    if (anchor_parent != nullptr) {
+        next_height = anchor_parent->nHeight + 1;
+        hash_at_height = [anchor_parent](int64_t height) -> std::optional<uint256> {
+            if (height > anchor_parent->nHeight) return std::nullopt;
+            // CBlockIndex memory is stable after creation; GetAncestor
+            // walks pprev/pskip without needing cs_main.
+            const CBlockIndex* ancestor{anchor_parent->GetAncestor(height)};
+            if (ancestor == nullptr) return std::nullopt;
+            return ancestor->GetBlockHash();
+        };
+    } else if (unanchored) {
+        next_height = unanchored->start_height;
+        hash_at_height = unanchored->hash_at_height;
+    } else {
+        // No way to know these headers' heights, so no way to pick the
+        // RandomX seed. See the header comment for why skipping is safe.
+        return true;
     }
-
-    // Assume the batch is a contiguous extension of anchor_parent.
-    // CheckHeadersAreContinuous verifies this separately in the caller; a
-    // non-contiguous batch would give us wrong per-header heights here but
-    // the continuity check still rejects the batch downstream.
-    int next_height = anchor_parent->nHeight + 1;
 
     // Cache the per-epoch seed lookup. Within a typical <=2000-header
     // batch the seed changes at most once (when crossing an epoch
     // boundary), so this loop is O(headers) with at most 1-2 seed
     // computations regardless of batch size.
-    int cached_seed_height = -1;
+    int64_t cached_seed_height = -1;
     uint256 cached_seed_key;
 
     // For the rare case where the batch crosses an epoch boundary such
     // that the seed block itself falls within the batch.
-    std::unordered_map<int, uint256> in_batch_hashes;
+    std::unordered_map<int64_t, uint256> in_batch_hashes;
     in_batch_hashes.reserve(headers.size());
 
-    for (const auto& header : headers) {
-        const int seed_height = truenorth::SeedHeightForNextHeight(next_height);
+    for (size_t i = 0; i < headers.size(); ++i) {
+        const CBlockHeader& header{headers[i]};
+        if (already_known[i]) {
+            in_batch_hashes[next_height] = header.GetHash();
+            ++next_height;
+            continue;
+        }
+        const int64_t seed_height = truenorth::SeedHeightForNextHeight(static_cast<int>(next_height));
         if (seed_height != cached_seed_height) {
             cached_seed_height = seed_height;
             if (seed_height == 0) {
                 cached_seed_key = truenorth::kGenesisSeed;
-            } else if (seed_height <= anchor_parent->nHeight) {
-                // CBlockIndex memory is stable after creation; GetAncestor
-                // walks pprev/pskip without needing cs_main.
-                const CBlockIndex* seed_block = anchor_parent->GetAncestor(seed_height);
-                if (seed_block == nullptr) return false;
-                cached_seed_key = seed_block->GetBlockHash();
-            } else {
-                auto it = in_batch_hashes.find(seed_height);
-                if (it == in_batch_hashes.end()) return false;
+            } else if (auto it = in_batch_hashes.find(seed_height); it != in_batch_hashes.end()) {
                 cached_seed_key = it->second;
+            } else if (auto hash = hash_at_height(seed_height)) {
+                cached_seed_key = *hash;
+            } else {
+                return false;
             }
         }
         if (!CheckProofOfWork(header.GetPoWHash(cached_seed_key), header.nBits, consensusParams)) {
