@@ -37,12 +37,20 @@ class GetblockstatsTest(BitcoinTestFramework):
         self.num_nodes = 1
         self.setup_clean_chain = True
 
+    def skip_test_if_missing_module(self):
+        # Only --gen-test-data needs the wallet (createwallet/sendtoaddress).
+        if self.options.gen_test_data:
+            self.skip_if_no_wallet()
+
     def get_stats(self):
         return [self.nodes[0].getblockstats(hash_or_height=self.start_height + i) for i in range(self.max_stat_pos+1)]
 
     def generate_test_data(self, filename):
         mocktime = 1525107225
         self.nodes[0].setmocktime(mocktime)
+        # The framework loads a default wallet once the wallet is enabled;
+        # unload it so the unqualified wallet calls below use 'test'.
+        self.nodes[0].unloadwallet(self.default_wallet_name)
         self.nodes[0].createwallet(wallet_name='test')
         privkey = self.nodes[0].get_deterministic_priv_key().key
         wallet_importprivkey(self.nodes[0], privkey, 0)
@@ -55,10 +63,10 @@ class GetblockstatsTest(BitcoinTestFramework):
 
         self.nodes[0].sendtoaddress(address=address, amount=10, subtractfeefromamount=True)
         self.nodes[0].sendtoaddress(address=address, amount=10, subtractfeefromamount=False)
-        self.nodes[0].settxfee(amount=0.003)
-        self.nodes[0].sendtoaddress(address=address, amount=1, subtractfeefromamount=True)
+        # 300 sat/vB (0.003/kvB); settxfee is deprecated, so pass fee_rate per call.
+        self.nodes[0].sendtoaddress(address=address, amount=1, subtractfeefromamount=True, fee_rate=300)
         # Send to OP_RETURN output to test its exclusion from statistics
-        self.nodes[0].send(outputs={"data": "21"})
+        self.nodes[0].send(outputs={"data": "21"}, fee_rate=300)
         self.sync_all()
         self.generate(self.nodes[0], 1)
 
@@ -169,18 +177,19 @@ class GetblockstatsTest(BitcoinTestFramework):
 
         self.log.info('Test block height 0')
         genesis_stats = self.nodes[0].getblockstats(0)
-        assert_equal(genesis_stats["blockhash"], "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206")
+        assert_equal(genesis_stats["blockhash"], "d911bd3ec7ba0f597643c3920f4d6e01ffd872fcae38e0aaab13eb42718aed2f")
         assert_equal(genesis_stats["utxo_increase"], 1)
-        assert_equal(genesis_stats["utxo_size_inc"], 117)
+        # TrueNorth genesis output is a bare OP_RETURN: 8 + 1 + 1 bytes + 41 per-UTXO overhead
+        assert_equal(genesis_stats["utxo_size_inc"], 51)
         assert_equal(genesis_stats["utxo_increase_actual"], 0)
         assert_equal(genesis_stats["utxo_size_inc_actual"], 0)
 
         self.log.info('Test tip including OP_RETURN')
         tip_stats = self.nodes[0].getblockstats(tip)
         assert_equal(tip_stats["utxo_increase"], 6)
-        assert_equal(tip_stats["utxo_size_inc"], 441)
+        assert_equal(tip_stats["utxo_size_inc"], 450)
         assert_equal(tip_stats["utxo_increase_actual"], 4)
-        assert_equal(tip_stats["utxo_size_inc_actual"], 300)
+        assert_equal(tip_stats["utxo_size_inc_actual"], 309)
 
         self.log.info("Test when only header is known")
         block = self.generateblock(self.nodes[0], output="raw(55)", transactions=[], submit=False)

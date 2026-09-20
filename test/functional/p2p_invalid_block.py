@@ -20,6 +20,7 @@ from test_framework.blocktools import (
     create_block,
     create_coinbase,
     create_tx_with_script,
+    get_block_subsidy,
 )
 from test_framework.messages import COIN
 from test_framework.p2p import P2PDataStore
@@ -99,7 +100,7 @@ class InvalidBlockRequestTest(BitcoinTestFramework):
 
         self.log.info("Test very broken block.")
 
-        block3 = create_block(tip, create_coinbase(height, nValue=100), block_time)
+        block3 = create_block(tip, create_coinbase(height, nValue=2 * get_block_subsidy(height) // COIN), block_time)
         block_time += 1
         block3.solve()
 

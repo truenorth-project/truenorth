@@ -16,15 +16,15 @@ transactions:
               output can be spent
     102:      a block containing a transaction spending the coinbase
               transaction output. The transaction has an invalid signature.
-    103-2202: bury the bad block with just over two weeks' worth of blocks
-              (2100 blocks)
+    103-10202: bury the bad block with just over two weeks' worth of blocks
+              (10100 blocks at TrueNorth's 120 s spacing; 14 days = 10080)
 
 Start three nodes:
 
-    - node0 has no -assumevalid parameter. Try to sync to block 2202. It will
+    - node0 has no -assumevalid parameter. Try to sync to block 10202. It will
       reject block 102 and only sync as far as block 101
     - node1 has -assumevalid set to the hash of block 102. Try to sync to
-      block 2202. node1 will sync all the way to block 2202.
+      block 10202. node1 will sync all the way to block 10202.
     - node2 has -assumevalid set to the hash of block 102. Try to sync to
       block 200. node2 will reject block 102 since it's assumed valid, but it
       isn't buried by at least two weeks' work.
@@ -45,6 +45,7 @@ from test_framework.messages import (
     msg_headers,
 )
 from test_framework.p2p import P2PInterface
+from test_framework import randomx
 from test_framework.script import (
     CScript,
     OP_TRUE,
@@ -128,9 +129,15 @@ class AssumeValidTest(BitcoinTestFramework):
         self.block_time += 1
         height += 1
 
-        # Bury the assumed valid block 2100 deep
-        for _ in range(2100):
+        # Bury the assumed valid block 10100 deep (two weeks at 120 s blocks,
+        # the assumevalid threshold in ConnectBlock). This crosses RandomX
+        # epochs, so blocks past the genesis epoch are solved under the seed
+        # block's hash (self.blocks[i] is at height i + 1).
+        for _ in range(10100):
             block = create_block(self.tip, create_coinbase(height), self.block_time)
+            seed_height = randomx.seed_height_for_height(height)
+            if seed_height:
+                block.pow_seed = self.blocks[seed_height - 1].hash_int.to_bytes(32, "little")
             block.solve()
             self.blocks.append(block)
             self.tip = block.hash_int
@@ -142,31 +149,33 @@ class AssumeValidTest(BitcoinTestFramework):
         self.start_node(2, extra_args=["-assumevalid=" + block102.hash_hex])
 
         p2p0 = self.nodes[0].add_p2p_connection(BaseNode())
-        p2p0.send_header_for_blocks(self.blocks[0:2000])
-        p2p0.send_header_for_blocks(self.blocks[2000:])
+        for i in range(0, len(self.blocks), 2000):
+            p2p0.send_header_for_blocks(self.blocks[i:i + 2000])
 
         # Send blocks to node0. Block 102 will be rejected.
         self.send_blocks_until_disconnected(p2p0)
-        self.wait_until(lambda: self.nodes[0].getblockcount() >= COINBASE_MATURITY + 1)
+        # RandomX PoW checks on ~10k headers plus blocks take far longer than
+        # SHA256d did; allow for it.
+        self.wait_until(lambda: self.nodes[0].getblockcount() >= COINBASE_MATURITY + 1, timeout=600)
         assert_equal(self.nodes[0].getblockcount(), COINBASE_MATURITY + 1)
 
         p2p1 = self.nodes[1].add_p2p_connection(BaseNode())
-        p2p1.send_header_for_blocks(self.blocks[0:2000])
-        p2p1.send_header_for_blocks(self.blocks[2000:])
+        for i in range(0, len(self.blocks), 2000):
+            p2p1.send_header_for_blocks(self.blocks[i:i + 2000])
         with self.nodes[1].assert_debug_log(expected_msgs=['Disabling signature validations at block #1', 'Enabling signature validations at block #103']):
             # Send all blocks to node1. All blocks will be accepted.
-            for i in range(2202):
-                p2p1.send_without_ping(msg_block(self.blocks[i]))
-            # Syncing 2200 blocks can take a while on slow systems. Give it plenty of time to sync.
-            p2p1.sync_with_ping(timeout=960)
-        assert_equal(self.nodes[1].getblock(self.nodes[1].getbestblockhash())['height'], 2202)
+            for block in self.blocks:
+                p2p1.send_without_ping(msg_block(block))
+            # Syncing ~10k RandomX blocks takes a while. Give it plenty of time to sync.
+            p2p1.sync_with_ping(timeout=2400)
+        assert_equal(self.nodes[1].getblock(self.nodes[1].getbestblockhash())['height'], len(self.blocks))
 
         p2p2 = self.nodes[2].add_p2p_connection(BaseNode())
         p2p2.send_header_for_blocks(self.blocks[0:200])
 
         # Send blocks to node2. Block 102 will be rejected.
         self.send_blocks_until_disconnected(p2p2)
-        self.wait_until(lambda: self.nodes[2].getblockcount() >= COINBASE_MATURITY + 1)
+        self.wait_until(lambda: self.nodes[2].getblockcount() >= COINBASE_MATURITY + 1, timeout=600)
         assert_equal(self.nodes[2].getblockcount(), COINBASE_MATURITY + 1)
 
 

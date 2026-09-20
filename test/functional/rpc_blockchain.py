@@ -36,6 +36,7 @@ from test_framework.blocktools import (
     create_block,
     create_coinbase,
     create_tx_with_script,
+    get_block_subsidy,
     nbits_str,
     target_str,
 )
@@ -66,7 +67,10 @@ TIME_RANGE_STEP = 600  # ten-minute steps
 TIME_RANGE_MTP = TIME_GENESIS_BLOCK + (HEIGHT - 6) * TIME_RANGE_STEP
 TIME_RANGE_TIP = TIME_GENESIS_BLOCK + (HEIGHT - 1) * TIME_RANGE_STEP
 TIME_RANGE_END = TIME_GENESIS_BLOCK + HEIGHT * TIME_RANGE_STEP
-DIFFICULTY_ADJUSTMENT_INTERVAL = 144
+# Regtest nPowTargetTimespan / nPowTargetSpacing (one day / 2 minutes), as used
+# by getnetworkhashps(-1). TrueNorth retargets every block (LWMA), so this is
+# only the RPC's nominal window.
+DIFFICULTY_ADJUSTMENT_INTERVAL = 24 * 60 * 60 // 120
 
 
 class BlockchainTest(BitcoinTestFramework):
@@ -361,7 +365,8 @@ class BlockchainTest(BitcoinTestFramework):
         node = self.nodes[0]
         res = node.gettxoutsetinfo()
 
-        assert_equal(res['total_amount'], Decimal('8725.00000000'))
+        # Sum of the regtest block subsidies at heights 1..HEIGHT.
+        assert_equal(res['total_amount'], Decimal(sum(get_block_subsidy(h) for h in range(1, HEIGHT + 1))) / COIN)
         assert_equal(res['transactions'], HEIGHT)
         assert_equal(res['height'], HEIGHT)
         assert_equal(res['txouts'], HEIGHT)
@@ -436,7 +441,7 @@ class BlockchainTest(BitcoinTestFramework):
         # Validate the gettxout response
         assert_equal(txout['bestblock'], best_block_hash)
         assert_equal(txout['confirmations'], 1)
-        assert_equal(txout['value'], 25)
+        assert_equal(txout['value'], Decimal(get_block_subsidy(block['height'])) / COIN)
         assert_equal(txout['scriptPubKey']['address'], self.wallet.get_address())
         assert_equal(txout['scriptPubKey']['hex'], self.wallet.get_output_script().hex())
         decoded_script = node.decodescript(self.wallet.get_output_script().hex())

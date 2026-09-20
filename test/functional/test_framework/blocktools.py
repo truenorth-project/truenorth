@@ -144,7 +144,21 @@ def script_BIP34_coinbase_height(height):
     return CScript([CScriptNum(height)])
 
 
-def create_coinbase(height, pubkey=None, *, script_pubkey=None, extra_output_script=None, fees=0, nValue=50, halving_period=REGTEST_RETARGET_PERIOD):
+# TrueNorth subsidy (mirrors GetBlockSubsidy in src/validation.cpp): 512
+# coins, halving every halving_period blocks, never below the 8-coin tail.
+INITIAL_BLOCK_SUBSIDY = 512 * COIN
+TAIL_BLOCK_SUBSIDY = 8 * COIN
+
+
+def get_block_subsidy(height, halving_period=REGTEST_RETARGET_PERIOD):
+    """Block subsidy in satoshis at `height` (regtest halving period by default)."""
+    halvings = height // halving_period
+    if halvings >= 64:
+        return TAIL_BLOCK_SUBSIDY
+    return max(INITIAL_BLOCK_SUBSIDY >> halvings, TAIL_BLOCK_SUBSIDY)
+
+
+def create_coinbase(height, pubkey=None, *, script_pubkey=None, extra_output_script=None, fees=0, nValue=None, halving_period=REGTEST_RETARGET_PERIOD):
     """Create a coinbase transaction.
 
     If pubkey is passed in, the coinbase output will be a P2PK output;
@@ -156,11 +170,12 @@ def create_coinbase(height, pubkey=None, *, script_pubkey=None, extra_output_scr
     coinbase.nLockTime = height - 1
     coinbase.vin.append(CTxIn(COutPoint(0, 0xffffffff), script_BIP34_coinbase_height(height), MAX_SEQUENCE_NONFINAL))
     coinbaseoutput = CTxOut()
-    coinbaseoutput.nValue = nValue * COIN
-    if nValue == 50:
-        halvings = int(height / halving_period)
-        coinbaseoutput.nValue >>= halvings
-        coinbaseoutput.nValue += fees
+    if nValue is None:
+        # Full subsidy for this height plus fees. An explicit nValue (in
+        # whole coins) is paid as-is, e.g. to test over- or under-paying.
+        coinbaseoutput.nValue = get_block_subsidy(height, halving_period) + fees
+    else:
+        coinbaseoutput.nValue = nValue * COIN
     if pubkey is not None:
         coinbaseoutput.scriptPubKey = key_to_p2pk_script(pubkey)
     elif script_pubkey is not None:

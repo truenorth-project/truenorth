@@ -17,11 +17,14 @@ class WalletChangeAddressTest(BitcoinTestFramework):
     def set_test_params(self):
         self.setup_clean_chain = True
         self.num_nodes = 3
-        # discardfee is used to make change outputs less likely in the change_pos test
+        # discardfee is added before the change_pos test (see run_test) to
+        # make change outputs less likely there. The change-index loop needs
+        # every send to produce change; P2QRH change costs more to spend than
+        # P2WPKH, so under -discardfee=1 some loop sends would drop change.
         self.extra_args = [
             [],
-            ["-discardfee=1"],
-            ["-avoidpartialspends", "-discardfee=1"]
+            [],
+            ["-avoidpartialspends"]
         ]
 
     def skip_test_if_missing_module(self):
@@ -68,7 +71,16 @@ class WalletChangeAddressTest(BitcoinTestFramework):
                 # find the change output and ensure that expected change index was used
                 self.assert_change_index(self.nodes[n], tx, i)
 
-        # Start next test with fresh wallets and new coins
+        # Start next test with fresh wallets and new coins. Confirm the loop's
+        # sends first so restarted nodes don't reload them into their mempools.
+        self.generate(self.nodes[0], 1)
+        # -nowallet: this section only uses the fresh w1/w2 wallets. Loading the
+        # default wallet at startup would print the high -discardfee warning
+        # to stderr, which the framework treats as a failure.
+        self.restart_node(1, extra_args=["-discardfee=1", "-nowallet"])
+        self.restart_node(2, extra_args=["-avoidpartialspends", "-discardfee=1", "-nowallet"])
+        self.connect_nodes(0, 1)
+        self.connect_nodes(0, 2)
         self.nodes[1].createwallet("w1")
         self.nodes[2].createwallet("w2")
         w1 = self.nodes[1].get_wallet_rpc("w1")
@@ -87,7 +99,10 @@ class WalletChangeAddressTest(BitcoinTestFramework):
 
         # The avoid partial spends wallet will always create a change output
         node = self.nodes[2]
-        res = w2.send({sendTo1: "1.0", sendTo2: "1.0", sendTo3: "0.9999"}, options={"change_position": 0})
+        # Change pinned to bech32: under -discardfee=1 the larger P2QRH change
+        # would be dropped to fees here (exceeding -maxtxfee), and this test
+        # is about change position, not change type.
+        res = w2.send({sendTo1: "1.0", sendTo2: "1.0", sendTo3: "0.9999"}, options={"change_position": 0, "change_type": "bech32"})
         tx = node.getrawtransaction(res["txid"], True)
         self.assert_change_pos(w2, tx, 0)
 
@@ -95,7 +110,7 @@ class WalletChangeAddressTest(BitcoinTestFramework):
         # then create a second candidate using APS that requires a change output.
         # Ensure that the user-configured change position is kept
         node = self.nodes[1]
-        res = w1.send({sendTo1: "1.0", sendTo2: "1.0", sendTo3: "0.9999"}, options={"change_position": 0})
+        res = w1.send({sendTo1: "1.0", sendTo2: "1.0", sendTo3: "0.9999"}, options={"change_position": 0, "change_type": "bech32"})
         tx = node.getrawtransaction(res["txid"], True)
         # If the wallet ignores the user's change_position there is still a 25%
         # that the random change position passes the test

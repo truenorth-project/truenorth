@@ -110,7 +110,7 @@ class MempoolAcceptanceTest(BitcoinTestFramework):
         self.generate(node, 1)
         self.mempool_size = 0
         # Also check feerate. 1BTC/kvB fails
-        assert_raises_rpc_error(-8, "Fee rates larger than or equal to 1BTC/kvB are not accepted", lambda: self.check_mempool_result(
+        assert_raises_rpc_error(-8, "Fee rates larger than or equal to 1 NORTH/kvB are not accepted", lambda: self.check_mempool_result(
             result_expected=None,
             rawtxs=[raw_tx_in_block],
             maxfeerate=1,
@@ -142,14 +142,16 @@ class MempoolAcceptanceTest(BitcoinTestFramework):
 
         self.log.info('A final transaction not in the mempool')
         output_amount = Decimal('0.025')
+        utxo_final = self.wallet.get_utxo()  # coinbase: 512 or 256 here, not 50
         tx = self.wallet.create_self_transfer(
+            utxo_to_spend=utxo_final,
             sequence=SEQUENCE_FINAL,
             locktime=node.getblockcount() + 2000,  # Can be anything
         )['tx']
         tx.vout[0].nValue = int(output_amount * COIN)
         raw_tx_final = tx.serialize().hex()
         tx = tx_from_hex(raw_tx_final)
-        fee_expected = Decimal('50.0') - output_amount
+        fee_expected = utxo_final['value'] - output_amount
         self.check_mempool_result(
             result_expected=[{'txid': tx.txid_hex, 'allowed': True, 'vsize': tx.get_vsize(), 'fees': {'base': fee_expected}}],
             rawtxs=[tx.serialize().hex()],

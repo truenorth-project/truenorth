@@ -80,7 +80,12 @@ class ReindexTest(BitcoinTestFramework):
 
     def continue_reindex_after_shutdown(self):
         node = self.nodes[0]
-        self.generate(node, 1500)
+        # 300 blocks rather than 1500: reindex re-checks RandomX PoW per block
+        # (~20-35ms each), so 300 already gives a reindex long enough to
+        # interrupt, while 1500 starves RPC (cs_main) past its timeout.
+        # Chunked because RandomX regtest mining is slower than SHA256d.
+        for _ in range(3):
+            self.generate(node, 100)
 
         # Restart node with reindex and stop reindex as soon as it starts reindexing
         self.log.info("Restarting node while reindexing..")

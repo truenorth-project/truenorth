@@ -14,7 +14,7 @@ from test_framework.wallet_util import get_generate_key
 
 
 KEYPOOL_SIZE = 100   # smaller than default size to speed-up test
-NUM_DESCRIPTORS = 9  # number of descriptors (8 default ranged ones + 1 fixed non-ranged one)
+NUM_DESCRIPTORS = 11  # 5 output types (incl. P2QRH) x external/internal + 1 imported
 NUM_BLOCKS = 6       # number of blocks to mine
 
 

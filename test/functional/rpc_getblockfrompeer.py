@@ -124,11 +124,15 @@ class GetBlockFromPeerTest(BitcoinTestFramework):
         pruned_node = self.nodes[2]
         self.sync_blocks([self.nodes[0], pruned_node])
 
-        # We need to generate more blocks to be able to prune
-        self.generate(self.nodes[0], 400, sync_fun=self.no_op)
+        # We need to generate more blocks to be able to prune. Chunked: RandomX
+        # regtest mining is slower than SHA256d.
+        for _ in range(4):
+            self.generate(self.nodes[0], 100, sync_fun=self.no_op)
         self.sync_blocks([self.nodes[0], pruned_node])
         pruneheight = pruned_node.pruneblockchain(300)
-        assert_equal(pruneheight, 248)
+        # Prune height follows block-file boundaries, i.e. serialized block
+        # sizes, which differ from upstream (e.g. P2QRH coinbase outputs).
+        assert_equal(pruneheight, 249)
         # Ensure the block is actually pruned
         pruned_block = self.nodes[0].getblockhash(2)
         assert_raises_rpc_error(-1, "Block not available (pruned data)", pruned_node.getblock, pruned_block)
@@ -146,7 +150,7 @@ class GetBlockFromPeerTest(BitcoinTestFramework):
         self.sync_blocks([self.nodes[0], pruned_node])
         pruneheight += 251
         assert_equal(pruned_node.pruneblockchain(700), pruneheight)
-        assert_equal(pruned_node.getblock(pruned_block)["hash"], "196ee3a1a6db2353965081c48ef8e6b031cb2115d084bec6fec937e91a2c6277")
+        assert_equal(pruned_node.getblock(pruned_block)["hash"], pruned_block)
 
         self.log.info("Fetched block can be pruned again when prune height exceeds the height of the tip at the time when the block was fetched")
         self.generate(self.nodes[0], 250, sync_fun=self.no_op)

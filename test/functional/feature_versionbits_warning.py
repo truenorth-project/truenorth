@@ -15,8 +15,11 @@ from test_framework.messages import msg_block
 from test_framework.p2p import P2PInterface
 from test_framework.test_framework import BitcoinTestFramework
 
-VB_PERIOD = 144           # versionbits period length for regtest
-VB_THRESHOLD = 108        # versionbits activation threshold for regtest
+# The unknown-versionbits warning uses DifficultyAdjustmentInterval() on test
+# chains (not the deployment period): 24h / 120s = 720 blocks on TrueNorth
+# regtest, with a 75% threshold. See WarningBitsConditionChecker.
+VB_PERIOD = 24 * 60 * 60 // 120
+VB_THRESHOLD = VB_PERIOD * 3 // 4
 VB_TOP_BITS = 0x20000000
 VB_UNKNOWN_BIT = 27       # Choose a bit unassigned to any deployment
 VB_UNKNOWN_VERSION = VB_TOP_BITS | (1 << VB_UNKNOWN_BIT)
@@ -53,6 +56,13 @@ class VersionBitsWarningTest(BitcoinTestFramework):
             tip = block.hash_int
         peer.sync_with_ping()
 
+    def generate_chunked(self, node, num_blocks, address):
+        """generatetoaddress in chunks; RandomX regtest mining is slower than SHA256d."""
+        while num_blocks > 0:
+            n = min(num_blocks, 100)
+            self.generatetoaddress(node, n, address)
+            num_blocks -= n
+
     def versionbits_in_alert_file(self):
         """Test that the versionbits warning has been written to the alert file."""
         with open(self.alert_filename, 'r', encoding='utf8') as f:
@@ -65,12 +75,12 @@ class VersionBitsWarningTest(BitcoinTestFramework):
 
         node_deterministic_address = node.get_deterministic_priv_key().address
         # Mine one period worth of blocks
-        self.generatetoaddress(node, VB_PERIOD, node_deterministic_address)
+        self.generate_chunked(node, VB_PERIOD, node_deterministic_address)
 
         self.log.info("Check that there is no warning if previous VB_BLOCKS have <VB_THRESHOLD blocks with unknown versionbits version.")
         # Build one period of blocks with < VB_THRESHOLD blocks signaling some unknown bit
         self.send_blocks_with_version(peer, VB_THRESHOLD - 1, VB_UNKNOWN_VERSION)
-        self.generatetoaddress(node, VB_PERIOD - VB_THRESHOLD + 1, node_deterministic_address)
+        self.generate_chunked(node, VB_PERIOD - VB_THRESHOLD + 1, node_deterministic_address)
 
         # Check that we're not getting any versionbit-related errors in get*info()
         assert not VB_PATTERN.match(",".join(node.getmininginfo()["warnings"]))
@@ -78,12 +88,12 @@ class VersionBitsWarningTest(BitcoinTestFramework):
 
         # Build one period of blocks with VB_THRESHOLD blocks signaling some unknown bit
         self.send_blocks_with_version(peer, VB_THRESHOLD, VB_UNKNOWN_VERSION)
-        self.generatetoaddress(node, VB_PERIOD - VB_THRESHOLD, node_deterministic_address)
+        self.generate_chunked(node, VB_PERIOD - VB_THRESHOLD, node_deterministic_address)
 
         self.log.info("Check that there is a warning if previous VB_BLOCKS have >=VB_THRESHOLD blocks with unknown versionbits version.")
         # Mine a period worth of expected blocks so the generic block-version warning
         # is cleared. This will move the versionbit state to ACTIVE.
-        self.generatetoaddress(node, VB_PERIOD, node_deterministic_address)
+        self.generate_chunked(node, VB_PERIOD, node_deterministic_address)
 
         # Stop-start the node. This is required because bitcoind will only warn once about unknown versions or unknown rules activating.
         self.restart_node(0)

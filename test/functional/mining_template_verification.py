@@ -25,6 +25,7 @@ from test_framework.util import (
 
 from test_framework.messages import (
     BLOCK_HEADER_SIZE,
+    COIN,
     uint256_from_compact,
 )
 
@@ -203,7 +204,11 @@ class MiningTemplateVerificationTest(BitcoinTestFramework):
         block_2_hash = node.getblockhash(block_0_height + 2)
 
         bad_tx = copy.deepcopy(tx)
-        bad_tx["tx"].vout[0].nValue = 10000000000
+        # One satoshi more than the input holds (the input is a 512/256-coin
+        # coinbase here, so a fixed 100-coin output would not overspend).
+        prevout = bad_tx["tx"].vin[0].prevout
+        in_value = node.gettxout(f"{prevout.hash:064x}", prevout.n)["value"]
+        bad_tx["tx"].vout[0].nValue = int(in_value * COIN) + 1
         bad_tx_hex = bad_tx["tx"].serialize().hex()
         assert_equal(
             node.testmempoolaccept([bad_tx_hex])[0]["reject-reason"],

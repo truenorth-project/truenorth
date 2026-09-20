@@ -144,7 +144,7 @@ class CreateWalletTest(BitcoinTestFramework):
             w6.keypoolrefill(1)
             # There should only be 1 key for legacy, 3 for descriptors
             walletinfo = w6.getwalletinfo()
-            keys = 4
+            keys = 5  # one per output type, P2QRH included
             assert_equal(walletinfo['keypoolsize'], keys)
             assert_equal(walletinfo['keypoolsize_hd_internal'], keys)
         # Allow empty passphrase, but there should be a warning

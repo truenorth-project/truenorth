@@ -11,6 +11,7 @@ from test_framework.address import (
     script_to_p2wsh,
 )
 from test_framework.blocktools import (
+    get_block_subsidy,
     send_to_witness,
     witness_script,
 )
@@ -60,7 +61,9 @@ def getutxo(txid):
 
 
 def find_spendable_utxo(node, min_value):
-    for utxo in node.listunspent(query_options={'minimumAmount': min_value}):
+    # Exact match: the amounts below assume a min_value input with a small fee
+    # (see the split before block 162).
+    for utxo in node.listunspent(query_options={'minimumAmount': min_value, 'maximumAmount': min_value}):
         if utxo['spendable']:
             return utxo
 
@@ -123,6 +126,11 @@ class SegWitTest(BitcoinTestFramework):
         assert_equal(tmpl['transactions'][0]['hash'], txid)
         assert_equal(tmpl['transactions'][0]['sigops'], 2)
         assert '!segwit' not in tmpl['rules']
+        # TrueNorth coinbases pay 512/256, not 50. The amounts in this test
+        # assume 50-coin inputs (send 49.999, pay a 0.001 fee), so create exact
+        # 50-coin outputs in block 162 for find_spendable_utxo. Legacy outputs,
+        # since segwit only activates at block 165.
+        self.nodes[0].sendmany("", {self.nodes[0].getnewaddress(address_type="legacy"): 50 for _ in range(70)})
         self.generate(self.nodes[0], 1)  # block 162
 
         balance_presetup = self.nodes[0].getbalance()
@@ -172,7 +180,8 @@ class SegWitTest(BitcoinTestFramework):
         self.generate(self.nodes[0], 1)  # block 163
 
         # Make sure all nodes recognize the transactions as theirs
-        assert_equal(self.nodes[0].getbalance(), balance_presetup - 60 * 50 + 20 * Decimal("49.999") + 50)
+        # + the block 63 coinbase, which matures at block 163
+        assert_equal(self.nodes[0].getbalance(), balance_presetup - 60 * 50 + 20 * Decimal("49.999") + Decimal(get_block_subsidy(63)) / COIN)
         assert_equal(self.nodes[1].getbalance(), 20 * Decimal("49.999"))
         assert_equal(self.nodes[2].getbalance(), 20 * Decimal("49.999"))
 

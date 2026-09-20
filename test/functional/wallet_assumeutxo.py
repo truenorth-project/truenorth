@@ -118,7 +118,7 @@ class AssumeutxoTest(BitcoinTestFramework):
 
         assert_equal(
             dump_output['txoutset_hash'],
-            "d2b051ff5e8eef46520350776f4100dd710a63447a8e01d917e92e79751a63e2")
+            "04a8c7899981c53e9af24916c5a9916597d7eabb0d7360c5c82ece16b522a29f")
         assert_equal(dump_output["nchaintx"], 334)
         assert_equal(n0.getblockchaininfo()["blocks"], SNAPSHOT_BASE_HEIGHT)
 
@@ -189,7 +189,9 @@ class AssumeutxoTest(BitcoinTestFramework):
         # assertions and the -stopatheight tripping.
         self.connect_nodes(0, 1, wait_for_connect=False)
 
-        n1.wait_until_stopped(timeout=5)
+        # RandomX block validation makes syncing to -stopatheight slower than
+        # upstream's 5 s allowance.
+        n1.wait_until_stopped(timeout=60)
 
         self.log.info(
             "Restarted node before snapshot validation completed, reloading...")

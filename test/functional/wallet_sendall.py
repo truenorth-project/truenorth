@@ -52,8 +52,10 @@ class SendallTest(BitcoinTestFramework):
             self.assert_tx_has_output(tx, eo["address"], eo["value"])
 
     def add_utxos(self, amounts):
+        # P2WPKH, not the P2QRH default: the dust amounts and effective-value
+        # expectations in these tests are calibrated for P2WPKH outputs.
         for a in amounts:
-            self.def_wallet.sendtoaddress(self.wallet.getnewaddress(), a)
+            self.def_wallet.sendtoaddress(self.wallet.getnewaddress(address_type="bech32"), a)
         self.generate(self.nodes[0], 1)
         assert_greater_than(self.wallet.getbalances()["mine"]["trusted"], 0)
         return self.wallet.getbalances()["mine"]["trusted"]
@@ -171,8 +173,10 @@ class SendallTest(BitcoinTestFramework):
         self.nodes[0].createwallet("dustwallet")
         dust_wallet = self.nodes[0].get_wallet_rpc("dustwallet")
 
-        self.def_wallet.sendtoaddress(dust_wallet.getnewaddress(), 0.00000400)
-        self.def_wallet.sendtoaddress(dust_wallet.getnewaddress(), 0.00000300)
+        # P2WPKH outputs: 300 sat is above the P2WPKH dust threshold (294) but
+        # below the one for 34-byte witness programs such as the P2QRH default (330).
+        self.def_wallet.sendtoaddress(dust_wallet.getnewaddress(address_type="bech32"), 0.00000400)
+        self.def_wallet.sendtoaddress(dust_wallet.getnewaddress(address_type="bech32"), 0.00000300)
         self.generate(self.nodes[0], 1)
         assert_greater_than(dust_wallet.getbalances()["mine"]["trusted"], 0)
 

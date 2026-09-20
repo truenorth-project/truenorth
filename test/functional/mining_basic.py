@@ -50,7 +50,7 @@ from test_framework.wallet import (
 )
 
 
-DIFFICULTY_ADJUSTMENT_INTERVAL = 144
+DIFFICULTY_ADJUSTMENT_INTERVAL = 24 * 60 * 60 // 120  # regtest nPowTargetTimespan / nPowTargetSpacing
 MAX_FUTURE_BLOCK_TIME = 2 * 3600
 MAX_TIMEWARP = 600
 VERSIONBITS_TOP_BITS = 0x20000000
@@ -250,7 +250,10 @@ class MiningTest(BitcoinTestFramework):
     def test_pruning(self):
         self.log.info("Test that submitblock stores previously pruned block")
         prune_node = self.nodes[2]
-        self.generate(prune_node, 400, sync_fun=self.no_op)
+        # RandomX regtest mining is slower than SHA256d; generate in chunks to
+        # stay under the RPC timeout.
+        for _ in range(8):
+            self.generate(prune_node, 50, sync_fun=self.no_op)
         pruned_block = prune_node.getblock(prune_node.getblockhash(2), verbosity=0)
         pruned_height = prune_node.pruneblockchain(400)
         assert_greater_than_or_equal(pruned_height, 2)

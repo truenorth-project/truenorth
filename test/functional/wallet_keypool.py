@@ -6,6 +6,7 @@
 
 from decimal import Decimal
 
+from test_framework.descriptors import descsum_create
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import (
     assert_equal,
@@ -69,6 +70,20 @@ class KeyPoolTest(BitcoinTestFramework):
                 "range": [0,0],
                 "active": True,
                 "internal": True
+            },
+            # P2QRH is the default address type, so shrink it to one key too.
+            {
+                "desc": descsum_create("qrh(tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK/6h/*h)"),
+                "timestamp": "now",
+                "range": [0,0],
+                "active": True
+            },
+            {
+                "desc": descsum_create("qrh(tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK/7h/*h)"),
+                "timestamp": "now",
+                "range": [0,0],
+                "active": True,
+                "internal": True
             }
         ])
         nodes[0].walletlock()
@@ -82,8 +97,8 @@ class KeyPoolTest(BitcoinTestFramework):
         with WalletUnlock(nodes[0], 'test'):
             nodes[0].keypoolrefill(6)
         wi = nodes[0].getwalletinfo()
-        assert_equal(wi['keypoolsize_hd_internal'], 24)
-        assert_equal(wi['keypoolsize'], 24)
+        assert_equal(wi['keypoolsize_hd_internal'], 30)  # 6 keys x 5 output types
+        assert_equal(wi['keypoolsize'], 30)
 
         # drain the internal keys
         nodes[0].getrawchangeaddress()
@@ -104,12 +119,12 @@ class KeyPoolTest(BitcoinTestFramework):
 
         # drain the external keys
         addr = set()
-        addr.add(nodes[0].getnewaddress(address_type="bech32"))
-        addr.add(nodes[0].getnewaddress(address_type="bech32"))
-        addr.add(nodes[0].getnewaddress(address_type="bech32"))
-        addr.add(nodes[0].getnewaddress(address_type="bech32"))
-        addr.add(nodes[0].getnewaddress(address_type="bech32"))
-        addr.add(nodes[0].getnewaddress(address_type="bech32"))
+        addr.add(nodes[0].getnewaddress(address_type="bech32m-qrh"))
+        addr.add(nodes[0].getnewaddress(address_type="bech32m-qrh"))
+        addr.add(nodes[0].getnewaddress(address_type="bech32m-qrh"))
+        addr.add(nodes[0].getnewaddress(address_type="bech32m-qrh"))
+        addr.add(nodes[0].getnewaddress(address_type="bech32m-qrh"))
+        addr.add(nodes[0].getnewaddress(address_type="bech32m-qrh"))
         assert len(addr) == 6
         # remember keypool sizes
         wi = nodes[0].getwalletinfo()
@@ -139,8 +154,8 @@ class KeyPoolTest(BitcoinTestFramework):
         with WalletUnlock(nodes[0], 'test'):
             nodes[0].keypoolrefill(100)
             wi = nodes[0].getwalletinfo()
-            assert_equal(wi['keypoolsize_hd_internal'], 400)
-            assert_equal(wi['keypoolsize'], 400)
+            assert_equal(wi['keypoolsize_hd_internal'], 500)  # 100 keys x 5 output types
+            assert_equal(wi['keypoolsize'], 500)
 
         # create a blank wallet
         nodes[0].createwallet(wallet_name='w2', blank=True, disable_private_keys=True)
@@ -172,17 +187,19 @@ class KeyPoolTest(BitcoinTestFramework):
         res = w2.walletcreatefundedpsbt(inputs=[], outputs=[{destination: 0.00010000}], subtractFeeFromOutputs=[0], feeRate=0.00010)
         assert_equal("psbt" in res, True)
         # should work without subtractFeeFromOutputs if the exact fee is subtracted from the amount
-        res = w2.walletcreatefundedpsbt(inputs=[], outputs=[{destination: 0.00008900}], feeRate=0.00010)
+        # (P2QRH in -> P2QRH out; coin selection budgets 121 vB, so 1210 sat at 10 sat/vB)
+        res = w2.walletcreatefundedpsbt(inputs=[], outputs=[{destination: 0.00008790}], feeRate=0.00010)
         assert_equal("psbt" in res, True)
 
         # dust change should be removed
-        res = w2.walletcreatefundedpsbt(inputs=[], outputs=[{destination: 0.00008800}], feeRate=0.00010)
+        res = w2.walletcreatefundedpsbt(inputs=[], outputs=[{destination: 0.00008690}], feeRate=0.00010)
         assert_equal("psbt" in res, True)
 
         # create a transaction without change at the maximum fee rate, such that the output is still spendable:
-        res = w2.walletcreatefundedpsbt(inputs=[], outputs=[{destination: 0.00010000}], subtractFeeFromOutputs=[0], feeRate=0.0008823)
+        # (leaves 330 sat, the P2QRH dust threshold, same as P2TR)
+        res = w2.walletcreatefundedpsbt(inputs=[], outputs=[{destination: 0.00010000}], subtractFeeFromOutputs=[0], feeRate=0.0008058)
         assert_equal("psbt" in res, True)
-        assert_equal(res["fee"], Decimal("0.00009706"))
+        assert_equal(res["fee"], Decimal("0.00009670"))
 
         # creating a 10,000 sat transaction with a manual change address should be possible
         res = w2.walletcreatefundedpsbt(inputs=[], outputs=[{destination: 0.00010000}], subtractFeeFromOutputs=[0], feeRate=0.00010, changeAddress=addr.pop())

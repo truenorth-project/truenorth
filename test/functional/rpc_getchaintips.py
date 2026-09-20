@@ -13,7 +13,9 @@
 from test_framework.blocktools import (
     create_block,
     create_coinbase,
+    get_block_subsidy,
 )
+from test_framework.messages import COIN
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal
 
@@ -69,7 +71,7 @@ class GetChainTipsTest (BitcoinTestFramework):
         start_height = self.nodes[0].getblockcount()
         # Create invalid block (too high coinbase)
         block_time = n0.getblock(n0.getbestblockhash())['time'] + 1
-        invalid_block = create_block(tip, create_coinbase(start_height+1, nValue=100), block_time)
+        invalid_block = create_block(tip, create_coinbase(start_height+1, nValue=2 * get_block_subsidy(start_height + 1) // COIN), block_time)
         invalid_block.solve()
 
         block_time += 1

@@ -1315,8 +1315,9 @@ class SegWitTest(BitcoinTestFramework):
         assert_equal(len(self.nodes[1].getrawmempool()), 0)
         for version in list(range(OP_1, OP_16 + 1)) + [OP_0]:
             # First try to spend to a future version segwit script_pubkey.
-            if version == OP_1:
+            if version in (OP_1, OP_2):
                 # Don't use 32-byte v1 witness (used by Taproot; see BIP 341)
+                # or 32-byte v2 witness (used by P2QRH on TrueNorth; see doc/p2qrh.md)
                 script_pubkey = CScript([CScriptOp(version), witness_hash + b'\x00'])
             else:
                 script_pubkey = CScript([CScriptOp(version), witness_hash])
@@ -1332,7 +1333,8 @@ class SegWitTest(BitcoinTestFramework):
 
         # Finally, verify that version 0 -> version 2 transactions
         # are standard
-        script_pubkey = CScript([CScriptOp(OP_2), witness_hash])
+        # 33-byte program: a 32-byte v2 program is P2QRH on TrueNorth.
+        script_pubkey = CScript([CScriptOp(OP_2), witness_hash + b'\x00'])
         tx2 = CTransaction()
         tx2.vin = [CTxIn(COutPoint(tx.txid_int, 0), b"")]
         tx2.vout = [CTxOut(tx.vout[0].nValue - 1000, script_pubkey)]

@@ -15,6 +15,7 @@ from test_framework.blocktools import (
     COINBASE_MATURITY,
     create_block,
     create_coinbase,
+    get_block_subsidy,
 )
 from test_framework.messages import (
     COIN,
@@ -37,6 +38,11 @@ from test_framework.wallet import (
 )
 
 
+# Regtest genesis and block rewards (all heights here are below the first
+# halving at 150). The genesis coinbase is unspendable.
+GENESIS_REWARD = Decimal(get_block_subsidy(0)) / COIN
+SUBSIDY = Decimal(get_block_subsidy(1)) / COIN
+
 class CoinStatsIndexTest(BitcoinTestFramework):
     def set_test_params(self):
         self.setup_clean_chain = True
@@ -55,7 +61,8 @@ class CoinStatsIndexTest(BitcoinTestFramework):
         self._test_init_index_after_reorg()
 
     def block_sanity_check(self, block_info):
-        block_subsidy = 50
+        # All blocks checked here (genesis included) are below the first halving.
+        block_subsidy = SUBSIDY
         assert_equal(
             block_info['prevout_spent'] + block_subsidy,
             block_info['new_outputs_ex_coinbase'] + block_info['coinbase'] + block_info['unspendable']
@@ -116,14 +123,14 @@ class CoinStatsIndexTest(BitcoinTestFramework):
         for hash_option in index_hash_options:
             # Genesis block is unspendable
             res4 = index_node.gettxoutsetinfo(hash_option, 0)
-            assert_equal(res4['total_unspendable_amount'], 50)
+            assert_equal(res4['total_unspendable_amount'], GENESIS_REWARD)
             assert_equal(res4['block_info'], {
-                'unspendable': 50,
+                'unspendable': GENESIS_REWARD,
                 'prevout_spent': 0,
                 'new_outputs_ex_coinbase': 0,
                 'coinbase': 0,
                 'unspendables': {
-                    'genesis_block': 50,
+                    'genesis_block': GENESIS_REWARD,
                     'bip30': 0,
                     'scripts': 0,
                     'unclaimed_rewards': 0
@@ -133,12 +140,12 @@ class CoinStatsIndexTest(BitcoinTestFramework):
 
             # Test an older block height that included a normal tx
             res5 = index_node.gettxoutsetinfo(hash_option, 102)
-            assert_equal(res5['total_unspendable_amount'], 50)
+            assert_equal(res5['total_unspendable_amount'], GENESIS_REWARD)
             assert_equal(res5['block_info'], {
                 'unspendable': 0,
-                'prevout_spent': 50,
-                'new_outputs_ex_coinbase': Decimal('49.99968800'),
-                'coinbase': Decimal('50.00031200'),
+                'prevout_spent': SUBSIDY,
+                'new_outputs_ex_coinbase': SUBSIDY - Decimal('0.00031200'),
+                'coinbase': SUBSIDY + Decimal('0.00031200'),
                 'unspendables': {
                     'genesis_block': 0,
                     'bip30': 0,
@@ -171,12 +178,12 @@ class CoinStatsIndexTest(BitcoinTestFramework):
         for hash_option in index_hash_options:
             # Check all amounts were registered correctly
             res6 = index_node.gettxoutsetinfo(hash_option, 108)
-            assert_equal(res6['total_unspendable_amount'], Decimal('70.99000000'))
+            assert_equal(res6['total_unspendable_amount'], GENESIS_REWARD + Decimal('20.99000000'))
             assert_equal(res6['block_info'], {
                 'unspendable': Decimal('20.99000000'),
-                'prevout_spent': 71,
-                'new_outputs_ex_coinbase': Decimal('49.99999000'),
-                'coinbase': Decimal('50.01001000'),
+                'prevout_spent': SUBSIDY + 21,
+                'new_outputs_ex_coinbase': SUBSIDY - Decimal('0.00001000'),
+                'coinbase': SUBSIDY + Decimal('0.01001000'),
                 'unspendables': {
                     'genesis_block': 0,
                     'bip30': 0,
@@ -201,9 +208,9 @@ class CoinStatsIndexTest(BitcoinTestFramework):
 
         for hash_option in index_hash_options:
             res7 = index_node.gettxoutsetinfo(hash_option, 109)
-            assert_equal(res7['total_unspendable_amount'], Decimal('80.99000000'))
+            assert_equal(res7['total_unspendable_amount'], GENESIS_REWARD + Decimal('20.99000000') + SUBSIDY - 40)
             assert_equal(res7['block_info'], {
-                'unspendable': 10,
+                'unspendable': SUBSIDY - 40,
                 'prevout_spent': 0,
                 'new_outputs_ex_coinbase': 0,
                 'coinbase': 40,
@@ -211,7 +218,7 @@ class CoinStatsIndexTest(BitcoinTestFramework):
                     'genesis_block': 0,
                     'bip30': 0,
                     'scripts': 0,
-                    'unclaimed_rewards': 10
+                    'unclaimed_rewards': SUBSIDY - 40
                 }
             })
             self.block_sanity_check(res7['block_info'])

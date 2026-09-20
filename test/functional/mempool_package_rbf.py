@@ -330,16 +330,25 @@ class PackageRBFTest(BitcoinTestFramework):
         # Now make conflicting packages for each coin
         package_hex1, _package_txns1 = self.create_simple_package(coin1, DEFAULT_FEE, DEFAULT_CHILD_FEE)
 
+        # Conflicting with any of the three pulls the whole cluster into the
+        # topology check, which walks it in txid order and reports the first
+        # violation. Which one comes first depends on the txids, so accept any
+        # of the cluster's violations.
+        cluster_violations = (
+            f"package RBF failed: {parent_result['tx'].txid_hex} has 2 descendants, max 1 allowed",
+            f"package RBF failed: {child_result['tx'].txid_hex} has both ancestor and descendant, exceeding cluster limit of 2",
+            f"package RBF failed: {grandchild_result['tx'].txid_hex} has 2 ancestors, max 1 allowed",
+        )
         package_result = node.submitpackage(package_hex1)
-        assert_equal(f"package RBF failed: {parent_result['tx'].txid_hex} has 2 descendants, max 1 allowed", package_result["package_msg"])
+        assert package_result["package_msg"] in cluster_violations, package_result["package_msg"]
 
         package_hex2, _package_txns2 = self.create_simple_package(coin2, DEFAULT_FEE, DEFAULT_CHILD_FEE)
         package_result = node.submitpackage(package_hex2)
-        assert_equal(f"package RBF failed: {child_result['tx'].txid_hex} has both ancestor and descendant, exceeding cluster limit of 2", package_result["package_msg"])
+        assert package_result["package_msg"] in cluster_violations, package_result["package_msg"]
 
         package_hex3, _package_txns3 = self.create_simple_package(coin3, DEFAULT_FEE, DEFAULT_CHILD_FEE)
         package_result = node.submitpackage(package_hex3)
-        assert_equal(f"package RBF failed: {grandchild_result['tx'].txid_hex} has 2 ancestors, max 1 allowed", package_result["package_msg"])
+        assert package_result["package_msg"] in cluster_violations, package_result["package_msg"]
 
         # Check that replacements were actually rejected
         self.assert_mempool_contents(expected=expected_txns)
@@ -382,16 +391,22 @@ class PackageRBFTest(BitcoinTestFramework):
 
         # Now make conflicting packages for each coin
         package_hex1, _package_txns1 = self.create_simple_package(coin1, DEFAULT_FEE, DEFAULT_CHILD_FEE)
+        # The whole cluster is checked in txid order; accept any of its violations.
+        cluster_violations = (
+            f"package RBF failed: {parent1_result['tx'].txid_hex} is not the only parent of child {child_result['tx'].txid_hex}",
+            f"package RBF failed: {parent2_result['tx'].txid_hex} is not the only parent of child {child_result['tx'].txid_hex}",
+            f"package RBF failed: {child_result['tx'].txid_hex} has 2 ancestors, max 1 allowed",
+        )
         package_result = node.submitpackage(package_hex1)
-        assert_equal(f"package RBF failed: {parent1_result['tx'].txid_hex} is not the only parent of child {child_result['tx'].txid_hex}", package_result["package_msg"])
+        assert package_result["package_msg"] in cluster_violations, package_result["package_msg"]
 
         package_hex2, _package_txns2 = self.create_simple_package(coin2, DEFAULT_FEE, DEFAULT_CHILD_FEE)
         package_result = node.submitpackage(package_hex2)
-        assert_equal(f"package RBF failed: {child_result['tx'].txid_hex} has 2 ancestors, max 1 allowed", package_result["package_msg"])
+        assert package_result["package_msg"] in cluster_violations, package_result["package_msg"]
 
         package_hex3, _package_txns3 = self.create_simple_package(coin3, DEFAULT_FEE, DEFAULT_CHILD_FEE)
         package_result = node.submitpackage(package_hex3)
-        assert_equal(f"package RBF failed: {child_result['tx'].txid_hex} has 2 ancestors, max 1 allowed", package_result["package_msg"])
+        assert package_result["package_msg"] in cluster_violations, package_result["package_msg"]
 
         # Check that replacements were actually rejected
         self.assert_mempool_contents(expected=expected_txns)
@@ -436,16 +451,22 @@ class PackageRBFTest(BitcoinTestFramework):
 
         # Now make conflicting packages for each coin
         package_hex1, _package_txns1 = self.create_simple_package(coin1, DEFAULT_FEE, DEFAULT_CHILD_FEE)
+        # The whole cluster is checked in txid order; accept any of its violations.
+        cluster_violations = (
+            f"package RBF failed: {child1_result['tx'].txid_hex} is not the only child of parent {parent_result['tx'].txid_hex}",
+            f"package RBF failed: {child2_result['tx'].txid_hex} is not the only child of parent {parent_result['tx'].txid_hex}",
+            f"package RBF failed: {parent_result['tx'].txid_hex} has 2 descendants, max 1 allowed",
+        )
         package_result = node.submitpackage(package_hex1)
-        assert_equal(f"package RBF failed: {child1_result['tx'].txid_hex} is not the only child of parent {parent_result['tx'].txid_hex}", package_result["package_msg"])
+        assert package_result["package_msg"] in cluster_violations, package_result["package_msg"]
 
         package_hex2, _package_txns2 = self.create_simple_package(coin2, DEFAULT_FEE, DEFAULT_CHILD_FEE)
         package_result = node.submitpackage(package_hex2)
-        assert_equal(f"package RBF failed: {child1_result['tx'].txid_hex} is not the only child of parent {parent_result['tx'].txid_hex}", package_result["package_msg"])
+        assert package_result["package_msg"] in cluster_violations, package_result["package_msg"]
 
         package_hex3, _package_txns3 = self.create_simple_package(coin3, DEFAULT_FEE, DEFAULT_CHILD_FEE)
         package_result = node.submitpackage(package_hex3)
-        assert_equal(f"package RBF failed: {child2_result['tx'].txid_hex} is not the only child of parent {parent_result['tx'].txid_hex}", package_result["package_msg"])
+        assert package_result["package_msg"] in cluster_violations, package_result["package_msg"]
 
         # Check that replacements were actually rejected
         self.assert_mempool_contents(expected=expected_txns)

@@ -40,7 +40,7 @@ MAX_BLOOM_FILTER_SIZE = 36000
 MAX_BLOOM_HASH_FUNCS = 50
 
 COIN = 100000000  # 1 btc in satoshis
-MAX_MONEY = 21000000 * COIN
+MAX_MONEY = 10_000_000_000 * COIN  # src/consensus/amount.h
 
 MAX_BIP125_RBF_SEQUENCE = 0xfffffffd  # Sequence number that is rbf-opt-in (BIP 125) and csv-opt-out (BIP 68)
 MAX_SEQUENCE_NONFINAL = 0xfffffffe  # Sequence number that is csv-opt-out (BIP 68)
@@ -84,11 +84,13 @@ DEFAULT_MEMPOOL_EXPIRY_HOURS = 336  # hours
 TX_MIN_STANDARD_VERSION = 1
 TX_MAX_STANDARD_VERSION = 3
 
+# pchMessageStart in src/kernel/chainparams.cpp. Signet is the default
+# challenge (6a): first 4 bytes of sha256d(ser(challenge)).
 MAGIC_BYTES = {
-    "mainnet": b"\xf9\xbe\xb4\xd9",
-    "testnet4": b"\x1c\x16\x3f\x28",
+    "mainnet": b"\xfa\xc4\xb8\xd2",
+    "testnet4": b"\xfa\xc4\xb8\xd4",
     "regtest": b"\xfa\xbf\xb5\xda",
-    "signet": b"\x0a\x03\xcf\x40",
+    "signet": b"\x36\x34\x69\xbb",
 }
 
 def sha256(s):
