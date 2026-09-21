@@ -4,9 +4,9 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Tests NODE_NETWORK_LIMITED.
 
-Tests that a node configured with -prune=550 signals NODE_NETWORK_LIMITED correctly
+Tests that a node configured with -prune=1500 signals NODE_NETWORK_LIMITED correctly
 and that it responds to getdata requests for blocks correctly:
-    - send a block within 288 + 2 of the tip
+    - send a block within 960 + 2 of the tip
     - disconnect peers who request blocks older than that."""
 from test_framework.messages import (
     CInv,
@@ -25,7 +25,7 @@ from test_framework.util import (
 )
 
 # Minimum blocks required to signal NODE_NETWORK_LIMITED #
-NODE_NETWORK_LIMITED_MIN_BLOCKS = 288
+NODE_NETWORK_LIMITED_MIN_BLOCKS = 960  # src/net_processing.cpp
 
 class P2PIgnoreInv(P2PInterface):
     firstAddrnServices = 0
@@ -46,7 +46,7 @@ class NodeNetworkLimitedTest(BitcoinTestFramework):
     def set_test_params(self):
         self.setup_clean_chain = True
         self.num_nodes = 3
-        self.extra_args = [['-prune=550'], [], []]
+        self.extra_args = [['-prune=1500'], [], []]
 
     def disconnect_all(self):
         self.disconnect_nodes(0, 1)
@@ -79,7 +79,12 @@ class NodeNetworkLimitedTest(BitcoinTestFramework):
         # Mine blocks and sync the pruned node. Surpass the NETWORK_NODE_LIMITED threshold.
         # Blocks deeper than the threshold are considered "historical blocks"
         num_historial_blocks = 12
-        self.generate(miner, NODE_NETWORK_LIMITED_MIN_BLOCKS + num_historial_blocks, sync_fun=self.no_op)
+        # Chunked: see note below; one RPC for ~970 RandomX blocks exceeds the timeout.
+        remaining = NODE_NETWORK_LIMITED_MIN_BLOCKS + num_historial_blocks
+        while remaining > 0:
+            batch = min(200, remaining)
+            self.generate(miner, batch, sync_fun=self.no_op)
+            remaining -= batch
         self.sync_blocks([miner, pruned_node])
 
         # Connect full_node to prune_node and check peers don't disconnect right away.
@@ -130,14 +135,19 @@ class NodeNetworkLimitedTest(BitcoinTestFramework):
 
         self.log.info("Mine enough blocks to reach the NODE_NETWORK_LIMITED range.")
         self.connect_nodes(0, 1)
-        blocks = self.generate(self.nodes[1], 292, sync_fun=lambda: self.sync_blocks([self.nodes[0], self.nodes[1]]))
+        # Chunked: generating ~960 RandomX blocks in one RPC exceeds the timeout.
+        blocks = []
+        target = NODE_NETWORK_LIMITED_MIN_BLOCKS + 4
+        while len(blocks) < target:
+            batch = min(200, target - len(blocks))
+            blocks += self.generate(self.nodes[1], batch, sync_fun=lambda: self.sync_blocks([self.nodes[0], self.nodes[1]]))
 
-        self.log.info("Make sure we can max retrieve block at tip-288.")
+        self.log.info(f"Make sure we can max retrieve block at tip-{NODE_NETWORK_LIMITED_MIN_BLOCKS}.")
         node.send_getdata_for_block(blocks[1])  # last block in valid range
         node.wait_for_block(int(blocks[1], 16), timeout=3)
 
-        self.log.info("Requesting block at height 2 (tip-289) must fail (ignored).")
-        node.send_getdata_for_block(blocks[0])  # first block outside of the 288+2 limit
+        self.log.info(f"Requesting block at height 2 (tip-{NODE_NETWORK_LIMITED_MIN_BLOCKS + 1}) must fail (ignored).")
+        node.send_getdata_for_block(blocks[0])  # first block outside of the MIN_BLOCKS+2 limit
         node.wait_for_disconnect(timeout=5)
         self.nodes[0].disconnect_p2ps()
 

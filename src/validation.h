@@ -69,19 +69,26 @@ namespace util {
 class SignalInterrupt;
 } // namespace util
 
-/** Block files containing a block-height within MIN_BLOCKS_TO_KEEP of ActiveChain().Tip() will not be pruned. */
-static const unsigned int MIN_BLOCKS_TO_KEEP = 288;
+/** Block files containing a block-height within MIN_BLOCKS_TO_KEEP of ActiveChain().Tip() will not be pruned.
+  * 960 blocks at the 120s target is ~32h. Upstream keeps 288 (~48h at 600s);
+  * we can't match that in wall-clock terms because 1440 blocks would exceed
+  * BLOCK_DOWNLOAD_WINDOW (1024), and a node further behind than the window
+  * could then never fetch the tip region from a pruned peer. 960 keeps
+  * retention above the 720-block (~24h) connect window with headroom below
+  * the download window. */
+static const unsigned int MIN_BLOCKS_TO_KEEP = 960;
 static const signed int DEFAULT_CHECKBLOCKS = 6;
 static constexpr int DEFAULT_CHECKLEVEL{3};
-// Require that user allocate at least 550 MiB for block & undo files (blk???.dat and rev???.dat)
-// At 1MB per block, 288 blocks = 288MB.
-// Add 15% for Undo data = 331MB
-// Add 20% for Orphan block rate = 397MB
-// We want the low water mark after pruning to be at least 397 MB and since we prune in
+// Require that user allocate at least 1500 MiB for block & undo files (blk???.dat and rev???.dat)
+// Same derivation as upstream, scaled to MIN_BLOCKS_TO_KEEP = 960 (2-minute blocks):
+// At 1MB per block, 960 blocks = 960MB.
+// Add 15% for Undo data = 1104MB
+// Add 20% for Orphan block rate = 1325MB
+// We want the low water mark after pruning to be at least 1325 MB and since we prune in
 // full block file chunks, we need the high water mark which triggers the prune to be
-// one 128MB block file + added 15% undo data = 147MB greater for a total of 545MB
-// Setting the target to >= 550 MiB will make it likely we can respect the target.
-static const uint64_t MIN_DISK_SPACE_FOR_BLOCK_FILES = 550 * 1024 * 1024;
+// one 128MB block file + added 15% undo data = 147MB greater for a total of 1472MB
+// Setting the target to >= 1500 MiB will make it likely we can respect the target.
+static const uint64_t MIN_DISK_SPACE_FOR_BLOCK_FILES = 1500ULL * 1024 * 1024;
 
 /** Maximum number of dedicated script-checking threads allowed */
 static constexpr int MAX_SCRIPTCHECK_THREADS{15};

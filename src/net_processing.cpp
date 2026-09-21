@@ -148,10 +148,15 @@ static constexpr double BLOCK_DOWNLOAD_TIMEOUT_BASE = 1;
 static constexpr double BLOCK_DOWNLOAD_TIMEOUT_PER_PEER = 0.5;
 /** Maximum number of headers to announce when relaying blocks with headers message.*/
 static const unsigned int MAX_BLOCKS_TO_ANNOUNCE = 8;
-/** Minimum blocks required to signal NODE_NETWORK_LIMITED */
-static const unsigned int NODE_NETWORK_LIMITED_MIN_BLOCKS = 288;
-/** Window, in blocks, for connecting to NODE_NETWORK_LIMITED peers */
-static const unsigned int NODE_NETWORK_LIMITED_ALLOW_CONN_BLOCKS = 144;
+/** Minimum blocks required to signal NODE_NETWORK_LIMITED.
+  * Block counts here are wall-clock windows in disguise. At the 120s target 960
+  * blocks is ~32h; it must stay below BLOCK_DOWNLOAD_WINDOW (1024) so a node at
+  * the edge of that window can still fetch from a limited peer, and above the
+  * connect window below. Matches MIN_BLOCKS_TO_KEEP. */
+static const unsigned int NODE_NETWORK_LIMITED_MIN_BLOCKS = 960;
+/** Window, in blocks, for connecting to NODE_NETWORK_LIMITED peers: 720 = ~24h at
+  * 120s, the same wall-clock window upstream gets from 144 blocks at 600s. */
+static const unsigned int NODE_NETWORK_LIMITED_ALLOW_CONN_BLOCKS = 720;
 /** Average delay between local address broadcasts */
 static constexpr auto AVG_LOCAL_ADDRESS_BROADCAST_INTERVAL{24h};
 /** Average delay between peer address broadcasts */

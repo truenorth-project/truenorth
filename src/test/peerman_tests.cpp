@@ -6,6 +6,7 @@
 #include <node/miner.h>
 #include <net_processing.h>
 #include <pow.h>
+#include <truenorth/seed_key.h>
 #include <test/util/setup_common.h>
 #include <validation.h>
 
@@ -14,14 +15,16 @@
 BOOST_FIXTURE_TEST_SUITE(peerman_tests, RegTestingSetup)
 
 /** Window, in blocks, for connecting to NODE_NETWORK_LIMITED peers */
-static constexpr int64_t NODE_NETWORK_LIMITED_ALLOW_CONN_BLOCKS = 144;
+static constexpr int64_t NODE_NETWORK_LIMITED_ALLOW_CONN_BLOCKS = 720; // src/net_processing.cpp
 
 static void mineBlock(const node::NodeContext& node, std::chrono::seconds block_time)
 {
     auto curr_time = GetTime<std::chrono::seconds>();
     SetMockTime(block_time); // update time so the block is created with it
     CBlock block = node::BlockAssembler{node.chainman->ActiveChainstate(), nullptr, {}}.CreateNewBlock()->block;
-    while (!CheckProofOfWork(block.GetHash(), block.nBits, node.chainman->GetConsensus())) ++block.nNonce;
+    // PoW is the RandomX hash under the per-epoch seed, not the block hash.
+    const uint256 seed_key{truenorth::SeedKeyForChild(WITH_LOCK(::cs_main, return node.chainman->ActiveChain().Tip()))};
+    while (!CheckProofOfWork(block.GetPoWHash(seed_key), block.nBits, node.chainman->GetConsensus())) ++block.nNonce;
     block.fChecked = true; // little speedup
     SetMockTime(curr_time); // process block at current time
     Assert(node.chainman->ProcessNewBlock(std::make_shared<const CBlock>(block), /*force_processing=*/true, /*min_pow_checked=*/true, nullptr));
