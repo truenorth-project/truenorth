@@ -30,6 +30,7 @@
 #include <noui.h>
 #include <policy/fees.h>
 #include <pow.h>
+#include <truenorth/seed_key.h>
 #include <random.h>
 #include <rpc/blockchain.h>
 #include <rpc/register.h>
@@ -412,7 +413,13 @@ CBlock TestChain100Setup::CreateBlock(
     }
     RegenerateCommitments(block, *Assert(m_node.chainman));
 
-    while (!CheckProofOfWork(block.GetHash(), block.nBits, m_node.chainman->GetConsensus())) ++block.nNonce;
+    // TrueNorth checks proof of work against the RandomX hash of the header under
+    // the per-epoch seed, not the SHA256d block hash. Solving against GetHash()
+    // produced blocks that were only valid by chance (regtest's powLimit lets about
+    // half of all nonces through), which then aborted the fixture in
+    // InvalidChainFound and left gArgs uncleared for every later test.
+    const uint256 seed_key{truenorth::SeedKeyForChild(WITH_LOCK(::cs_main, return chainstate.m_chain.Tip()))};
+    while (!CheckProofOfWork(block.GetPoWHash(seed_key), block.nBits, m_node.chainman->GetConsensus())) ++block.nNonce;
 
     return block;
 }

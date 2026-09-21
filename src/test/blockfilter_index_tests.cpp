@@ -11,6 +11,7 @@
 #include <interfaces/chain.h>
 #include <node/miner.h>
 #include <pow.h>
+#include <truenorth/seed_key.h>
 #include <test/util/blockfilter.h>
 #include <test/util/setup_common.h>
 #include <validation.h>
@@ -87,7 +88,9 @@ CBlock BuildChainTestingSetup::CreateBlock(const CBlockIndex* prev,
         block.hashMerkleRoot = BlockMerkleRoot(block);
     }
 
-    while (!CheckProofOfWork(block.GetHash(), block.nBits, m_node.chainman->GetConsensus())) ++block.nNonce;
+    // PoW is the RandomX hash under the per-epoch seed, not the block hash.
+    const uint256 seed_key{truenorth::SeedKeyForChild(prev)};
+    while (!CheckProofOfWork(block.GetPoWHash(seed_key), block.nBits, m_node.chainman->GetConsensus())) ++block.nNonce;
 
     return block;
 }

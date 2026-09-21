@@ -2,10 +2,12 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <addresstype.h>
 #include <clientversion.h>
 #include <common/signmessage.h>
 #include <hash.h>
 #include <key.h>
+#include <key_io.h>
 #include <script/parsing.h>
 #include <span.h>
 #include <sync.h>
@@ -455,8 +457,8 @@ BOOST_AUTO_TEST_CASE(util_ParseMoney)
     BOOST_CHECK_EQUAL(ParseMoney("0.00000001 ").value(), COIN/100000000);
     BOOST_CHECK_EQUAL(ParseMoney(" 0.00000001").value(), COIN/100000000);
 
-    // Parsing amount that cannot be represented should fail
-    BOOST_CHECK(!ParseMoney("100000000.00"));
+    // Parsing amount that cannot be represented should fail (MAX_MONEY is 10,000,000,000)
+    BOOST_CHECK(!ParseMoney("10000000001.00"));
     BOOST_CHECK(!ParseMoney("0.000000001"));
 
     // Parsing empty string should fail
@@ -1448,7 +1450,7 @@ BOOST_AUTO_TEST_CASE(message_sign)
 {
     const std::array<unsigned char, 32> privkey_bytes = {
         // just some random data
-        // derived address from this private key: 15CRxFdyRpGZLW9w8HnHvVduizdL5jKNbs
+        // derived address from this private key: NQ7Q91SF4NpzgUYXRXSBd94c5jHKi66y5K (TrueNorth encoding)
         0xD9, 0x7F, 0x51, 0x08, 0xF1, 0x1C, 0xDA, 0x6E,
         0xEE, 0xBA, 0xAA, 0x42, 0x0F, 0xEF, 0x07, 0x26,
         0xB1, 0xF8, 0x98, 0x06, 0x0B, 0x98, 0x48, 0x9F,
@@ -1458,7 +1460,7 @@ BOOST_AUTO_TEST_CASE(message_sign)
     const std::string message = "Trust no one";
 
     const std::string expected_signature =
-        "IPojfrX2dfPnH26UegfbGQQLrdK844DlHq5157/P6h57WyuS/Qsl+h/WSVGDF4MUi4rWSswW38oimDYfNNUBUOk=";
+        "H7au1Ck7gs2lAQtW67pbXMPvtWv+9bqyRYZBkUoPVh3GBtNuvmdC2jAD6pgUdWg2ZuiLJcWjcWnYLU3rHZFUlis=";
 
     CKey privkey;
     std::string generated_signature;
@@ -1491,45 +1493,60 @@ BOOST_AUTO_TEST_CASE(message_verify)
 
     BOOST_CHECK_EQUAL(
         MessageVerify(
-            "3B5fQsEXEaV8v6U3ejYc8XaKXAkyQj2MjV",
+            "TKMrVP7oqQHhz6qF7uXjE3uXHSDa7xbDxx",
             "signature should be irrelevant",
             "message too"),
         MessageVerificationResult::ERR_ADDRESS_NO_KEY);
 
     BOOST_CHECK_EQUAL(
         MessageVerify(
-            "1KqbBpLy5FARmTPD4VZnDDpYjkUvkr82Pm",
+            "NekZNa9Ehois7RmoMjDfusFF6V8vUfb8Yz",
             "invalid signature, not in base64 encoding",
             "message should be irrelevant"),
         MessageVerificationResult::ERR_MALFORMED_SIGNATURE);
 
     BOOST_CHECK_EQUAL(
         MessageVerify(
-            "1KqbBpLy5FARmTPD4VZnDDpYjkUvkr82Pm",
+            "NekZNa9Ehois7RmoMjDfusFF6V8vUfb8Yz",
             "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
             "message should be irrelevant"),
         MessageVerificationResult::ERR_PUBKEY_NOT_RECOVERED);
 
     BOOST_CHECK_EQUAL(
         MessageVerify(
-            "15CRxFdyRpGZLW9w8HnHvVduizdL5jKNbs",
-            "IPojfrX2dfPnH26UegfbGQQLrdK844DlHq5157/P6h57WyuS/Qsl+h/WSVGDF4MUi4rWSswW38oimDYfNNUBUOk=",
+            "NQ7Q91SF4NpzgUYXRXSBd94c5jHKi66y5K",
+            "H7au1Ck7gs2lAQtW67pbXMPvtWv+9bqyRYZBkUoPVh3GBtNuvmdC2jAD6pgUdWg2ZuiLJcWjcWnYLU3rHZFUlis=",
             "I never signed this"),
         MessageVerificationResult::ERR_NOT_SIGNED);
 
     BOOST_CHECK_EQUAL(
         MessageVerify(
-            "15CRxFdyRpGZLW9w8HnHvVduizdL5jKNbs",
-            "IPojfrX2dfPnH26UegfbGQQLrdK844DlHq5157/P6h57WyuS/Qsl+h/WSVGDF4MUi4rWSswW38oimDYfNNUBUOk=",
+            "NQ7Q91SF4NpzgUYXRXSBd94c5jHKi66y5K",
+            "H7au1Ck7gs2lAQtW67pbXMPvtWv+9bqyRYZBkUoPVh3GBtNuvmdC2jAD6pgUdWg2ZuiLJcWjcWnYLU3rHZFUlis=",
             "Trust no one"),
         MessageVerificationResult::OK);
 
-    BOOST_CHECK_EQUAL(
-        MessageVerify(
-            "11canuhp9X2NocwCq7xNrQYTmUgZAnLK3",
-            "IIcaIENoYW5jZWxsb3Igb24gYnJpbmsgb2Ygc2Vjb25kIGJhaWxvdXQgZm9yIGJhbmtzIAaHRtbCeDZINyavx14=",
-            "Trust me"),
-        MessageVerificationResult::OK);
+    // Upstream checked a historical signature over an uncompressed key here. That
+    // signature was made under Bitcoin's message prefix and cannot be regenerated
+    // (the key is not published), so sign with an uncompressed key at runtime to
+    // keep covering that path.
+    {
+        const std::array<unsigned char, 32> uncompressed_bytes = {
+            0x2A, 0x1F, 0x0C, 0x77, 0x91, 0x3B, 0x5E, 0x44,
+            0xD8, 0x05, 0x6C, 0xA2, 0x39, 0xE7, 0xB0, 0x18,
+            0x63, 0x94, 0xFA, 0x2D, 0x11, 0x87, 0xC3, 0x50,
+            0x7E, 0x69, 0xAB, 0x04, 0xF2, 0x8D, 0x56, 0x31};
+        CKey uncompressed_key;
+        uncompressed_key.Set(uncompressed_bytes.begin(), uncompressed_bytes.end(), /*fCompressedIn=*/false);
+        BOOST_REQUIRE(uncompressed_key.IsValid());
+        BOOST_REQUIRE(!uncompressed_key.IsCompressed());
+        const std::string uncompressed_address{EncodeDestination(PKHash(uncompressed_key.GetPubKey()))};
+        std::string uncompressed_signature;
+        BOOST_REQUIRE(MessageSign(uncompressed_key, "Trust me", uncompressed_signature));
+        BOOST_CHECK_EQUAL(
+            MessageVerify(uncompressed_address, uncompressed_signature, "Trust me"),
+            MessageVerificationResult::OK);
+    }
 }
 
 BOOST_AUTO_TEST_CASE(message_hash)

@@ -10,6 +10,7 @@
 #include <key_io.h>
 #include <node/context.h>
 #include <pow.h>
+#include <truenorth/seed_key.h>
 #include <primitives/transaction.h>
 #include <test/util/script.h>
 #include <util/check.h>
@@ -59,7 +60,11 @@ std::vector<std::shared_ptr<CBlock>> CreateBlockChain(size_t total_height, const
         block.nBits = params.GenesisBlock().nBits;
         block.nNonce = 0;
 
-        while (!CheckProofOfWork(block.GetHash(), block.nBits, params.GetConsensus())) {
+        // PoW is RandomX over the header under the per-epoch seed. These chains stay
+        // inside the genesis epoch, where that seed is fixed; assert rather than
+        // silently mine against the wrong seed if one ever grows past it.
+        assert(truenorth::SeedHeightForNextHeight(height + 1) == 0);
+        while (!CheckProofOfWork(block.GetPoWHash(truenorth::kGenesisSeed), block.nBits, params.GetConsensus())) {
             ++block.nNonce;
             assert(block.nNonce);
         }

@@ -2,6 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <algorithm>
 #include <chainparams.h>
 #include <consensus/amount.h>
 #include <consensus/merkle.h>
@@ -24,7 +25,10 @@ BOOST_FIXTURE_TEST_SUITE(validation_tests, TestingSetup)
 static void TestBlockSubsidyHalvings(const Consensus::Params& consensusParams)
 {
     int maxHalvings = 64;
-    CAmount nInitialSubsidy = 50 * COIN;
+    // TrueNorth starts at 512 and floors at the 8-coin tail emission instead of
+    // halving away to nothing; see GetBlockSubsidy in validation.cpp.
+    CAmount nInitialSubsidy = 512 * COIN;
+    CAmount nTailSubsidy = 8 * COIN;
 
     CAmount nPreviousSubsidy = nInitialSubsidy * 2; // for height == 0
     BOOST_CHECK_EQUAL(nPreviousSubsidy, nInitialSubsidy * 2);
@@ -32,10 +36,12 @@ static void TestBlockSubsidyHalvings(const Consensus::Params& consensusParams)
         int nHeight = nHalvings * consensusParams.nSubsidyHalvingInterval;
         CAmount nSubsidy = GetBlockSubsidy(nHeight, consensusParams);
         BOOST_CHECK(nSubsidy <= nInitialSubsidy);
-        BOOST_CHECK_EQUAL(nSubsidy, nPreviousSubsidy / 2);
+        BOOST_CHECK(nSubsidy >= nTailSubsidy);
+        BOOST_CHECK_EQUAL(nSubsidy, std::max(nPreviousSubsidy / 2, nTailSubsidy));
         nPreviousSubsidy = nSubsidy;
     }
-    BOOST_CHECK_EQUAL(GetBlockSubsidy(maxHalvings * consensusParams.nSubsidyHalvingInterval, consensusParams), 0);
+    // Past the last halving the tail keeps paying, it does not go to zero.
+    BOOST_CHECK_EQUAL(GetBlockSubsidy(maxHalvings * consensusParams.nSubsidyHalvingInterval, consensusParams), nTailSubsidy);
 }
 
 static void TestBlockSubsidyHalvings(int nSubsidyHalvingInterval)

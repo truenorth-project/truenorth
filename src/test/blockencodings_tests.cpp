@@ -6,6 +6,7 @@
 #include <chainparams.h>
 #include <consensus/merkle.h>
 #include <pow.h>
+#include <truenorth/seed_key.h>
 #include <streams.h>
 #include <test/util/random.h>
 #include <test/util/txmempool.h>
@@ -51,7 +52,9 @@ static CBlock BuildBlockTestCase(FastRandomContext& ctx) {
     bool mutated;
     block.hashMerkleRoot = BlockMerkleRoot(block, &mutated);
     assert(!mutated);
-    while (!CheckProofOfWork(block.GetHash(), block.nBits, Params().GetConsensus())) ++block.nNonce;
+    // Synthetic blocks that are never connected to a chain, so the genesis-epoch
+    // seed is the right one; PoW is RandomX, not the block hash.
+    while (!CheckProofOfWork(block.GetPoWHash(truenorth::kGenesisSeed), block.nBits, Params().GetConsensus())) ++block.nNonce;
     return block;
 }
 
@@ -282,7 +285,9 @@ BOOST_AUTO_TEST_CASE(EmptyBlockRoundTripTest)
     bool mutated;
     block.hashMerkleRoot = BlockMerkleRoot(block, &mutated);
     assert(!mutated);
-    while (!CheckProofOfWork(block.GetHash(), block.nBits, Params().GetConsensus())) ++block.nNonce;
+    // Synthetic blocks that are never connected to a chain, so the genesis-epoch
+    // seed is the right one; PoW is RandomX, not the block hash.
+    while (!CheckProofOfWork(block.GetPoWHash(truenorth::kGenesisSeed), block.nBits, Params().GetConsensus())) ++block.nNonce;
 
     // Test simple header round-trip with only coinbase
     {

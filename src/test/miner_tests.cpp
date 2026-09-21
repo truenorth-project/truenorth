@@ -24,6 +24,7 @@
 #include <validation.h>
 #include <versionbits.h>
 #include <pow.h>
+#include <truenorth/seed_key.h>
 
 #include <test/util/setup_common.h>
 
@@ -719,7 +720,8 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
         {
             // A block template does not have proof-of-work, but it might pass
             // verification by coincidence. Grind the nonce if needed:
-            while (CheckProofOfWork(block.GetHash(), block.nBits, Assert(m_node.chainman)->GetParams().GetConsensus())) {
+            const uint256 grind_seed{truenorth::SeedKeyForChild(WITH_LOCK(::cs_main, return m_node.chainman->ActiveChain().Tip()))};
+            while (CheckProofOfWork(block.GetPoWHash(grind_seed), block.nBits, Assert(m_node.chainman)->GetParams().GetConsensus())) {
                 block.nNonce++;
             }
 
@@ -765,7 +767,12 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
             if (txFirst.size() < 4)
                 txFirst.push_back(block.vtx[0]);
             block.hashMerkleRoot = BlockMerkleRoot(block);
-            block.nNonce = bi.nonce;
+            // bi.nonce comes from a table precomputed against SHA256d proof of work
+            // and never satisfies RandomX, so grind instead. bi.extranonce above is
+            // still used, to keep each block's coinbase distinct.
+            const uint256 pow_seed{truenorth::SeedKeyForChild(Assert(m_node.chainman)->ActiveChain().Tip())};
+            block.nNonce = 0;
+            while (!CheckProofOfWork(block.GetPoWHash(pow_seed), block.nBits, Assert(m_node.chainman)->GetParams().GetConsensus())) ++block.nNonce;
         }
         std::shared_ptr<const CBlock> shared_pblock = std::make_shared<const CBlock>(block);
         // Alternate calls between Chainman's ProcessNewBlock and submitSolution

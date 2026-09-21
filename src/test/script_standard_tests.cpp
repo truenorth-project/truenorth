@@ -297,11 +297,18 @@ BOOST_AUTO_TEST_CASE(script_standard_ExtractDestination)
     WitnessUnknown unk_v1{1, ToByteVector(pubkey)};
     BOOST_CHECK(std::get<WitnessUnknown>(address) == unk_v1);
     s.clear();
-    // -> segwit versions 2+ are not specified yet
+    // -> segwit version 2 with a program size other than 32 bytes is not P2QRH,
+    //    so it stays unknown (a 32-byte v2 program is covered by the P2QRH case below)
+    s << OP_2 << ToByteVector(pubkey);
+    BOOST_CHECK(ExtractDestination(s, address));
+    WitnessUnknown unk_v2{2, ToByteVector(pubkey)};
+    BOOST_CHECK(std::get<WitnessUnknown>(address) == unk_v2);
+
+    // TxoutType::WITNESS_V2_QRH
+    s.clear();
     s << OP_2 << ToByteVector(xpk);
     BOOST_CHECK(ExtractDestination(s, address));
-    WitnessUnknown unk_v2{2, ToByteVector(xpk)};
-    BOOST_CHECK(std::get<WitnessUnknown>(address) == unk_v2);
+    BOOST_CHECK(std::get<WitnessV2QRH>(address) == WitnessV2QRH(uint256{ToByteVector(xpk)}));
 }
 
 BOOST_AUTO_TEST_CASE(script_standard_GetScriptFor_)
@@ -447,7 +454,7 @@ BOOST_AUTO_TEST_CASE(script_standard_taproot_builder)
     BOOST_CHECK(builder.IsValid() && builder.IsComplete());
     builder.Finalize(key_inner);
     BOOST_CHECK(builder.IsValid() && builder.IsComplete());
-    BOOST_CHECK_EQUAL(EncodeDestination(builder.GetOutput()), "bc1pj6gaw944fy0xpmzzu45ugqde4rz7mqj5kj0tg8kmr5f0pjq8vnaqgynnge");
+    BOOST_CHECK_EQUAL(EncodeDestination(builder.GetOutput()), "north1pj6gaw944fy0xpmzzu45ugqde4rz7mqj5kj0tg8kmr5f0pjq8vnaq8wxrjv");
 }
 
 BOOST_AUTO_TEST_CASE(bip341_spk_test_vectors)
