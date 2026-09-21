@@ -74,9 +74,27 @@ unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t /*
         weighted_solvetime_sum = denominator / 10;
     }
 
-    arith_uint256 next_target = sum_target;
-    next_target *= arith_uint256(static_cast<uint64_t>(weighted_solvetime_sum));
-    next_target /= arith_uint256(static_cast<uint64_t>(denominator));
+    // next_target = sum_target * weighted_solvetime_sum / denominator, clamped to
+    // powLimit. The multiplication is done first to keep precision, but it wraps
+    // silently in 256-bit arithmetic once sum_target is large: chains with a
+    // permissive powLimit (the test chains use 2^255) reach that as soon as a
+    // single min-difficulty block enters the window. Divide first in that case;
+    // at those magnitudes the handful of low bits lost is immaterial.
+    const arith_uint256 weighted{static_cast<uint64_t>(weighted_solvetime_sum)};
+    const arith_uint256 denom{static_cast<uint64_t>(denominator)};
+    arith_uint256 next_target;
+    if (sum_target <= (~arith_uint256{0}) / weighted) {
+        next_target = sum_target * weighted / denom;
+    } else {
+        const arith_uint256 scaled{sum_target / denom};
+        // Guard the remaining multiplication too: anything above this bound
+        // exceeds powLimit and would be clamped regardless.
+        if (scaled > powLimit / weighted) {
+            next_target = powLimit;
+        } else {
+            next_target = scaled * weighted;
+        }
+    }
 
     if (next_target > powLimit) {
         next_target = powLimit;

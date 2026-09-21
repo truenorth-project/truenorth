@@ -5,79 +5,204 @@
 #include <chain.h>
 #include <chainparams.h>
 #include <pow.h>
+#include <primitives/block.h>
 #include <test/util/random.h>
 #include <test/util/setup_common.h>
+#include <tinyformat.h>
 #include <util/chaintype.h>
+
+#include <vector>
 
 #include <boost/test/unit_test.hpp>
 
 BOOST_FIXTURE_TEST_SUITE(pow_tests, BasicTestingSetup)
 
-/* Test calculation of next difficulty target with no constraints applying */
-BOOST_AUTO_TEST_CASE(get_next_work)
-{
-    const auto chainParams = CreateChainParams(*m_node.args, ChainType::MAIN);
-    int64_t nLastRetargetTime = 1261130161; // Block #30240
-    CBlockIndex pindexLast;
-    pindexLast.nHeight = 32255;
-    pindexLast.nTime = 1262152739;  // Block #32255
-    pindexLast.nBits = 0x1d00ffff;
+namespace {
+//! LWMA window length used by CalculateNextWorkRequired().
+constexpr int64_t LWMA_N{90};
+//! A target 256x harder than mainnet's powLimit, so tests have room to move in
+//! either direction without clamping.
+constexpr uint32_t TEST_NBITS{0x1c00ffff};
 
-    // Here (and below): expected_nbits is calculated in
-    // CalculateNextWorkRequired(); redoing the calculation here would be just
-    // reimplementing the same code that is written in pow.cpp. Rather than
-    // copy that code, we just hardcode the expected result.
-    unsigned int expected_nbits = 0x1d00d86aU;
-    BOOST_CHECK_EQUAL(CalculateNextWorkRequired(&pindexLast, nLastRetargetTime, chainParams->GetConsensus()), expected_nbits);
-    BOOST_CHECK(PermittedDifficultyTransition(chainParams->GetConsensus(), pindexLast.nHeight+1, pindexLast.nBits, expected_nbits));
+//! Fill `blocks` with a linked chain spaced `spacing` seconds apart, every
+//! block carrying `nbits`. Filled in place: the indices point at each other.
+void BuildChain(std::vector<CBlockIndex>& blocks, int64_t spacing, uint32_t nbits)
+{
+    for (size_t i = 0; i < blocks.size(); ++i) {
+        blocks[i].pprev = i ? &blocks[i - 1] : nullptr;
+        blocks[i].nHeight = static_cast<int>(i);
+        blocks[i].nTime = static_cast<unsigned int>(1700000000 + static_cast<int64_t>(i) * spacing);
+        blocks[i].nBits = nbits;
+    }
 }
 
-/* Test the constraint on the upper bound for next work */
-BOOST_AUTO_TEST_CASE(get_next_work_pow_limit)
+//! Compact targets lose mantissa bits and the LWMA averages with integer
+//! division, so compare within 1% rather than exactly.
+void CheckTargetNear(uint32_t actual_nbits, const arith_uint256& expected)
 {
-    const auto chainParams = CreateChainParams(*m_node.args, ChainType::MAIN);
-    int64_t nLastRetargetTime = 1231006505; // Block #0
-    CBlockIndex pindexLast;
-    pindexLast.nHeight = 2015;
-    pindexLast.nTime = 1233061996;  // Block #2015
-    pindexLast.nBits = 0x1d00ffff;
-    unsigned int expected_nbits = 0x1d00ffffU;
-    BOOST_CHECK_EQUAL(CalculateNextWorkRequired(&pindexLast, nLastRetargetTime, chainParams->GetConsensus()), expected_nbits);
-    BOOST_CHECK(PermittedDifficultyTransition(chainParams->GetConsensus(), pindexLast.nHeight+1, pindexLast.nBits, expected_nbits));
+    arith_uint256 actual;
+    actual.SetCompact(actual_nbits);
+    BOOST_CHECK_MESSAGE(actual <= expected + expected / 100 && actual >= expected - expected / 100,
+                        strprintf("target %s is not within 1%% of %s", actual.ToString(), expected.ToString()));
 }
 
-/* Test the constraint on the lower bound for actual time taken */
-BOOST_AUTO_TEST_CASE(get_next_work_lower_limit_actual)
+arith_uint256 TargetOf(uint32_t nbits)
 {
-    const auto chainParams = CreateChainParams(*m_node.args, ChainType::MAIN);
-    int64_t nLastRetargetTime = 1279008237; // Block #66528
-    CBlockIndex pindexLast;
-    pindexLast.nHeight = 68543;
-    pindexLast.nTime = 1279297671;  // Block #68543
-    pindexLast.nBits = 0x1c05a3f4;
-    unsigned int expected_nbits = 0x1c0168fdU;
-    BOOST_CHECK_EQUAL(CalculateNextWorkRequired(&pindexLast, nLastRetargetTime, chainParams->GetConsensus()), expected_nbits);
-    BOOST_CHECK(PermittedDifficultyTransition(chainParams->GetConsensus(), pindexLast.nHeight+1, pindexLast.nBits, expected_nbits));
-    // Test that reducing nbits further would not be a PermittedDifficultyTransition.
-    unsigned int invalid_nbits = expected_nbits-1;
-    BOOST_CHECK(!PermittedDifficultyTransition(chainParams->GetConsensus(), pindexLast.nHeight+1, pindexLast.nBits, invalid_nbits));
+    arith_uint256 target;
+    target.SetCompact(nbits);
+    return target;
+}
+} // namespace
+
+/* Blocks arriving exactly on target spacing leave difficulty where it is */
+BOOST_AUTO_TEST_CASE(lwma_steady_state)
+{
+    const auto consensus{CreateChainParams(*m_node.args, ChainType::MAIN)->GetConsensus()};
+    std::vector<CBlockIndex> blocks(200);
+    BuildChain(blocks, consensus.nPowTargetSpacing, TEST_NBITS);
+    CheckTargetNear(CalculateNextWorkRequired(&blocks.back(), 0, consensus), TargetOf(TEST_NBITS));
 }
 
-/* Test the constraint on the upper bound for actual time taken */
-BOOST_AUTO_TEST_CASE(get_next_work_upper_limit_actual)
+/* Blocks arriving twice as fast halve the target (double the difficulty) */
+BOOST_AUTO_TEST_CASE(lwma_fast_blocks_raise_difficulty)
 {
-    const auto chainParams = CreateChainParams(*m_node.args, ChainType::MAIN);
-    int64_t nLastRetargetTime = 1263163443; // NOTE: Not an actual block time
-    CBlockIndex pindexLast;
-    pindexLast.nHeight = 46367;
-    pindexLast.nTime = 1269211443;  // Block #46367
-    pindexLast.nBits = 0x1c387f6f;
-    unsigned int expected_nbits = 0x1d00e1fdU;
-    BOOST_CHECK_EQUAL(CalculateNextWorkRequired(&pindexLast, nLastRetargetTime, chainParams->GetConsensus()), expected_nbits);
-    BOOST_CHECK(PermittedDifficultyTransition(chainParams->GetConsensus(), pindexLast.nHeight+1, pindexLast.nBits, expected_nbits));
-    // Test that increasing nbits further would not be a PermittedDifficultyTransition.
-    unsigned int invalid_nbits = expected_nbits+1;
-    BOOST_CHECK(!PermittedDifficultyTransition(chainParams->GetConsensus(), pindexLast.nHeight+1, pindexLast.nBits, invalid_nbits));
+    const auto consensus{CreateChainParams(*m_node.args, ChainType::MAIN)->GetConsensus()};
+    std::vector<CBlockIndex> blocks(200);
+    BuildChain(blocks, consensus.nPowTargetSpacing / 2, TEST_NBITS);
+    CheckTargetNear(CalculateNextWorkRequired(&blocks.back(), 0, consensus), TargetOf(TEST_NBITS) / 2);
+}
+
+/* Blocks arriving three times as slow triple the target */
+BOOST_AUTO_TEST_CASE(lwma_slow_blocks_lower_difficulty)
+{
+    const auto consensus{CreateChainParams(*m_node.args, ChainType::MAIN)->GetConsensus()};
+    std::vector<CBlockIndex> blocks(200);
+    BuildChain(blocks, consensus.nPowTargetSpacing * 3, TEST_NBITS);
+    CheckTargetNear(CalculateNextWorkRequired(&blocks.back(), 0, consensus), TargetOf(TEST_NBITS) * 3);
+}
+
+/* Solvetimes are clamped at 6x spacing, so an enormous gap is no worse than 6x */
+BOOST_AUTO_TEST_CASE(lwma_clamps_long_solvetimes)
+{
+    const auto consensus{CreateChainParams(*m_node.args, ChainType::MAIN)->GetConsensus()};
+    std::vector<CBlockIndex> at_clamp(200);
+    std::vector<CBlockIndex> past_clamp(200);
+    BuildChain(at_clamp, consensus.nPowTargetSpacing * 6, TEST_NBITS);
+    BuildChain(past_clamp, consensus.nPowTargetSpacing * 50, TEST_NBITS);
+    BOOST_CHECK_EQUAL(CalculateNextWorkRequired(&at_clamp.back(), 0, consensus),
+                      CalculateNextWorkRequired(&past_clamp.back(), 0, consensus));
+}
+
+/* The weighted sum is floored at a tenth of the denominator, so even a chain of
+ * identical timestamps cannot raise difficulty by more than 10x in one step */
+BOOST_AUTO_TEST_CASE(lwma_floors_difficulty_spike)
+{
+    const auto consensus{CreateChainParams(*m_node.args, ChainType::MAIN)->GetConsensus()};
+    std::vector<CBlockIndex> blocks(200);
+    BuildChain(blocks, /*spacing=*/0, TEST_NBITS);
+    CheckTargetNear(CalculateNextWorkRequired(&blocks.back(), 0, consensus), TargetOf(TEST_NBITS) / 10);
+}
+
+/* The result is never easier than powLimit */
+BOOST_AUTO_TEST_CASE(lwma_clamps_to_pow_limit)
+{
+    const auto consensus{CreateChainParams(*m_node.args, ChainType::MAIN)->GetConsensus()};
+    const uint32_t pow_limit_nbits{UintToArith256(consensus.powLimit).GetCompact()};
+    std::vector<CBlockIndex> blocks(200);
+    BuildChain(blocks, consensus.nPowTargetSpacing * 6, pow_limit_nbits);
+    BOOST_CHECK_EQUAL(CalculateNextWorkRequired(&blocks.back(), 0, consensus), pow_limit_nbits);
+}
+
+/* Before the window is full there is nothing to average, so difficulty is minimal */
+BOOST_AUTO_TEST_CASE(lwma_insufficient_history)
+{
+    const auto consensus{CreateChainParams(*m_node.args, ChainType::MAIN)->GetConsensus()};
+    const uint32_t pow_limit_nbits{UintToArith256(consensus.powLimit).GetCompact()};
+    std::vector<CBlockIndex> blocks(LWMA_N);
+    BuildChain(blocks, consensus.nPowTargetSpacing, TEST_NBITS);
+    // Tip is at height N-1, one short of the window.
+    BOOST_CHECK_EQUAL(CalculateNextWorkRequired(&blocks.back(), 0, consensus), pow_limit_nbits);
+}
+
+/* Regtest disables retargeting entirely */
+BOOST_AUTO_TEST_CASE(lwma_no_retargeting)
+{
+    const auto consensus{CreateChainParams(*m_node.args, ChainType::REGTEST)->GetConsensus()};
+    BOOST_REQUIRE(consensus.fPowNoRetargeting);
+    std::vector<CBlockIndex> blocks(200);
+    BuildChain(blocks, consensus.nPowTargetSpacing * 10, TEST_NBITS);
+    BOOST_CHECK_EQUAL(CalculateNextWorkRequired(&blocks.back(), 0, consensus), TEST_NBITS);
+}
+
+/* On chains that allow it, a block more than 2x spacing late may use min difficulty */
+BOOST_AUTO_TEST_CASE(get_next_work_min_difficulty)
+{
+    const auto consensus{CreateChainParams(*m_node.args, ChainType::TESTNET4)->GetConsensus()};
+    BOOST_REQUIRE(consensus.fPowAllowMinDifficultyBlocks);
+    const uint32_t pow_limit_nbits{UintToArith256(consensus.powLimit).GetCompact()};
+    std::vector<CBlockIndex> blocks(200);
+    BuildChain(blocks, consensus.nPowTargetSpacing, TEST_NBITS);
+    const CBlockIndex& tip{blocks.back()};
+
+    CBlockHeader late;
+    late.nTime = static_cast<unsigned int>(tip.GetBlockTime() + consensus.nPowTargetSpacing * 2 + 1);
+    BOOST_CHECK_EQUAL(GetNextWorkRequired(&tip, &late, consensus), pow_limit_nbits);
+
+    CBlockHeader on_time;
+    on_time.nTime = static_cast<unsigned int>(tip.GetBlockTime() + consensus.nPowTargetSpacing);
+    BOOST_CHECK_EQUAL(GetNextWorkRequired(&tip, &on_time, consensus),
+                      CalculateNextWorkRequired(&tip, 0, consensus));
+}
+
+/* A chain sitting at a permissive powLimit must stay there rather than wrapping
+ * around: sum_target is then near 2^255 and the retarget multiply would overflow */
+BOOST_AUTO_TEST_CASE(lwma_permissive_pow_limit_no_overflow)
+{
+    const auto consensus{CreateChainParams(*m_node.args, ChainType::TESTNET4)->GetConsensus()};
+    const arith_uint256 pow_limit{UintToArith256(consensus.powLimit)};
+    BOOST_REQUIRE(pow_limit > TargetOf(0x1f00ffff)); // permissive, unlike mainnet
+    std::vector<CBlockIndex> blocks(200);
+    BuildChain(blocks, consensus.nPowTargetSpacing, pow_limit.GetCompact());
+    // Truncating division can shave the low mantissa bit; wrapping, which is what
+    // this guards against, moved the target by a factor of 2^17 instead.
+    CheckTargetNear(CalculateNextWorkRequired(&blocks.back(), 0, consensus), TargetOf(pow_limit.GetCompact()));
+}
+
+/* A single min-difficulty block inside an otherwise hard window may only make the
+ * next target easier, never harder. Multiplying before dividing used to wrap here
+ * and produce an arbitrary, much harder target for the rest of the window. */
+BOOST_AUTO_TEST_CASE(lwma_min_difficulty_block_in_window)
+{
+    const auto consensus{CreateChainParams(*m_node.args, ChainType::TESTNET4)->GetConsensus()};
+    const uint32_t pow_limit_nbits{UintToArith256(consensus.powLimit).GetCompact()};
+
+    std::vector<CBlockIndex> all_hard(200);
+    BuildChain(all_hard, consensus.nPowTargetSpacing, TEST_NBITS);
+    const arith_uint256 baseline{TargetOf(CalculateNextWorkRequired(&all_hard.back(), 0, consensus))};
+
+    std::vector<CBlockIndex> with_min_diff(200);
+    BuildChain(with_min_diff, consensus.nPowTargetSpacing, TEST_NBITS);
+    with_min_diff[150].nBits = pow_limit_nbits; // one min-difficulty block in the window
+    const arith_uint256 poisoned{TargetOf(CalculateNextWorkRequired(&with_min_diff.back(), 0, consensus))};
+
+    BOOST_CHECK_MESSAGE(poisoned >= baseline,
+                        strprintf("one min-difficulty block made the target harder: %s < %s",
+                                  poisoned.ToString(), baseline.ToString()));
+}
+
+/* Mainnet does not allow min-difficulty blocks no matter how late they are */
+BOOST_AUTO_TEST_CASE(get_next_work_no_min_difficulty_on_main)
+{
+    const auto consensus{CreateChainParams(*m_node.args, ChainType::MAIN)->GetConsensus()};
+    BOOST_REQUIRE(!consensus.fPowAllowMinDifficultyBlocks);
+    std::vector<CBlockIndex> blocks(200);
+    BuildChain(blocks, consensus.nPowTargetSpacing, TEST_NBITS);
+    const CBlockIndex& tip{blocks.back()};
+
+    CBlockHeader late;
+    late.nTime = static_cast<unsigned int>(tip.GetBlockTime() + consensus.nPowTargetSpacing * 100);
+    BOOST_CHECK_EQUAL(GetNextWorkRequired(&tip, &late, consensus),
+                      CalculateNextWorkRequired(&tip, 0, consensus));
 }
 
 BOOST_AUTO_TEST_CASE(CheckProofOfWork_test_negative_target)
@@ -175,12 +300,10 @@ void sanity_check_chainparams(const ArgsManager& args, ChainType chain_type)
     BOOST_CHECK(!over);
     BOOST_CHECK(UintToArith256(consensus.powLimit) >= pow_compact);
 
-    // check max target * 4*nPowTargetTimespan doesn't overflow -- see pow.cpp:CalculateNextWorkRequired()
-    if (!consensus.fPowNoRetargeting) {
-        arith_uint256 targ_max{UintToArith256(uint256{"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"})};
-        targ_max /= consensus.nPowTargetTimespan*4;
-        BOOST_CHECK(UintToArith256(consensus.powLimit) < targ_max);
-    }
+    // Upstream checked here that powLimit was small enough for the retarget
+    // multiplication not to overflow. The test chains deliberately use a
+    // permissive powLimit that is not, so CalculateNextWorkRequired() handles
+    // the wide case itself; lwma_permissive_pow_limit_no_overflow covers it.
 }
 
 BOOST_AUTO_TEST_CASE(ChainParams_MAIN_sanity)
