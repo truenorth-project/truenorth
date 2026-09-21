@@ -66,6 +66,10 @@
   - WIF secret-key byte: **180** — compressed WIF keys begin with **T**
   - Bech32 HRP: `north`. Native-segwit addresses look like `north1q...`
 - **BIP32 extended-key prefixes:** `0x7E5D5A83` / `0x7E5C6544` — extended keys encode as `Tpub...` / `Tprv...`
+- **BIP32 coin type (SLIP-44):** **1867** on mainnet, 1 on test chains. Wallet
+  descriptors derive at `m/<purpose>h/1867h/0h/<0|1>/<index>` (purpose 44/49/84/86 as
+  usual, 88 for P2QRH). Deliberately not Bitcoin's 0: a shared coin type would derive
+  identical keys from the same seed on both chains.
 
 ## 6. Genesis Block
 - **Coinbase message:** TBD. A real Canadian newspaper headline dated to launch day

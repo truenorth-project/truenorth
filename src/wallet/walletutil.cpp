@@ -74,11 +74,15 @@ WalletDescriptor GenerateWalletDescriptor(const CExtPubKey& master_key, const Ou
     } // no default case, so the compiler can warn about missing cases
     assert(!desc_prefix.empty());
 
-    // Mainnet derives at 0', testnet and regtest derive at 1'
+    // SLIP-44 coin type. Mainnet uses 1867 (unassigned when chosen); test
+    // chains use 1, the SLIP-44 convention for all testnets. Deliberately not
+    // Bitcoin's 0: sharing it would derive identical keys from the same seed on
+    // both chains, so one key compromise would hit both, and an observer could
+    // match a user's TrueNorth addresses to their Bitcoin ones.
     if (Params().IsTestChain()) {
         desc_prefix += "/1h";
     } else {
-        desc_prefix += "/0h";
+        desc_prefix += "/1867h";
     }
 
     std::string internal_path = internal ? "/1" : "/0";

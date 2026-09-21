@@ -170,8 +170,9 @@ enables P2SH, WITNESS, and TAPROOT unconditionally.
    external interop as the ecosystem develops.
 4. **Derivation path.** Wallet-generated `qrh()` descriptors use BIP32
    purpose `88h`: `m/88h/<coin_type>/0h/<0|1>/<index>`, with change on
-   branch `1`, following the BIP44/84/86 layout. `<coin_type>` is `0h` on
-   mainnet and `1h` on test chains (`src/wallet/walletutil.cpp`). Purpose
+   branch `1`, following the BIP44/84/86 layout. `<coin_type>` is `1867h`
+   on mainnet (SLIP-44 index, deliberately not Bitcoin's `0h`) and `1h` on test
+   chains (`src/wallet/walletutil.cpp`). Purpose
    `88h` is TrueNorth-specific and not registered as a BIP. Recovery tools and other
    wallets must scan this path to find P2QRH funds from a TrueNorth seed.
 5. **Fallback when a wallet has no P2QRH descriptor.** External signers
