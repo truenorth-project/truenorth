@@ -13,6 +13,12 @@ on:
 
 permissions:
   contents: write
+  # Build provenance: id-token for the runner's OIDC identity, attestations to
+  # record the signed statement. See the Verification section of the release
+  # notes -- provenance binds artifact to workflow and commit; the detached GPG
+  # signature over SHA256SUMS is produced offline and attests to publication.
+  id-token: write
+  attestations: write
 
 concurrency:
   group: release-${{ github.ref }}
@@ -239,6 +245,18 @@ jobs:
           sha256sum "${STAGE}.zip" > "${STAGE}.zip.sha256"
           ls -la "${STAGE}.zip" "${STAGE}.zip.sha256"
           cat "${STAGE}.zip.sha256"
+
+      - name: Attest build provenance (native)
+        if: matrix.host == ''
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: truenorth-*-${{ matrix.platform }}.tar.gz
+
+      - name: Attest build provenance (cross-compile)
+        if: matrix.host != ''
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: truenorth-*-${{ matrix.platform }}.zip
 
       - name: Upload to GitHub Release
         # ncipollo/release-action handles existing releases via allowUpdates,
