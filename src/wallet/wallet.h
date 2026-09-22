@@ -136,9 +136,9 @@ static const bool DEFAULT_DISABLE_WALLET = false;
 static const bool DEFAULT_WALLETCROSSCHAIN = false;
 //! -maxtxfee default
 constexpr CAmount DEFAULT_TRANSACTION_MAXFEE{COIN / 10};
-//! Discourage users to set fees higher than this amount (in satoshis) per kB
+//! Discourage users to set fees higher than this amount (in miettes) per kB
 constexpr CAmount HIGH_TX_FEE_PER_KB{COIN / 100};
-//! -maxtxfee will warn if called with a higher fee than this amount (in satoshis)
+//! -maxtxfee will warn if called with a higher fee than this amount (in miettes)
 constexpr CAmount HIGH_MAX_TX_FEE{100 * HIGH_TX_FEE_PER_KB};
 //! Pre-calculated constants for input size estimation in *virtual size*
 static constexpr size_t DUMMY_NESTED_P2WPKH_INPUT_SIZE = 91;
@@ -753,7 +753,7 @@ public:
      * CWallet::TransactionChangeType for details).
      */
     std::optional<OutputType> m_default_change_type{};
-    /** Absolute maximum transaction fee (in satoshis) used by default for the wallet */
+    /** Absolute maximum transaction fee (in miettes) used by default for the wallet */
     CAmount m_default_max_tx_fee{DEFAULT_TRANSACTION_MAXFEE};
 
     /** Number of pre-generated keys/scripts by each spkm (part of the look-ahead process, used to detect payments) */

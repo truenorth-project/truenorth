@@ -16,19 +16,19 @@
 #include <type_traits>
 
 const std::string CURRENCY_UNIT = "NORTH"; // One formatted unit
-const std::string CURRENCY_ATOM = "sat"; // One indivisible minimum value unit
+const std::string CURRENCY_ATOM = "mie"; // One indivisible minimum value unit (miette)
 
 /* Used to determine type of fee estimation requested */
 enum class FeeEstimateMode {
     UNSET,        //!< Use default settings based on other criteria
     ECONOMICAL,   //!< Force estimateSmartFee to use non-conservative estimates
     CONSERVATIVE, //!< Force estimateSmartFee to use conservative estimates
-    BTC_KVB,      //!< Use BTC/kvB fee rate unit
-    SAT_VB,       //!< Use sat/vB fee rate unit
+    NORTH_KVB,    //!< Use NORTH/kvB fee rate unit
+    MIE_VB,       //!< Use mie/vB (miette per vbyte) fee rate unit
 };
 
 /**
- * Fee rate in satoshis per virtualbyte: CAmount / vB
+ * Fee rate in miettes per virtualbyte: CAmount / vB
  * the feerate is represented internally as FeeFrac
  */
 class CFeeRate
@@ -73,7 +73,7 @@ public:
         m_feerate = FeePerVSize(GetFeePerK() + a.GetFeePerK(), 1000);
         return *this;
     }
-    std::string ToString(const FeeEstimateMode& fee_estimate_mode = FeeEstimateMode::BTC_KVB) const;
+    std::string ToString(const FeeEstimateMode& fee_estimate_mode = FeeEstimateMode::NORTH_KVB) const;
     friend CFeeRate operator*(const CFeeRate& f, int a) { return CFeeRate(a * f.m_feerate.fee, f.m_feerate.size); }
     friend CFeeRate operator*(int a, const CFeeRate& f) { return CFeeRate(a * f.m_feerate.fee, f.m_feerate.size); }
 

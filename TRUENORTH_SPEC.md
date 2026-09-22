@@ -8,7 +8,7 @@
 ## 1. Identity
 - **Name / Ticker:** TrueNorth / NORTH
 - **Theme:** Canadian
-- **Smallest unit:** 1 NORTH = 100,000,000 **loonies** (8 decimals). The base unit is the loonie.
+- **Smallest unit:** 1 NORTH = 100,000,000 **miettes** (8 decimals), abbreviated `mie`. The base unit is the miette.
 - **Base codebase:** fork of Bitcoin Core (current stable release)
 
 ## 2. Consensus & Proof of Work
