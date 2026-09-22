@@ -58,9 +58,9 @@ then disagree about genesis. The P2P port stays 49555.
 
 ## What operators need to do
 
-1. Pull master and rebuild. The reset commit (new genesis, new magic, the flag
-   change) lands before 18:00 UTC on the 23rd; building earlier than that gets
-   you a node that cannot sync either chain.
+1. Upgrade to `v30.4.1-tn4-reset` — download it from the release page or build
+   the tag. Do not build from master for this: master moves, and a build from
+   the wrong point syncs neither the old chain nor the new one.
 2. Stop your node.
 3. Back up `wallet.dat` or your wallet directory first if you want it, then
    delete the testnet4 data directory — `~/.truenorth/testnet4` by default.
