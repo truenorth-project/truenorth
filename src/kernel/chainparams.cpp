@@ -70,14 +70,15 @@ static CBlock CreateGenesisBlock(const char* pszTimestamp, const CScript& genesi
  *     CTxOut(nValue=50.00000000, scriptPubKey=0x5F1DF16B2B704C8A578D0B)
  *   vMerkleTree: 4a5e1e
  */
-static CBlock CreateGenesisBlock(uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& genesisReward)
+static CBlock CreateGenesisBlock(const char* pszTimestamp, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& genesisReward)
 {
-    // pszTimestamp + OP_RETURN coinbase: the single source of truth for the
-    // string is now `src/truenorth/genesis_spec.h`. The mine-genesis tool
-    // includes that same header, so editing the string there is enough --
-    // no risk of the runtime CreateGenesisBlock and the tool diverging.
+    // pszTimestamp + OP_RETURN coinbase: the source of truth for the strings is
+    // `src/truenorth/genesis_spec.h`, which keeps mainnet's separate from the
+    // test chains' so a ceremony edit cannot move a test chain's genesis. The
+    // mine-genesis tool includes that same header, so the runtime
+    // CreateGenesisBlock and the tool cannot diverge.
     const CScript genesisOutputScript = CScript() << OP_RETURN;
-    return CreateGenesisBlock(truenorth::GENESIS_TIMESTAMP_MSG, genesisOutputScript, nTime, nNonce, nBits, nVersion, genesisReward);
+    return CreateGenesisBlock(pszTimestamp, genesisOutputScript, nTime, nNonce, nBits, nVersion, genesisReward);
 }
 
 /**
@@ -153,7 +154,7 @@ public:
 
         // Timestamp 4070908800 (2099-01-01) is a placeholder; mainnet is
         // not launchable from this binary. Update and re-mine at launch.
-        genesis = CreateGenesisBlock(4070908800, 2, 0x207fffff, 1, 512 * COIN);
+        genesis = CreateGenesisBlock(truenorth::GENESIS_TIMESTAMP_MSG_MAIN, 4070908800, 2, 0x207fffff, 1, 512 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
         assert(consensus.hashGenesisBlock == uint256{"8158970ee7fc58bb987aca8f87671fafddb1c3107a522b1b741b1fc23be0c151"});
         assert(genesis.hashMerkleRoot == uint256{"bedb5be1cd03ead77e25a27dbf4ffbd4fe8496f085cf42e4d1ce935b153dc565"});
@@ -264,7 +265,9 @@ public:
         consensus.powLimit = uint256{"7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"};
         consensus.nPowTargetTimespan = 90 * 120; // 90-block LWMA window (informational; LWMA retargets per block)
         consensus.nPowTargetSpacing = 120; // 2 minutes
-        consensus.fPowAllowMinDifficultyBlocks = true;
+        // Off, as on mainnet and testnet4. Under LWMA a powLimit block dominates
+        // the 90-block average for its whole residency; see doc/testnet4-reset.md.
+        consensus.fPowAllowMinDifficultyBlocks = false;
         consensus.enforce_BIP94 = false;
         consensus.fPowNoRetargeting = false;
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].bit = 28;
@@ -306,7 +309,7 @@ public:
 
         // testnet3 genesis placeholder. Re-mined at launch with the real
         // pszTimestamp and launch-day nTime.
-        genesis = CreateGenesisBlock(1748000010, 1, 0x207fffff, 1, 512 * COIN);
+        genesis = CreateGenesisBlock(truenorth::GENESIS_TIMESTAMP_MSG_TEST, 1748000010, 1, 0x207fffff, 1, 512 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
         assert(consensus.hashGenesisBlock == uint256{"11f93a5dbb90014c9c1eda190e7bb1a6587f7938fb8be98fd9d780c3f0068052"});
         assert(genesis.hashMerkleRoot == uint256{"bedb5be1cd03ead77e25a27dbf4ffbd4fe8496f085cf42e4d1ce935b153dc565"});
@@ -376,7 +379,14 @@ public:
         consensus.powLimit = uint256{"7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"};
         consensus.nPowTargetTimespan = 90 * 120; // 90-block LWMA window (informational; LWMA retargets per block)
         consensus.nPowTargetSpacing = 120; // 2 minutes
-        consensus.fPowAllowMinDifficultyBlocks = true;
+        // Off as of the 2026-09-23 reset. The rule exists for Bitcoin's
+        // 2016-block retarget, where a departing miner can strand the chain for
+        // weeks. LWMA retargets every block, so the stall it guards against is
+        // short (a 10x hashrate loss recovers in ~39 blocks), while a powLimit
+        // block sits in the 90-block average and dominates it -- one late block
+        // inflated the target ~607000x in simulation, with 89 of the next 90
+        // blocks solving in under ten seconds. See doc/testnet4-reset.md.
+        consensus.fPowAllowMinDifficultyBlocks = false;
         consensus.enforce_BIP94 = true;
         consensus.fPowNoRetargeting = false;
 
@@ -401,15 +411,14 @@ public:
         consensus.max_reorg_depth = 72;
         consensus.nLaunchTime = 0; // testnet4: rule not enforced
 
-        // TrueNorth testnet4 magic -- next byte in the fa c4 b8 d* family
-        // after testnet3. Not on the June 1 launch path (we're launching
-        // testnet3 only), but fixed defensively so a node started with
-        // -testnet=4 against our binary can't accidentally peer with
-        // Bitcoin testnet4.
+        // TrueNorth testnet4 magic. Bumped from 0xd4 to 0xd5 at the 2026-09-23
+        // reset so nodes on the abandoned chain cannot handshake with nodes on
+        // the new one and then disagree about genesis -- they simply do not
+        // connect, which is far easier to diagnose.
         pchMessageStart[0] = 0xfa;
         pchMessageStart[1] = 0xc4;
         pchMessageStart[2] = 0xb8;
-        pchMessageStart[3] = 0xd4;
+        pchMessageStart[3] = 0xd5;
         nDefaultPort = 49555; // mainnet 9555 + 40000
         nPruneAfterHeight = 1000;
         m_assumed_blockchain_size = 1;
@@ -418,9 +427,9 @@ public:
         // TrueNorth testnet4 genesis -- placeholder, will be re-mined when
         // (and if) we decide to publicly launch this chain. testnet3 is the
         // June 1 launch target.
-        genesis = CreateGenesisBlock(1748000020, 0, 0x207fffff, 1, 512 * COIN);
+        genesis = CreateGenesisBlock(truenorth::GENESIS_TIMESTAMP_MSG_TEST, 1790186400, 2, 0x207fffff, 1, 512 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256{"0cdd8a4406a021b2e8069bea38f9f67324aa96241091cf77c70be6def3e7c8f5"});
+        assert(consensus.hashGenesisBlock == uint256{"ab30dfbf9dd9e1ecca22d845bcd5df40feb2d03547906cd039b412dd55d12750"});
         assert(genesis.hashMerkleRoot == uint256{"bedb5be1cd03ead77e25a27dbf4ffbd4fe8496f085cf42e4d1ce935b153dc565"});
 
         vFixedSeeds.clear();
@@ -570,7 +579,7 @@ public:
         nPruneAfterHeight = 1000;
 
         // TrueNorth signet genesis -- mined under RandomNorth.
-        genesis = CreateGenesisBlock(1748000030, 0, 0x207fffff, 1, 512 * COIN);
+        genesis = CreateGenesisBlock(truenorth::GENESIS_TIMESTAMP_MSG_TEST, 1748000030, 0, 0x207fffff, 1, 512 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
         assert(consensus.hashGenesisBlock == uint256{"bf936c69831c079eeef29f3da092f96d6b1088dc530e46317a2b722c543fafff"});
         assert(genesis.hashMerkleRoot == uint256{"bedb5be1cd03ead77e25a27dbf4ffbd4fe8496f085cf42e4d1ce935b153dc565"});
@@ -682,7 +691,7 @@ public:
         }
 
         // TrueNorth regtest genesis -- mined under RandomNorth.
-        genesis = CreateGenesisBlock(1296688602, 0, 0x207fffff, 1, 512 * COIN);
+        genesis = CreateGenesisBlock(truenorth::GENESIS_TIMESTAMP_MSG_TEST, 1296688602, 0, 0x207fffff, 1, 512 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
         assert(consensus.hashGenesisBlock == uint256{"d911bd3ec7ba0f597643c3920f4d6e01ffd872fcae38e0aaab13eb42718aed2f"});
         assert(genesis.hashMerkleRoot == uint256{"bedb5be1cd03ead77e25a27dbf4ffbd4fe8496f085cf42e4d1ce935b153dc565"});

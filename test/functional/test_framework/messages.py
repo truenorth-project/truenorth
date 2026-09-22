@@ -88,7 +88,7 @@ TX_MAX_STANDARD_VERSION = 3
 # challenge (6a): first 4 bytes of sha256d(ser(challenge)).
 MAGIC_BYTES = {
     "mainnet": b"\xfa\xc4\xb8\xd2",
-    "testnet4": b"\xfa\xc4\xb8\xd4",
+    "testnet4": b"\xfa\xc4\xb8\xd5",
     "regtest": b"\xfa\xbf\xb5\xda",
     "signet": b"\x36\x34\x69\xbb",
 }

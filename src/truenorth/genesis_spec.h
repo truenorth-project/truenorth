@@ -5,14 +5,26 @@
 #ifndef TRUENORTH_GENESIS_SPEC_H
 #define TRUENORTH_GENESIS_SPEC_H
 
-// pszTimestamp string for the genesis coinbase. chainparams.cpp reads it
-// at startup; mine_genesis.cpp uses it to find a matching nonce.
+// pszTimestamp strings for the genesis coinbase. chainparams.cpp reads these
+// at startup; mine_genesis.cpp uses them to find a matching nonce.
 //
-// Edit before doing a real launch mine. Mainnet wants a recent newspaper
-// headline. Testnet just needs something distinctive.
+// Split per chain deliberately. The string goes into the coinbase, which feeds
+// the merkle root, which feeds the genesis hash -- and every chain asserts its
+// genesis hash in chainparams. A single shared string therefore means that
+// editing mainnet's message at the genesis ceremony silently changes the
+// genesis of testnet3, testnet4, signet and regtest, and every node built from
+// that commit aborts on startup. Keep them separate so the ceremony touches
+// mainnet only.
+//
+// Mainnet wants a recent newspaper headline, set at the ceremony (task #31).
+// The test chains just need something distinctive, and should not be edited
+// without resetting the chain in question.
 namespace truenorth {
 
-inline constexpr const char* GENESIS_TIMESTAMP_MSG =
+inline constexpr const char* GENESIS_TIMESTAMP_MSG_MAIN =
+    "TrueNorth - Canadian RandomX genesis - pre-launch placeholder";
+
+inline constexpr const char* GENESIS_TIMESTAMP_MSG_TEST =
     "TrueNorth - Canadian RandomX genesis - pre-launch placeholder";
 
 } // namespace truenorth

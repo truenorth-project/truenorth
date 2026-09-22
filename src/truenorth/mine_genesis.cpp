@@ -38,7 +38,8 @@ namespace {
 // Pull the single source-of-truth pszTimestamp from genesis_spec.h.
 // chainparams.cpp uses the same constant; editing it there is the one
 // place users change before re-mining for a new launch.
-using truenorth::GENESIS_TIMESTAMP_MSG;
+using truenorth::GENESIS_TIMESTAMP_MSG_MAIN;
+using truenorth::GENESIS_TIMESTAMP_MSG_TEST;
 
 // Genesis coinbase output is OP_RETURN -- explicitly unspendable, per spec
 // (genesis reward is unspendable to enforce the no-premine property).
@@ -50,8 +51,8 @@ CScript GenesisOutputScript()
 // Build the genesis CBlock for the given header parameters. Mirrors
 // chainparams.cpp's CreateGenesisBlock helpers byte-for-byte so the
 // resulting block hash matches what bitcoind will compute at runtime.
-CBlock BuildGenesis(uint32_t nTime, uint32_t nNonce, uint32_t nBits,
-                    int32_t nVersion, CAmount genesisReward)
+CBlock BuildGenesis(const char* pszTimestamp, uint32_t nTime, uint32_t nNonce,
+                    uint32_t nBits, int32_t nVersion, CAmount genesisReward)
 {
     CMutableTransaction txNew;
     txNew.version = 1;
@@ -63,8 +64,8 @@ CBlock BuildGenesis(uint32_t nTime, uint32_t nNonce, uint32_t nBits,
     txNew.vin[0].scriptSig =
         CScript() << 486604799 << CScriptNum(4)
                   << std::vector<unsigned char>{
-                         reinterpret_cast<const unsigned char*>(GENESIS_TIMESTAMP_MSG),
-                         reinterpret_cast<const unsigned char*>(GENESIS_TIMESTAMP_MSG) + std::strlen(GENESIS_TIMESTAMP_MSG)};
+                         reinterpret_cast<const unsigned char*>(pszTimestamp),
+                         reinterpret_cast<const unsigned char*>(pszTimestamp) + std::strlen(pszTimestamp)};
 
     txNew.vout[0].nValue = genesisReward;
     txNew.vout[0].scriptPubKey = GenesisOutputScript();
@@ -84,6 +85,7 @@ struct ChainSpec {
     const char* name;
     uint32_t nTime;
     uint32_t nBits;
+    const char* msg; // per-chain pszTimestamp; see genesis_spec.h
 };
 
 bool MineFor(const ChainSpec& spec, uint64_t max_nonce_tries)
@@ -100,7 +102,7 @@ bool MineFor(const ChainSpec& spec, uint64_t max_nonce_tries)
     const int32_t nVersion = 1;
     const CAmount reward = 512 * COIN;
 
-    CBlock genesis = BuildGenesis(spec.nTime, /*nNonce=*/0, spec.nBits,
+    CBlock genesis = BuildGenesis(spec.msg, spec.nTime, /*nNonce=*/0, spec.nBits,
                                   nVersion, reward);
     const auto t0 = std::chrono::steady_clock::now();
 
@@ -176,7 +178,8 @@ int main(int argc, char* argv[])
     }
 
     std::fprintf(stderr, "== TrueNorth genesis-mining utility ==\n");
-    std::fprintf(stderr, "Timestamp message: \"%s\"\n", GENESIS_TIMESTAMP_MSG);
+    std::fprintf(stderr, "Timestamp message (main): \"%s\"\n", GENESIS_TIMESTAMP_MSG_MAIN);
+    std::fprintf(stderr, "Timestamp message (test chains): \"%s\"\n", GENESIS_TIMESTAMP_MSG_TEST);
     std::fprintf(stderr, "Genesis output script: OP_RETURN (unspendable)\n");
     std::fprintf(stderr, "Genesis reward: 512 * COIN (unspendable)\n");
     if (!chain_filter.empty()) {
@@ -204,11 +207,11 @@ int main(int argc, char* argv[])
     // chainparams.cpp's CreateGenesisBlock(NTIME, ...) call and the mine
     // here agree by construction.
     std::array<ChainSpec, 5> chains{{
-        {"main", 1791158400, 0x207fffffu},
-        {"testnet3", 1748000010, 0x207fffffu},
-        {"testnet4", 1748000020, 0x207fffffu},
-        {"signet", 1748000030, 0x207fffffu},
-        {"regtest", 1296688602, 0x207fffffu},
+        {"main", 1791158400, 0x207fffffu, GENESIS_TIMESTAMP_MSG_MAIN},
+        {"testnet3", 1748000010, 0x207fffffu, GENESIS_TIMESTAMP_MSG_TEST},
+        {"testnet4", 1790186400, 0x207fffffu, GENESIS_TIMESTAMP_MSG_TEST},
+        {"signet", 1748000030, 0x207fffffu, GENESIS_TIMESTAMP_MSG_TEST},
+        {"regtest", 1296688602, 0x207fffffu, GENESIS_TIMESTAMP_MSG_TEST},
     }};
 
     bool all_ok = true;

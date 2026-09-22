@@ -53,23 +53,19 @@ BOOST_AUTO_TEST_CASE(MiningInterface)
     auto should_be_nullptr = block_template->waitNext(wait_options);
     BOOST_REQUIRE(should_be_nullptr == nullptr);
 
-    // This remains the case when exactly 20 minutes have gone by
-    {
-        LOCK(cs_main);
-        SetMockTime(m_node.chainman->ActiveChain().Tip()->GetBlockTime() + 20 * 60);
+    // Upstream checked here that once the block ran far enough behind, the
+    // min-difficulty rule dropped the target and waitNext() produced a better
+    // template. testnet4 no longer carries that rule (see
+    // doc/testnet4-reset.md), so a late block changes nothing about the
+    // template and waitNext() keeps returning nullptr however long it waits.
+    for (const int64_t delay : {20 * 60, 20 * 60 + 1, 6 * 60 * 60}) {
+        {
+            LOCK(cs_main);
+            SetMockTime(m_node.chainman->ActiveChain().Tip()->GetBlockTime() + delay);
+        }
+        should_be_nullptr = block_template->waitNext(wait_options);
+        BOOST_REQUIRE(should_be_nullptr == nullptr);
     }
-    should_be_nullptr = block_template->waitNext(wait_options);
-    BOOST_REQUIRE(should_be_nullptr == nullptr);
-
-    // One second later the difficulty drops and it returns a new template
-    // Note that we can't test the actual difficulty change, because the
-    // difficulty is already at 1.
-    {
-        LOCK(cs_main);
-        SetMockTime(m_node.chainman->ActiveChain().Tip()->GetBlockTime() + 20 * 60 + 1);
-    }
-    block_template = block_template->waitNext(wait_options);
-    BOOST_REQUIRE(block_template);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

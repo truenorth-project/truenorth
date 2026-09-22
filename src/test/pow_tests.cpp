@@ -134,10 +134,12 @@ BOOST_AUTO_TEST_CASE(lwma_no_retargeting)
     BOOST_CHECK_EQUAL(CalculateNextWorkRequired(&blocks.back(), 0, consensus), TEST_NBITS);
 }
 
-/* On chains that allow it, a block more than 2x spacing late may use min difficulty */
+/* On chains that allow it, a block more than 2x spacing late may use min
+ * difficulty. Only regtest carries the rule now -- see
+ * min_difficulty_disabled_on_public_chains below. */
 BOOST_AUTO_TEST_CASE(get_next_work_min_difficulty)
 {
-    const auto consensus{CreateChainParams(*m_node.args, ChainType::TESTNET4)->GetConsensus()};
+    const auto consensus{CreateChainParams(*m_node.args, ChainType::REGTEST)->GetConsensus()};
     BOOST_REQUIRE(consensus.fPowAllowMinDifficultyBlocks);
     const uint32_t pow_limit_nbits{UintToArith256(consensus.powLimit).GetCompact()};
     std::vector<CBlockIndex> blocks(200);
@@ -188,6 +190,19 @@ BOOST_AUTO_TEST_CASE(lwma_min_difficulty_block_in_window)
     BOOST_CHECK_MESSAGE(poisoned >= baseline,
                         strprintf("one min-difficulty block made the target harder: %s < %s",
                                   poisoned.ToString(), baseline.ToString()));
+}
+
+/* No publicly-mined chain carries Bitcoin's min-difficulty rule. It does not
+ * suit LWMA: a powLimit block sits in the 90-block average and dominates it for
+ * its whole residency, so one late block collapses difficulty and the next 90
+ * blocks solve almost instantly. testnet4 ran with it until the 2026-09-23
+ * reset; see doc/testnet4-reset.md. Regtest keeps it, where it is harmless
+ * because fPowNoRetargeting short-circuits the average entirely. */
+BOOST_AUTO_TEST_CASE(min_difficulty_disabled_on_public_chains)
+{
+    for (const auto chain : {ChainType::MAIN, ChainType::TESTNET, ChainType::TESTNET4, ChainType::SIGNET}) {
+        BOOST_CHECK(!CreateChainParams(*m_node.args, chain)->GetConsensus().fPowAllowMinDifficultyBlocks);
+    }
 }
 
 /* Mainnet does not allow min-difficulty blocks no matter how late they are */
