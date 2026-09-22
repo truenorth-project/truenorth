@@ -1,0 +1,44 @@
+# Boost unit suites that are expected to fail, one per line.
+#
+# Every entry here fails for a single reason: the mainnet genesis block is
+# still a placeholder, mined at nBits 0x207fffff, which is easier than
+# mainnet's own powLimit. DeriveTarget() therefore rejects it, the genesis
+# never connects, and Chainstate::InvalidChainFound() asserts on a null tip:
+#
+#   ConnectBlock: Consensus::CheckBlock: high-hash, proof of work failed
+#   InvalidChainFound: invalid block=8158970e...c151 height=0
+#   Assertion `tip' failed.
+#
+# Any suite that builds a chainstate on mainnet params dies there. The one
+# exception in spirit is pow_tests, which fails a deliberate assertion
+# (ChainParams_MAIN_sanity) checking exactly this -- it is the canary for the
+# genesis ceremony.
+#
+# All of these should start passing once the real genesis is mined and
+# chainparams updated. test/run-unit-suites.sh compares in both directions, so
+# CI will fail and tell you to delete entries as they start passing. When this
+# file is empty, the script can be replaced with a single test_bitcoin run.
+
+blockmanager_tests
+chainstate_write_tests
+checkqueue_tests
+coinselection_tests
+coinselector_tests
+denialofservice_tests
+feebumper_tests
+group_outputs_tests
+mempool_tests
+merkle_tests
+miner_tests
+net_peer_connection_tests
+orphanage_tests
+pow_tests
+prevector_tests
+psbt_wallet_tests
+rbf_tests
+rpc_tests
+validation_flush_tests
+validation_tests
+wallet_tests
+wallet_transaction_tests
+walletload_tests

@@ -127,11 +127,31 @@ jobs:
 
       - name: Run truenorth_tests unit suite
         timeout-minutes: 5
-        # Runs only the TrueNorth-specific cases (LWMA, seed_key, tail
-        # emission, GetPoWHash, RandomX wrapper). The full bitcoin-core
-        # test suite is too slow + has too many unrelated Heisenbugs to
-        # gate every push on; we narrow to the suite we own.
+        # The TrueNorth-specific cases (LWMA, seed_key, tail emission,
+        # GetPoWHash, RandomX wrapper), run verbosely so a failure here is
+        # readable without digging. The whole-suite sweep below covers these
+        # too, but not with per-case output.
         run: ./build/bin/test_bitcoin --run_test=truenorth_tests --log_level=test_suite
+
+      - name: Run full unit suite against the known-failing baseline
+        timeout-minutes: 30
+        # Each suite runs in its own process: an aborting suite otherwise
+        # takes the whole run with it and leaves gArgs populated, so every
+        # later suite dies on a duplicate-AddArg assertion and one real
+        # failure hides ~140 others.
+        #
+        # The failing set is compared against test/ci-known-failing-suites.txt
+        # in both directions, so a new failure and a newly-fixed suite both
+        # break the build. Everything in that baseline is blocked on the
+        # mainnet placeholder genesis and should empty out at the ceremony.
+        #
+        # This was previously narrowed to truenorth_tests on the grounds that
+        # the full suite was slow and flaky. The suite is in much better shape
+        # now (120 pass / 23 known-fail, stable across repeated local runs),
+        # so it is worth gating on. If it does turn out to flake on CI
+        # hardware, move this step to a nightly schedule rather than deleting
+        # it -- a daily signal beats none.
+        run: ./test/run-unit-suites.sh build/bin/test_bitcoin test/ci-known-failing-suites.txt
 
       - name: Regression -- 2-node sync
         timeout-minutes: 5
