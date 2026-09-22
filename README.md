@@ -62,6 +62,11 @@ Release key fingerprint:
 Check that fingerprint against a source other than this file before trusting
 it — anyone who can alter the repository can alter both the key and the
 fingerprint printed next to it.
+`gpg --verify` prints `Good signature`, then a warning that the key is not
+certified with a trusted signature. That is expected — it only means you have
+not told GPG you trust this key. What matters is the `Good signature` line and
+that the primary key fingerprint it prints matches the one above.
+
 
 The binaries are built by GitHub Actions from the tagged source rather than on
 a maintainer's machine, and each archive also carries a build provenance
