@@ -14,6 +14,7 @@
 #include <test/util/script.h>
 #include <test/util/setup_common.h>
 #include <util/time.h>
+#include <truenorth/seed_key.h>
 #include <validation.h>
 #include <validationinterface.h>
 
@@ -97,7 +98,9 @@ std::shared_ptr<CBlock> MinerTestingSetup::FinalizeBlock(std::shared_ptr<CBlock>
 
     pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);
 
-    while (!CheckProofOfWork(pblock->GetHash(), pblock->nBits, Params().GetConsensus())) {
+    // PoW is the RandomX hash under the per-epoch seed, not the block hash.
+    const uint256 seed_key{truenorth::SeedKeyForChild(prev_block)};
+    while (!CheckProofOfWork(pblock->GetPoWHash(seed_key), pblock->nBits, Params().GetConsensus())) {
         ++(pblock->nNonce);
     }
 
