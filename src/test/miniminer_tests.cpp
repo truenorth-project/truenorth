@@ -568,9 +568,14 @@ BOOST_FIXTURE_TEST_CASE(miniminer_overlap, TestChain100Setup)
     BOOST_CHECK(miniminer_manual.IsReadyToCalculate());
     BOOST_CHECK(miniminer_pool.IsReadyToCalculate());
     for (const auto& sequences : {miniminer_manual.Linearize(), miniminer_pool.Linearize()}) {
-        // tx2 and tx4 selected first: high feerate with nothing to bump
-        BOOST_CHECK_EQUAL(Find(sequences, tx4->GetHash()), 0);
-        BOOST_CHECK_EQUAL(Find(sequences, tx2->GetHash()), 1);
+        // tx2 and tx4 selected first: high feerate with nothing to bump. Their
+        // feerates are equal, so which of the two comes first is a txid
+        // tie-break rather than something this test should pin down.
+        const auto seq_tx2{Find(sequences, tx2->GetHash())};
+        const auto seq_tx4{Find(sequences, tx4->GetHash())};
+        BOOST_CHECK_NE(seq_tx2, seq_tx4);
+        BOOST_CHECK_LE(seq_tx2, 1);
+        BOOST_CHECK_LE(seq_tx4, 1);
 
         // tx5 + tx7 CPFP
         BOOST_CHECK_EQUAL(Find(sequences, tx5->GetHash()), 2);

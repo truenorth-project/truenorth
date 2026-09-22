@@ -623,7 +623,14 @@ BOOST_FIXTURE_TEST_CASE(calc_feerate_diagram_rbf, TestChain100Setup)
         const auto replace_cluster_size_3{changeset->CalculateChunksForRBF()};
 
         BOOST_CHECK(!replace_cluster_size_3.has_value());
-        BOOST_CHECK_EQUAL(util::ErrorString(replace_cluster_size_3).original, strprintf("%s has 2 descendants, max 1 allowed", conflict_1->GetHash().GetHex()));
+        // CheckConflictTopology reports the first offending conflict in set
+        // (txid) order. Both conflict_1 and conflict_1_child are invalid here,
+        // so either diagnosis is correct depending on how their txids sort.
+        const std::string err{util::ErrorString(replace_cluster_size_3).original};
+        BOOST_CHECK_MESSAGE(
+            err == strprintf("%s has 2 descendants, max 1 allowed", conflict_1->GetHash().GetHex()) ||
+            err == strprintf("%s has both ancestor and descendant, exceeding cluster limit of 2", conflict_1_child->GetHash().GetHex()),
+            err);
     }
 }
 
