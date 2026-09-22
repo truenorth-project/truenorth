@@ -150,6 +150,9 @@ public:
         std::unordered_map<Consensus::BuriedDeployment, int> activation_heights{};
         bool fastprune{false};
         bool enforce_bip94{false};
+        //! Launch time to enforce (see Consensus::Params::nLaunchTime). 0
+        //! disables the rule, matching the other test chains.
+        int64_t launchtime{0};
     };
 
     static std::unique_ptr<const CChainParams> RegTest(const RegTestOptions& options);

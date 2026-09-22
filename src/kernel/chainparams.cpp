@@ -653,7 +653,10 @@ public:
         // arbitrary-depth reorgs during testing. See
         // consensus/params.h::max_reorg_depth.
         consensus.max_reorg_depth = 0;
-        consensus.nLaunchTime = 0; // regtest: rule not enforced
+        // Regtest leaves the launch-time rule off by default, as the other
+        // test chains do, but allows -testlaunchtime so the mainnet rule can
+        // actually be exercised. See ContextualCheckBlockHeader().
+        consensus.nLaunchTime = opts.launchtime;
 
         pchMessageStart[0] = 0xfa;
         pchMessageStart[1] = 0xbf;

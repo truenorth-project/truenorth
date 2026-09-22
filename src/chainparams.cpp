@@ -46,6 +46,14 @@ void ReadRegTestArgs(const ArgsManager& args, CChainParams::RegTestOptions& opti
     if (auto value = args.GetBoolArg("-fastprune")) options.fastprune = *value;
     if (HasTestOption(args, "bip94")) options.enforce_bip94 = true;
 
+    if (args.IsArgSet("-testlaunchtime")) {
+        const int64_t launchtime{args.GetIntArg("-testlaunchtime", 0)};
+        if (launchtime < 0) {
+            throw std::runtime_error(strprintf("Invalid value (%d) for -testlaunchtime, must not be negative.", launchtime));
+        }
+        options.launchtime = launchtime;
+    }
+
     for (const std::string& arg : args.GetArgs("-testactivationheight")) {
         const auto found{arg.find('@')};
         if (found == std::string::npos) {
