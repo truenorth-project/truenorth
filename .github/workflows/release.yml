@@ -222,7 +222,7 @@ jobs:
           cp README.md COPYING "${STAGE}/"
           # Tester-relevant docs travel with the binary so an onion-only
           # operator doesn't have to bounce back to a browser.
-          cp doc/testnet.md "${STAGE}/doc/"
+          cp doc/testnet.md doc/testnet4-reset.md "${STAGE}/doc/"
           tar czf "${STAGE}.tar.gz" "${STAGE}"
           sha256sum "${STAGE}.tar.gz" > "${STAGE}.tar.gz.sha256" 2>/dev/null \
             || shasum -a 256 "${STAGE}.tar.gz" > "${STAGE}.tar.gz.sha256"
@@ -240,7 +240,7 @@ jobs:
           cp build/bin/truenorth-cli.exe     "${STAGE}/bin/"
           cp build/bin/truenorth-miner.exe   "${STAGE}/bin/"
           cp README.md COPYING "${STAGE}/"
-          cp doc/testnet.md "${STAGE}/doc/"
+          cp doc/testnet.md doc/testnet4-reset.md "${STAGE}/doc/"
           zip -r "${STAGE}.zip" "${STAGE}"
           sha256sum "${STAGE}.zip" > "${STAGE}.zip.sha256"
           ls -la "${STAGE}.zip" "${STAGE}.zip.sha256"
