@@ -42,6 +42,33 @@ Every archive ships with a matching `.sha256` — verify before running:
 sha256sum -c truenorth-<tag>-linux-x86_64.tar.gz.sha256
 ```
 
+From v30.4.1 onward each release also carries a `SHA256SUMS` covering every
+archive, with a detached signature `SHA256SUMS.asc` made with the release key.
+The key is in this repository at
+[`contrib/keys/septentrion-dev.asc`](contrib/keys/septentrion-dev.asc):
+
+```bash
+gpg --import contrib/keys/septentrion-dev.asc
+gpg --verify SHA256SUMS.asc SHA256SUMS
+sha256sum -c SHA256SUMS
+```
+
+Release key fingerprint:
+
+```
+3F0BAE0458615427B8CA935E3E242DF5E4478AE5
+```
+
+Check that fingerprint against a source other than this file before trusting
+it — anyone who can alter the repository can alter both the key and the
+fingerprint printed next to it.
+
+The binaries are built by GitHub Actions from the tagged source rather than on
+a maintainer's machine, and each archive also carries a build provenance
+attestation tying it to the workflow run and commit that produced it. The
+builds are not reproducible yet, so neither the signature nor the attestation
+lets you confirm the source compiles to these exact bytes.
+
 Each package unpacks to a directory containing `bin/truenorthd`, `bin/truenorth-cli`, `bin/truenorth-miner` (or their `.exe` counterparts on Windows), a `doc/` directory with tester-relevant documentation, this `README.md`, and `COPYING`.
 
 **Other platforms** (Intel Macs, Linux ARM64, FreeBSD, etc.) are not currently pre-built — build from source (below).
