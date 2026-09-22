@@ -14,6 +14,9 @@
 #include <blockfilter.h>
 #include <chain.h>
 #include <chainparams.h>
+#include <pow.h>
+#include <primitives/block.h>
+#include <truenorth/seed_key.h>
 #include <chainparamsbase.h>
 #include <clientversion.h>
 #include <common/args.h>
@@ -1153,6 +1156,21 @@ bool AppInitSanityChecks(const kernel::Context& kernel)
 
     if (!ECC_InitSanityCheck()) {
         return InitError(strprintf(_("Elliptic curve cryptography sanity check failure. %s is shutting down."), CLIENT_NAME));
+    }
+
+    // A chain whose own genesis block fails proof of work cannot be started:
+    // the genesis never connects, and validation aborts on a null tip deep in
+    // InvalidChainFound() rather than reporting anything useful. Check it here
+    // so the failure is a readable error. This also catches a genesis mined
+    // against the wrong target, which is the mistake a launch ceremony has to
+    // avoid -- mainnet's placeholder genesis carries nBits easier than
+    // mainnet's own powLimit and is rejected here until it is re-mined.
+    {
+        const CChainParams& chainparams{Params()};
+        const CBlock& genesis{chainparams.GenesisBlock()};
+        if (!CheckProofOfWork(genesis.GetPoWHash(truenorth::kGenesisSeed), genesis.nBits, chainparams.GetConsensus())) {
+            return InitError(strprintf(_("Genesis block for chain \"%s\" does not satisfy its own proof of work. This build cannot run that chain."), chainparams.GetChainTypeString()));
+        }
     }
 
     // Probe the directory locks to give an early error message, if possible
