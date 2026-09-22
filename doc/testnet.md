@@ -132,12 +132,11 @@ circuit; expect a few minutes for a testnet at meaningful height.
 
 ## Start mining
 
-The testnet needs more than one miner to be useful. Right now it's running
-on a single miner, which means LWMA difficulty oscillates wildly (the
-single miner alternates between hitting the LWMA-set difficulty and getting
-the `fPowAllowMinDifficultyBlocks` exemption after long gaps). Adding a
-second or third miner stabilises the chain and exercises real network
-propagation, fork resolution, and seed-key rotation across participants.
+The testnet needs more than one miner to be useful. With few miners, LWMA
+difficulty tracks whatever hashrate is present, so block times swing as
+miners come and go. Adding a second or third miner stabilises the chain and
+exercises real network propagation, fork resolution, and seed-key rotation
+across participants.
 
 If you're running a node, please mine. Your participation is what makes
 the test meaningful.
@@ -254,8 +253,11 @@ When filing, include:
   inter-peer discovery falls back to whatever each tester has in their
   `addnode=` list. Operationally this means: if the seed drops for a while,
   you'll keep talking to whoever you already know about.
-- `fPowAllowMinDifficultyBlocks=true` on testnet4: if no block has been
-  found in 240 seconds (2x target spacing), the next block can be mined at
-  minimum difficulty. This keeps the chain from getting stuck at LWMA-set
-  difficulty when there's only one miner. It also causes visible
-  oscillation in block times until hashrate stabilises.
+- `fPowAllowMinDifficultyBlocks=false` on testnet4, as on mainnet, since the
+  2026-09-23 reset. Bitcoin's rule lets a block more than 2x spacing late be
+  mined at minimum difficulty, which suits a 2016-block retarget but not
+  LWMA: a powLimit block lands in the 90-block average and dominates it for
+  its whole residency, so one late block collapses difficulty and the
+  following blocks solve almost instantly. LWMA recovers from a hashrate
+  drop on its own within tens of blocks. See
+  [`doc/testnet4-reset.md`](testnet4-reset.md).
