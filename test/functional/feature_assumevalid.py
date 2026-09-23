@@ -16,18 +16,19 @@ transactions:
               output can be spent
     102:      a block containing a transaction spending the coinbase
               transaction output. The transaction has an invalid signature.
-    103-10202: bury the bad block with just over two weeks' worth of blocks
-              (10100 blocks at TrueNorth's 120 s spacing; 14 days = 10080)
+    103-502:  bury the bad block past the assumevalid burial window
+              (400 blocks; regtest sets that window to ~300 blocks, where the
+              real chains use two weeks = 10,080 blocks at 120 s spacing)
 
 Start three nodes:
 
-    - node0 has no -assumevalid parameter. Try to sync to block 10202. It will
+    - node0 has no -assumevalid parameter. Try to sync to block 502. It will
       reject block 102 and only sync as far as block 101
     - node1 has -assumevalid set to the hash of block 102. Try to sync to
-      block 10202. node1 will sync all the way to block 10202.
+      block 502. node1 will sync all the way to block 502.
     - node2 has -assumevalid set to the hash of block 102. Try to sync to
       block 200. node2 will reject block 102 since it's assumed valid, but it
-      isn't buried by at least two weeks' work.
+      isn't buried by enough work.
 """
 
 from test_framework.blocktools import (
@@ -129,11 +130,11 @@ class AssumeValidTest(BitcoinTestFramework):
         self.block_time += 1
         height += 1
 
-        # Bury the assumed valid block 10100 deep (two weeks at 120 s blocks,
-        # the assumevalid threshold in ConnectBlock). This crosses RandomX
-        # epochs, so blocks past the genesis epoch are solved under the seed
-        # block's hash (self.blocks[i] is at height i + 1).
-        for _ in range(10100):
+        # Bury the assumed valid block past consensus.assumevalid_bury_time,
+        # which regtest sets to ~300 blocks. Still deep enough to cross a
+        # RandomX epoch, so blocks past the genesis epoch are solved under the
+        # seed block's hash (self.blocks[i] is at height i + 1).
+        for _ in range(400):
             block = create_block(self.tip, create_coinbase(height), self.block_time)
             seed_height = randomx.seed_height_for_height(height)
             if seed_height:
@@ -154,8 +155,7 @@ class AssumeValidTest(BitcoinTestFramework):
 
         # Send blocks to node0. Block 102 will be rejected.
         self.send_blocks_until_disconnected(p2p0)
-        # RandomX PoW checks on ~10k headers plus blocks take far longer than
-        # SHA256d did; allow for it.
+        # RandomX PoW checks cost far more than SHA256d did; allow for it.
         self.wait_until(lambda: self.nodes[0].getblockcount() >= COINBASE_MATURITY + 1, timeout=600)
         assert_equal(self.nodes[0].getblockcount(), COINBASE_MATURITY + 1)
 
@@ -166,8 +166,8 @@ class AssumeValidTest(BitcoinTestFramework):
             # Send all blocks to node1. All blocks will be accepted.
             for block in self.blocks:
                 p2p1.send_without_ping(msg_block(block))
-            # Syncing ~10k RandomX blocks takes a while. Give it plenty of time to sync.
-            p2p1.sync_with_ping(timeout=2400)
+            # RandomX validation is slow; give the sync room.
+            p2p1.sync_with_ping(timeout=600)
         assert_equal(self.nodes[1].getblock(self.nodes[1].getbestblockhash())['height'], len(self.blocks))
 
         p2p2 = self.nodes[2].add_p2p_connection(BaseNode())

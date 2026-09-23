@@ -2459,7 +2459,7 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
                 //  artificially set the default assumed verified block further back.
                 // The test against the minimum chain work prevents the skipping when denied access to any chain at
                 //  least as good as the expected chain.
-                fScriptChecks = (GetBlockProofEquivalentTime(*m_chainman.m_best_header, *pindex, *m_chainman.m_best_header, params.GetConsensus()) <= 60 * 60 * 24 * 7 * 2);
+                fScriptChecks = (GetBlockProofEquivalentTime(*m_chainman.m_best_header, *pindex, *m_chainman.m_best_header, params.GetConsensus()) <= params.GetConsensus().assumevalid_bury_time);
             }
         }
     }
@@ -4576,7 +4576,7 @@ bool ChainstateManager::AcceptBlock(const std::shared_ptr<const CBlock>& pblock,
     // blocks which are too close in height to the tip.  Apply this test
     // regardless of whether pruning is enabled; it should generally be safe to
     // not process unrequested blocks.
-    bool fTooFarAhead{pindex->nHeight > ActiveHeight() + int(MIN_BLOCKS_TO_KEEP)};
+    bool fTooFarAhead{pindex->nHeight > ActiveHeight() + int(GetMinBlocksToKeep(GetParams()))};
 
     // TODO: Decouple this function from the block download logic by removing fRequested
     // This requires some new chain data structure to efficiently look up if a
@@ -6703,7 +6703,7 @@ std::pair<int, int> ChainstateManager::GetPruneRange(const Chainstate& chainstat
     }
 
     int max_prune = std::max<int>(
-        0, chainstate.m_chain.Height() - static_cast<int>(MIN_BLOCKS_TO_KEEP));
+        0, chainstate.m_chain.Height() - static_cast<int>(GetMinBlocksToKeep(GetParams())));
 
     // last block to prune is the lesser of (caller-specified height, MIN_BLOCKS_TO_KEEP from the tip)
     //

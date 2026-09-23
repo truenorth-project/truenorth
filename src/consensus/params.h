@@ -164,6 +164,19 @@ struct Params {
     int64_t nLaunchTime{0};
 
     /**
+     * How much work-equivalent time an -assumevalid block must be buried
+     * under before ConnectBlock will skip script checks beneath it.
+     *
+     * Upstream hardcodes two weeks. That is a deterrent, not a rule: it
+     * makes it costly to pressure users into accepting an invalid chain by
+     * telling them to set -assumevalid manually. Two weeks at a 120s target
+     * is 10,080 blocks, so regtest lowers it -- the mechanism under test is
+     * identical, only the magnitude differs, and mining ten thousand RandomX
+     * blocks to exercise it takes over half an hour.
+     */
+    int64_t assumevalid_bury_time{60 * 60 * 24 * 7 * 2};
+
+    /**
      * If true, witness commitments contain a payload equal to a Bitcoin Script solution
      * to the signet challenge. See BIP325.
      */

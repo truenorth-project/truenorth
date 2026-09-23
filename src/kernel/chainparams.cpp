@@ -657,6 +657,13 @@ public:
         // test chains do, but allows -testlaunchtime so the mainnet rule can
         // actually be exercised. See ContextualCheckBlockHeader().
         consensus.nLaunchTime = opts.launchtime;
+        // Ten hours of work-equivalent time -- about 300 blocks at the 120s
+        // target -- instead of the two weeks the real chains use. Two weeks is
+        // 10,080 blocks here, and mining that many RandomX blocks in a test
+        // takes over half an hour. The window still has to sit above the ~98
+        // blocks feature_assumevalid buries its bad block under for the
+        // negative case, and below the chain it builds for the positive one.
+        consensus.assumevalid_bury_time = 60 * 60 * 10;
 
         pchMessageStart[0] = 0xfa;
         pchMessageStart[1] = 0xbf;
