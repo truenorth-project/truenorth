@@ -120,7 +120,7 @@ class SignetMinerTest(BitcoinTestFramework):
         self.log.info("Signet node with single signature challenge")
         node = self.nodes[0]
         # import private key needed for signing block
-        wallet_importprivkey(node, bytes_to_wif(CHALLENGE_PRIVATE_KEY), 0)
+        wallet_importprivkey(node, bytes_to_wif(CHALLENGE_PRIVATE_KEY, chain=self.chain), 0)
         self.mine_block(node)
         # MUST include signet commitment
         assert get_signet_commitment(get_segwit_commitment(node))

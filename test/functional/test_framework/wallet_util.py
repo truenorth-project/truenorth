@@ -112,10 +112,22 @@ def test_address(node, address, **kwargs):
         elif addr_info[key] != value:
             raise AssertionError("key {} value {} did not match expected value {}".format(key, addr_info[key], value))
 
-def bytes_to_wif(b, compressed=True):
+# base58Prefixes[SECRET_KEY], from src/kernel/chainparams.cpp. TrueNorth gives
+# every chain its own value so a WIF cannot silently decode on the wrong one,
+# which means the prefix has to follow the chain under test rather than being
+# fixed at Bitcoin's testnet 239.
+WIF_PREFIX_BY_CHAIN = {
+    'main': 180,
+    'test': 253,
+    'testnet4': 254,
+    'signet': 255,
+    'regtest': 239,
+}
+
+def bytes_to_wif(b, compressed=True, chain='regtest'):
     if compressed:
         b += b'\x01'
-    return byte_to_base58(b, 239)
+    return byte_to_base58(b, WIF_PREFIX_BY_CHAIN[chain])
 
 def generate_keypair(compressed=True, wif=False):
     """Generate a new random keypair and return the corresponding ECKey /
