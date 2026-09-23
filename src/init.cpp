@@ -1361,9 +1361,9 @@ static ChainstateLoadResult InitAndLoadChainstate(
     auto [status, error] = catch_exceptions([&] { return LoadChainstate(chainman, cache_sizes, options); });
     if (status == node::ChainstateLoadStatus::SUCCESS) {
         uiInterface.InitMessage(_("Verifying blocks…"));
-        if (chainman.m_blockman.m_have_pruned && options.check_blocks > MIN_BLOCKS_TO_KEEP) {
+        if (chainman.m_blockman.m_have_pruned && options.check_blocks > static_cast<int>(GetMinBlocksToKeep(chainman.GetParams()))) {
             LogWarning("pruned datadir may not have more than %d blocks; only checking available blocks\n",
-                       MIN_BLOCKS_TO_KEEP);
+                       GetMinBlocksToKeep(chainman.GetParams()));
         }
         std::tie(status, error) = catch_exceptions([&] { return VerifyLoadedChainstate(chainman, options); });
         if (status == node::ChainstateLoadStatus::SUCCESS) {

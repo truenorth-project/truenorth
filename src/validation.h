@@ -77,6 +77,21 @@ class SignalInterrupt;
   * retention above the 720-block (~24h) connect window with headroom below
   * the download window. */
 static const unsigned int MIN_BLOCKS_TO_KEEP = 960;
+/** Retention window on regtest, matching upstream's 288.
+ *
+ * 960 is derived from wall-clock retention at a 120s target, which is
+ * meaningless on a chain whose blocks are mined on demand, and it makes
+ * pruning unreachable on the short chains the functional tests build: nothing
+ * is prunable until the chain passes 960 blocks, so pruneblockchain returns -1
+ * and block files are never removed. Unlike the -prune floor, no value the
+ * tests could pass would fix that -- the window is internal. */
+static const unsigned int MIN_BLOCKS_TO_KEEP_REGTEST = 288;
+
+/** Blocks kept above the tip for the given chain. See MIN_BLOCKS_TO_KEEP. */
+inline unsigned int GetMinBlocksToKeep(const CChainParams& params)
+{
+    return params.GetChainType() == ChainType::REGTEST ? MIN_BLOCKS_TO_KEEP_REGTEST : MIN_BLOCKS_TO_KEEP;
+}
 static const signed int DEFAULT_CHECKBLOCKS = 6;
 static constexpr int DEFAULT_CHECKLEVEL{3};
 // Require that user allocate at least 1500 MiB for block & undo files (blk???.dat and rev???.dat)

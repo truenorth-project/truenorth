@@ -925,9 +925,9 @@ static RPCHelpMan pruneblockchain()
         throw JSONRPCError(RPC_MISC_ERROR, "Blockchain is too short for pruning.");
     } else if (height > chainHeight) {
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Blockchain is shorter than the attempted prune height.");
-    } else if (height > chainHeight - MIN_BLOCKS_TO_KEEP) {
+    } else if (height > chainHeight - static_cast<int>(GetMinBlocksToKeep(chainman.GetParams()))) {
         LogDebug(BCLog::RPC, "Attempt to prune blocks close to the tip.  Retaining the minimum number of blocks.\n");
-        height = chainHeight - MIN_BLOCKS_TO_KEEP;
+        height = chainHeight - GetMinBlocksToKeep(chainman.GetParams());
     }
 
     PruneBlockFilesManual(active_chainstate, height);
