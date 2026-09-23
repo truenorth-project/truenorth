@@ -16,7 +16,7 @@ class BitcoinChainstateTest(BitcoinTestFramework):
         self.chain = ""
         self.num_nodes = 1
         # Set prune to avoid disk space warning.
-        self.extra_args = [["-prune=550"]]
+        self.extra_args = [["-prune=1500"]]
 
     def add_block(self, datadir, input, expected_stderr):
         proc = subprocess.Popen(

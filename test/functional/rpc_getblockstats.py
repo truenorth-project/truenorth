@@ -63,7 +63,7 @@ class GetblockstatsTest(BitcoinTestFramework):
 
         self.nodes[0].sendtoaddress(address=address, amount=10, subtractfeefromamount=True)
         self.nodes[0].sendtoaddress(address=address, amount=10, subtractfeefromamount=False)
-        # 300 sat/vB (0.003/kvB); settxfee is deprecated, so pass fee_rate per call.
+        # 300 mie/vB (0.003/kvB); settxfee is deprecated, so pass fee_rate per call.
         self.nodes[0].sendtoaddress(address=address, amount=1, subtractfeefromamount=True, fee_rate=300)
         # Send to OP_RETURN output to test its exclusion from statistics
         self.nodes[0].send(outputs={"data": "21"}, fee_rate=300)

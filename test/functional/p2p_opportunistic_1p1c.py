@@ -51,7 +51,7 @@ from test_framework.wallet import (
     MiniWalletMode,
 )
 
-# 1sat/vB feerate denominated in BTC/KvB
+# 1mie/vB feerate denominated in BTC/KvB
 FEERATE_1SAT_VB = Decimal("0.00001000")
 # Number of seconds to wait to ensure no getdata is received
 GETDATA_WAIT = 60
@@ -81,7 +81,7 @@ class PackageRelayTest(BitcoinTestFramework):
         ]]
 
     def create_tx_below_mempoolminfee(self, wallet, utxo_to_spend=None):
-        """Create a 1-input 0.1sat/vB transaction using a confirmed UTXO. Decrement and use
+        """Create a 1-input 0.1mie/vB transaction using a confirmed UTXO. Decrement and use
         self.sequence so that subsequent calls to this function result in unique transactions."""
 
         self.sequence -= 1

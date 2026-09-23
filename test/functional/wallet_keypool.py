@@ -187,7 +187,7 @@ class KeyPoolTest(BitcoinTestFramework):
         res = w2.walletcreatefundedpsbt(inputs=[], outputs=[{destination: 0.00010000}], subtractFeeFromOutputs=[0], feeRate=0.00010)
         assert_equal("psbt" in res, True)
         # should work without subtractFeeFromOutputs if the exact fee is subtracted from the amount
-        # (P2QRH in -> P2QRH out; coin selection budgets 121 vB, so 1210 sat at 10 sat/vB)
+        # (P2QRH in -> P2QRH out; coin selection budgets 121 vB, so 1210 sat at 10 mie/vB)
         res = w2.walletcreatefundedpsbt(inputs=[], outputs=[{destination: 0.00008790}], feeRate=0.00010)
         assert_equal("psbt" in res, True)
 

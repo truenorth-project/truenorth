@@ -615,7 +615,7 @@ class MempoolTRUC(BitcoinTestFramework):
         self.log.info("Test that only TRUC transactions can be under minrelaytxfee for various settings...")
 
         for minrelay_setting in (0, 5, 10, 100, 500, 1000, 5000, 333333, 2500000):
-            self.log.info(f"-> Test -minrelaytxfee={minrelay_setting}sat/kvB...")
+            self.log.info(f"-> Test -minrelaytxfee={minrelay_setting}mie/kvB...")
             setting_decimal = minrelay_setting / Decimal(COIN)
             self.restart_node(0, extra_args=[f"-minrelaytxfee={setting_decimal:.8f}", "-persistmempool=0"])
             minrelayfeerate = node.getmempoolinfo()["minrelaytxfee"]

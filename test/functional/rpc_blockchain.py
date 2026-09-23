@@ -194,18 +194,18 @@ class BlockchainTest(BitcoinTestFramework):
         )
         self.start_node(0, extra_args=[
             '-stopatheight=207',
-            '-prune=550',
+            '-prune=1500',
         ])
 
         res = self.nodes[0].getblockchaininfo()
-        # result should have these additional pruning keys if prune=550
+        # result should have these additional pruning keys if pruning is enabled
         assert_equal(sorted(res.keys()), sorted(['pruneheight', 'automatic_pruning', 'prune_target_size'] + keys))
 
         # check related fields
         assert res['pruned']
         assert_equal(res['pruneheight'], 0)
         assert res['automatic_pruning']
-        assert_equal(res['prune_target_size'], 576716800)
+        assert_equal(res['prune_target_size'], 1572864000)  # 1500 MiB, see MIN_DISK_SPACE_FOR_BLOCK_FILES
         assert_greater_than(res['size_on_disk'], 0)
 
         assert_equal(res['bits'], nbits_str(REGTEST_N_BITS))

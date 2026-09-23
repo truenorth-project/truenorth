@@ -33,10 +33,10 @@ class SignetParams:
         # when using networks other than regtest.
         if challenge is None:
             self.challenge = SIGNET_DEFAULT_CHALLENGE
-            self.shared_args = ["-prune=550"]
+            self.shared_args = ["-prune=1500"]
         else:
             self.challenge = challenge
-            self.shared_args = ["-prune=550", f"-signetchallenge={challenge}"]
+            self.shared_args = ["-prune=1500", f"-signetchallenge={challenge}"]
 
 class SignetBasicTest(BitcoinTestFramework):
     def set_test_params(self):
