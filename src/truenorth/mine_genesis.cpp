@@ -207,7 +207,12 @@ int main(int argc, char* argv[])
     // chainparams.cpp's CreateGenesisBlock(NTIME, ...) call and the mine
     // here agree by construction.
     std::array<ChainSpec, 5> chains{{
-        {"main", 1791158400, 0x207fffffu, GENESIS_TIMESTAMP_MSG_MAIN},
+        // Mainnet mines at the launch difficulty, not at powLimit. 0x1e1179ec
+        // is ~960k hashes/block, targeting 120s at an assumed 8 kH/s launch
+        // network. Starting at the floor (as the test chains do) would produce
+        // a burst of near-free blocks before LWMA has a window -- testnet4's
+        // 2026-09-23 reset mined 316 blocks in 22 minutes doing exactly that.
+        {"main", 1791158400, 0x1e1179ecu, GENESIS_TIMESTAMP_MSG_MAIN},
         {"testnet3", 1748000010, 0x207fffffu, GENESIS_TIMESTAMP_MSG_TEST},
         {"testnet4", 1790186400, 0x207fffffu, GENESIS_TIMESTAMP_MSG_TEST},
         {"signet", 1748000030, 0x207fffffu, GENESIS_TIMESTAMP_MSG_TEST},

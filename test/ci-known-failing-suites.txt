@@ -1,44 +1,51 @@
 # Boost unit suites that are expected to fail, one per line.
 #
-# Every entry here fails for a single reason: the mainnet genesis block is
-# still a placeholder, mined at nBits 0x207fffff, which is easier than
-# mainnet's own powLimit. DeriveTarget() therefore rejects it, the genesis
-# never connects, and Chainstate::InvalidChainFound() asserts on a null tip:
+# Updated 2026-09-23, after mainnet powLimit was corrected and the placeholder
+# genesis re-mined at the launch difficulty. That took the suite from
+# 120 pass / 23 fail to 134 pass / 9 fail, with no new failures.
 #
-#   ConnectBlock: Consensus::CheckBlock: high-hash, proof of work failed
-#   InvalidChainFound: invalid block=8158970e...c151 height=0
-#   Assertion `tip' failed.
+# The previous version of this file asserted that every entry failed for a
+# single reason -- the mainnet genesis being mined at nBits 0x207fffff, easier
+# than mainnet's own powLimit, so it never connected and any suite building a
+# mainnet chainstate asserted on a null tip. That held for 14 of the 23, which
+# now pass. It did not hold for the 9 below: they were failing at genesis
+# first, which masked unrelated problems underneath.
 #
-# Any suite that builds a chainstate on mainnet params dies there. The one
-# exception in spirit is pow_tests, which fails a deliberate assertion
-# (ChainParams_MAIN_sanity) checking exactly this -- it is the canary for the
-# genesis ceremony.
+# Each remaining entry and where it actually fails:
 #
-# All of these should start passing once the real genesis is mined and
-# chainparams updated. test/run-unit-suites.sh compares in both directions, so
-# CI will fail and tell you to delete entries as they start passing. When this
-# file is empty, the script can be replaced with a single test_bitcoin run.
+#   blockmanager_tests          blockmanager_flush_block_file -- block file
+#                               flush accounting
+#   denialofservice_tests       stale_tip_peer_management -- connman state
+#   miner_tests                 CreateNewBlock_validity -- TestBlockValidity
+#                               throws; the one most likely to be a real
+#                               product issue rather than stale test data
+#   net_peer_connection_tests   addnode/getaddednodeinfo connection handling
+#   psbt_wallet_tests           import_descriptor asserts descs.size() == 1
+#   rpc_tests                   rpc_rawsign -- "Invalid TrueNorth address: 3H..."
+#                               an inherited Bitcoin P2SH test vector
+#   validation_tests            subsidy_limit_test -- asserts nSubsidy <= 50 *
+#                               COIN; TrueNorth's initial subsidy is 512 COIN.
+#                               Inherited Bitcoin expectation, not a defect.
+#   wallet_tests                scan_for_wallet_transactions -- GetBalance
+#   walletload_tests            wallet_load_descriptors -- LoadWallet
+#
+# At least two (rpc_tests, validation_tests) are stale Bitcoin test data rather
+# than product defects and should be straightforward to correct. miner_tests
+# deserves looking at properly before launch.
+#
+# test/run-unit-suites.sh compares in both directions, so CI fails and tells
+# you to delete entries as they start passing. When this file is empty, the
+# script can be replaced with a single test_bitcoin run.
+#
+# Note: that script needs bash 4+ (mapfile) and will not run on macOS's
+# bash 3.2. CI is Linux, so this only affects local runs.
 
 blockmanager_tests
-chainstate_write_tests
-checkqueue_tests
-coinselection_tests
-coinselector_tests
 denialofservice_tests
-feebumper_tests
-group_outputs_tests
-mempool_tests
-merkle_tests
 miner_tests
 net_peer_connection_tests
-orphanage_tests
-pow_tests
-prevector_tests
 psbt_wallet_tests
-rbf_tests
 rpc_tests
-validation_flush_tests
 validation_tests
 wallet_tests
-wallet_transaction_tests
 walletload_tests

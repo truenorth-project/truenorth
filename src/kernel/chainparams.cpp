@@ -103,7 +103,19 @@ public:
         consensus.CSVHeight = 1;
         consensus.SegwitHeight = 1;
         consensus.MinBIP9WarningHeight = 0;
-        consensus.powLimit = uint256{"00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff"};
+        // Difficulty floor. NOT Bitcoin's value: Bitcoin's mainnet powLimit
+        // (00000000ffff...) assumes SHA256 ASICs and demands ~4.3e9 hashes per
+        // block. RandomX on CPUs cannot reach that at launch scale -- at the
+        // ~2 kH/s a small CPU network actually produces, that floor is ~23 days
+        // per block, and LWMA cannot correct it because powLimit is the easiest
+        // target permitted. The chain would stall at genesis.
+        //
+        // 0000ffff... (~2^240, nBits 0x1f00ffff, 65536 hashes/block) is a floor
+        // that only binds when the network is nearly dead: 500 H/s gives ~131s
+        // blocks, 100 H/s gives ~655s. In normal operation LWMA settles well
+        // above it, so it costs nothing. The launch difficulty is set by the
+        // genesis nBits below, not by this.
+        consensus.powLimit = uint256{"0000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"};
         consensus.nPowTargetTimespan = 90 * 120; // 90-block LWMA window (informational; LWMA retargets per block)
         consensus.nPowTargetSpacing = 120; // 2 minutes
         consensus.fPowAllowMinDifficultyBlocks = false;
@@ -154,9 +166,15 @@ public:
 
         // Timestamp 4070908800 (2099-01-01) is a placeholder; mainnet is
         // not launchable from this binary. Update and re-mine at launch.
-        genesis = CreateGenesisBlock(truenorth::GENESIS_TIMESTAMP_MSG_MAIN, 4070908800, 2, 0x207fffff, 1, 512 * COIN);
+        // Still a placeholder: the coinbase message is replaced at the genesis
+        // ceremony and the block re-mined. The difficulty and timestamp are
+        // final, so only the message changes -- nTime equals nLaunchTime
+        // (1791158400 = 2026-10-05 00:00:00 UTC) as the runbook requires, and
+        // nBits is the launch difficulty rather than powLimit so the chain does
+        // not open with a burst of near-free blocks before LWMA has a window.
+        genesis = CreateGenesisBlock(truenorth::GENESIS_TIMESTAMP_MSG_MAIN, 1791158400, 60953, 0x1e1179ec, 1, 512 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256{"8158970ee7fc58bb987aca8f87671fafddb1c3107a522b1b741b1fc23be0c151"});
+        assert(consensus.hashGenesisBlock == uint256{"2fdb4e8d1508d699d64de43d6424e92c58f3d7c3f038795bc77bb29d0eb73bc1"});
         assert(genesis.hashMerkleRoot == uint256{"bedb5be1cd03ead77e25a27dbf4ffbd4fe8496f085cf42e4d1ce935b153dc565"});
 
         // Pre-launch: no accumulated chain work; assumeValid anchors
