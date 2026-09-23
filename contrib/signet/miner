@@ -22,6 +22,7 @@ from test_framework.blocktools import get_witness_script, script_BIP34_coinbase_
 from test_framework.messages import CBlock, CBlockHeader, COutPoint, CTransaction, CTxIn, CTxInWitness, CTxOut, from_binary, from_hex, ser_string, ser_uint256, tx_from_hex, MAX_SEQUENCE_NONFINAL # noqa: E402
 from test_framework.psbt import PSBT, PSBTMap, PSBT_GLOBAL_UNSIGNED_TX, PSBT_IN_FINAL_SCRIPTSIG, PSBT_IN_FINAL_SCRIPTWITNESS, PSBT_IN_NON_WITNESS_UTXO, PSBT_IN_SIGHASH_TYPE # noqa: E402
 from test_framework.script import CScript, CScriptOp # noqa: E402
+from test_framework import randomx # noqa: E402
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)s %(message)s',
@@ -81,17 +82,32 @@ def get_solution_from_psbt(psbt, emptyok=False):
         return None
     return ser_string(scriptSig) + scriptWitness
 
-def finish_block(block, signet_solution, grind_cmd):
+def get_seed_key(bcli, height):
+    """RandomX seed for a block at `height`.
+
+    Proof of work is the RandomX hash under a per-epoch seed, so both the
+    in-process solver and the external grinder need it. Below the first epoch
+    boundary it is the genesis seed; above, it is the hash of the seed block.
+    """
+    seed_height = randomx.seed_height_for_height(height)
+    if seed_height == 0:
+        return randomx.GENESIS_SEED
+    return bytes.fromhex(bcli("getblockhash", str(seed_height)))[::-1]
+
+def finish_block(block, signet_solution, grind_cmd, seed_key):
     if signet_solution is None:
         pass # Don't need to add a signet commitment if there's no signet signature needed
     else:
         block.vtx[0].vout[-1].scriptPubKey += CScriptOp.encode_op_pushdata(SIGNET_HEADER + signet_solution)
         block.hashMerkleRoot = block.calc_merkle_root()
     if grind_cmd is None:
+        block.pow_seed = seed_key
         block.solve()
     else:
         headhex = CBlockHeader.serialize(block).hex()
-        cmd = shlex.split(grind_cmd) + [headhex]
+        # The grinder only sees a header, which carries no height, so the seed
+        # is passed explicitly in RPC (big-endian) hex.
+        cmd = shlex.split(grind_cmd) + [headhex, seed_key[::-1].hex()]
         newheadhex = subprocess.run(cmd, stdout=subprocess.PIPE, input=b"", check=True).stdout.strip()
         newhead = from_hex(CBlockHeader(), newheadhex.decode('utf8'))
         block.nNonce = newhead.nNonce
@@ -190,7 +206,7 @@ def do_solvepsbt(args):
     psbt = decode_challenge_psbt(sys.stdin.read())
     block = get_block_from_psbt(psbt)
     signet_solution = get_solution_from_psbt(psbt, emptyok=True)
-    block = finish_block(block, signet_solution, args.grind_cmd)
+    block = finish_block(block, signet_solution, args.grind_cmd, get_seed_key(args.bcli, block.coinbase_height()))
     print(block.serialize().hex())
 
 def nbits_to_target(nbits):
@@ -363,7 +379,7 @@ class Generate:
             psbt = decode_challenge_psbt(psbt_signed["psbt"])
             signet_solution = get_solution_from_psbt(psbt)
 
-        return finish_block(block, signet_solution, grind_cmd)
+        return finish_block(block, signet_solution, grind_cmd, get_seed_key(bcli, block.coinbase_height()))
 
 def do_generate(args):
     if args.set_block_time is not None:

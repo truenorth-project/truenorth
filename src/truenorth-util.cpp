@@ -16,6 +16,7 @@
 #include <streams.h>
 #include <util/exception.h>
 #include <util/strencodings.h>
+#include <truenorth/seed_key.h>
 #include <util/translation.h>
 
 #include <atomic>
@@ -34,7 +35,7 @@ static void SetupBitcoinUtilArgs(ArgsManager &argsman)
 
     argsman.AddArg("-version", "Print version and exit", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
 
-    argsman.AddCommand("grind", "Perform proof of work on hex header string");
+    argsman.AddCommand("grind", "Perform proof of work on hex header string. Takes an optional RandomX seed (hex) for the epoch being mined; defaults to the genesis seed.");
 
     SetupChainParamsBaseOptions(argsman);
 }
@@ -61,7 +62,7 @@ static int AppInitUtil(ArgsManager& args, int argc, char* argv[])
                 "The truenorth-util tool provides TrueNorth-related functionality that does not rely on the ability to access a running node. Available [commands] are listed below.\n"
                 "\n"
                 "Usage:  truenorth-util [options] [command]\n"
-                "or:     truenorth-util [options] grind <hex-block-header>\n";
+                "or:     truenorth-util [options] grind <hex-block-header> [randomx-seed-hex]\n";
             strUsage += "\n" + args.GetHelpMessage();
         }
 
@@ -85,7 +86,7 @@ static int AppInitUtil(ArgsManager& args, int argc, char* argv[])
     return CONTINUE_EXECUTION;
 }
 
-static void grind_task(uint32_t nBits, CBlockHeader header, uint32_t offset, uint32_t step, std::atomic<bool>& found, uint32_t& proposed_nonce)
+static void grind_task(uint32_t nBits, const uint256& seed_key, CBlockHeader header, uint32_t offset, uint32_t step, std::atomic<bool>& found, uint32_t& proposed_nonce)
 {
     arith_uint256 target;
     bool neg, over;
@@ -99,7 +100,7 @@ static void grind_task(uint32_t nBits, CBlockHeader header, uint32_t offset, uin
     while (!found && header.nNonce < finish) {
         const uint32_t next = (finish - header.nNonce < 5000*step) ? finish : header.nNonce + 5000*step;
         do {
-            if (UintToArith256(header.GetHash()) <= target) {
+            if (UintToArith256(header.GetPoWHash(seed_key)) <= target) {
                 if (!found.exchange(true)) {
                     proposed_nonce = header.nNonce;
                 }
@@ -112,8 +113,8 @@ static void grind_task(uint32_t nBits, CBlockHeader header, uint32_t offset, uin
 
 static int Grind(const std::vector<std::string>& args, std::string& strPrint)
 {
-    if (args.size() != 1) {
-        strPrint = "Must specify block header to grind";
+    if (args.size() < 1 || args.size() > 2) {
+        strPrint = "Must specify block header to grind, and optionally the RandomX seed";
         return EXIT_FAILURE;
     }
 
@@ -121,6 +122,20 @@ static int Grind(const std::vector<std::string>& args, std::string& strPrint)
     if (!DecodeHexBlockHeader(header, args[0])) {
         strPrint = "Could not decode block header";
         return EXIT_FAILURE;
+    }
+
+    // Proof of work is the RandomX hash under the per-epoch seed, not the
+    // block hash, so grinding needs the seed for the height being mined. The
+    // tool only sees a header, which carries no height, so the caller passes
+    // it; the genesis seed is correct only below the first epoch boundary.
+    uint256 seed_key{truenorth::kGenesisSeed};
+    if (args.size() == 2) {
+        const auto parsed{uint256::FromHex(args[1])};
+        if (!parsed) {
+            strPrint = "Could not decode RandomX seed (expected 64 hex characters)";
+            return EXIT_FAILURE;
+        }
+        seed_key = *parsed;
     }
 
     uint32_t nBits = header.nBits;
@@ -131,7 +146,7 @@ static int Grind(const std::vector<std::string>& args, std::string& strPrint)
     int n_tasks = std::max(1u, std::thread::hardware_concurrency());
     threads.reserve(n_tasks);
     for (int i = 0; i < n_tasks; ++i) {
-        threads.emplace_back(grind_task, nBits, header, i, n_tasks, std::ref(found), std::ref(proposed_nonce));
+        threads.emplace_back(grind_task, nBits, seed_key, header, i, n_tasks, std::ref(found), std::ref(proposed_nonce));
     }
     for (auto& t : threads) {
         t.join();
