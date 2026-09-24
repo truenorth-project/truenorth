@@ -18,10 +18,16 @@
     "description": ""
   },
   { "exec": "./truenorth-util",
-    "args": ["grind", "1", "2"],
+    "args": ["grind", "1", "2", "3"],
     "return_code": 1,
     "error_txt": "Must specify block header to grind",
-    "description": ""
+    "description": "grind takes a header and an optional RandomX seed; three args is too many"
+  },
+  { "exec": "./truenorth-util",
+    "args": ["grind", "00000020ffaf3f542c722b7a31460e53dc88106b6df992a03d9ff2ee9e071c83696c93bfb89199f6039bb90198a45c69fa297609ae4da40b3dc83aa53ae0c3c1f5cb0ec95d45b36affff7f2000000000", "zz"],
+    "return_code": 1,
+    "error_txt": "Could not decode RandomX seed",
+    "description": "second arg must be a 64-hex-character seed"
   },
   { "exec": "./truenorth-util",
     "args": ["grind", "aa"],

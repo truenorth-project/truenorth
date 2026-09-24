@@ -485,15 +485,20 @@ def get_temp_default_datadir(temp_dir: pathlib.Path) -> tuple[dict, pathlib.Path
     """Return os-specific environment variables that can be set to make the
     GetDefaultDataDir() function return a datadir path under the provided
     temp_dir, as well as the complete path it would return."""
+    # These must match GetDefaultDataDir() in src/common/args.cpp, which uses
+    # TrueNorth's names, not Bitcoin's. When they disagree the daemon reads a
+    # different directory than the test wrote to, starts with no config, and
+    # the failure surfaces as "No RPC credentials" rather than anything
+    # pointing at the datadir.
     if platform.system() == "Windows":
         env = dict(APPDATA=str(temp_dir))
-        datadir = temp_dir / "Bitcoin"
+        datadir = temp_dir / "TrueNorth"
     else:
         env = dict(HOME=str(temp_dir))
         if platform.system() == "Darwin":
-            datadir = temp_dir / "Library/Application Support/Bitcoin"
+            datadir = temp_dir / "Library/Application Support/TrueNorth"
         else:
-            datadir = temp_dir / ".bitcoin"
+            datadir = temp_dir / ".truenorth"
     return env, datadir
 
 

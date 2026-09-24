@@ -136,7 +136,10 @@ def program_to_witness(version, program, main=False):
     assert 0 <= version <= 16
     assert 2 <= len(program) <= 40
     assert version > 0 or len(program) in [20, 32]
-    return encode_segwit_address("bc" if main else "bcrt", version, program)
+    # TrueNorth's mainnet hrp is "north", not Bitcoin's "bc". Regtest keeps
+    # "bcrt" (see bech32_hrp in kernel/chainparams.cpp), which is why the rest
+    # of the suite works unchanged -- only the main=True path was wrong.
+    return encode_segwit_address("north" if main else "bcrt", version, program)
 
 def script_to_p2wsh(script, main=False):
     script = check_script(script)

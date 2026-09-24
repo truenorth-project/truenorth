@@ -37,7 +37,14 @@ file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/functional)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/fuzz)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/util)
 
-file(GLOB_RECURSE functional_tests RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} functional/*)
+# CONFIGURE_DEPENDS re-globs at build time. Without it the glob is evaluated
+# only at configure time, so a newly added functional test is silently absent
+# from the build tree: test_runner.py still lists it (it reads the source
+# directory) but then cannot open it, and reports a 0-second failure with no
+# output that reads as flakiness. feature_launchtime.py sat in that state from
+# 2026-09-22 until 2026-09-24 -- the test covering nLaunchTime, which the
+# fair-launch claim rests on, was never actually executed by the suite.
+file(GLOB_RECURSE functional_tests CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} functional/*)
 foreach(script ${functional_tests} fuzz/test_runner.py)
   if(CMAKE_HOST_WIN32)
     set(symlink)

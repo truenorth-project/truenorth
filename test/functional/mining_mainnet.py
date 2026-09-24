@@ -14,7 +14,7 @@ order to maximally raise the difficulty. Verify this using the getmininginfo RPC
 
 """
 
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import BitcoinTestFramework, SkipTest
 from test_framework.util import (
     assert_equal,
 )
@@ -40,6 +40,27 @@ import os
 COINBASE_SCRIPT_PUBKEY="76a914eadbac7f36c37e39361168b7aaee3cb24a25312d88ac"
 
 class MiningMainnetTest(BitcoinTestFramework):
+
+    def skip_test_if_missing_module(self):
+        # Not runnable on TrueNorth, for two independent reasons.
+        #
+        # 1. It asserts Bitcoin's retarget epoch: n_blocks == 2016, difficulty
+        #    exactly 1 at height 2015 and exactly 4 at 2016, and
+        #    mining_info['next']['height'] == 2016. TrueNorth uses LWMA, which
+        #    retargets every block over a 90-block window;
+        #    DifficultyAdjustmentInterval() is 90 and there is no epoch
+        #    boundary for any of this to be true at.
+        #
+        # 2. data/mainnet_alt.json holds 2016 pre-generated blocks whose nonces
+        #    satisfy SHA256d. Under RandomX they are worthless, and
+        #    regenerating them is not possible: ~960k hashes per block at the
+        #    launch difficulty is roughly 4.8 hours each.
+        #
+        # The RPC surface it covers -- getmininginfo's difficulty/bits/target
+        # and the 'next' projection -- is still worth testing, but against LWMA
+        # on a cheap retargeting chain such as testnet4. That is a new test,
+        # not a repair of this one. See pending-tasks.md.
+        raise SkipTest("assumes Bitcoin's 2016-block retarget epoch and SHA256d-mined fixture blocks; TrueNorth uses LWMA")
 
     def set_test_params(self):
         self.num_nodes = 1
