@@ -143,7 +143,7 @@ BOOST_FIXTURE_TEST_CASE(scan_for_wallet_transactions, TestChain100Setup)
         BOOST_CHECK(result.last_failed_block.IsNull());
         BOOST_CHECK_EQUAL(result.last_scanned_block, newTip->GetBlockHash());
         BOOST_CHECK_EQUAL(*result.last_scanned_height, newTip->nHeight);
-        BOOST_CHECK_EQUAL(GetBalance(wallet).m_mine_immature, 100 * COIN);
+        BOOST_CHECK_EQUAL(GetBalance(wallet).m_mine_immature, 1024 * COIN); // two coinbases at 512
 
         {
             CBlockLocator locator;
@@ -179,7 +179,7 @@ BOOST_FIXTURE_TEST_CASE(scan_for_wallet_transactions, TestChain100Setup)
         BOOST_CHECK_EQUAL(result.last_failed_block, oldTip->GetBlockHash());
         BOOST_CHECK_EQUAL(result.last_scanned_block, newTip->GetBlockHash());
         BOOST_CHECK_EQUAL(*result.last_scanned_height, newTip->nHeight);
-        BOOST_CHECK_EQUAL(GetBalance(wallet).m_mine_immature, 50 * COIN);
+        BOOST_CHECK_EQUAL(GetBalance(wallet).m_mine_immature, 512 * COIN);
     }
 
     // Prune the remaining block file.
@@ -406,7 +406,7 @@ BOOST_FIXTURE_TEST_CASE(ListCoinsTest, ListCoinsTestingSetup)
     BOOST_CHECK_EQUAL(list.begin()->second.size(), 1U);
 
     // Check initial balance from one mature coinbase transaction.
-    BOOST_CHECK_EQUAL(50 * COIN, WITH_LOCK(wallet->cs_wallet, return AvailableCoins(*wallet).GetTotalAmount()));
+    BOOST_CHECK_EQUAL(512 * COIN, WITH_LOCK(wallet->cs_wallet, return AvailableCoins(*wallet).GetTotalAmount()));
 
     // Add a transaction creating a change address, and confirm ListCoins still
     // returns the coin associated with the change address underneath the
@@ -482,7 +482,13 @@ BOOST_FIXTURE_TEST_CASE(BasicOutputTypesTest, ListCoinsTest)
 
     for (const auto& out_type : OUTPUT_TYPES) {
         if (out_type == OutputType::UNKNOWN) continue;
-        expected_coins_sizes[out_type] = 2U;
+        // Upstream expects 2 UTXOs per type, the recipient plus change, because
+        // change follows the payment's address type. TrueNorth sends change to
+        // P2QRH whenever the wallet default is BECH32M_QRH (see
+        // CWallet::TransactionChangeType), so the payment type gains one UTXO
+        // and the QRH bucket accumulates every change output.
+        expected_coins_sizes[out_type] += 1U;                 // recipient
+        expected_coins_sizes[OutputType::BECH32M_QRH] += 1U;  // change
         TestCoinsResult(*this, out_type, 1 * COIN, expected_coins_sizes);
     }
 }

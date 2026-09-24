@@ -1,51 +1,50 @@
 # Boost unit suites that are expected to fail, one per line.
 #
-# Updated 2026-09-23, after mainnet powLimit was corrected and the placeholder
-# genesis re-mined at the launch difficulty. That took the suite from
-# 120 pass / 23 fail to 134 pass / 9 fail, with no new failures.
+# EMPTY as of 2026-09-23: the full suite passes, 143 of 143.
 #
-# The previous version of this file asserted that every entry failed for a
-# single reason -- the mainnet genesis being mined at nBits 0x207fffff, easier
-# than mainnet's own powLimit, so it never connected and any suite building a
-# mainnet chainstate asserted on a null tip. That held for 14 of the 23, which
-# now pass. It did not hold for the 9 below: they were failing at genesis
-# first, which masked unrelated problems underneath.
+# It was 120 pass / 23 fail that morning. Every entry is gone, and the causes
+# split three ways, which is worth knowing before adding anything back here.
 #
-# Each remaining entry and where it actually fails:
+# Most were Bitcoin constants that had never been translated: the 50-COIN
+# subsidy and 21M supply cap, a Bitcoin P2SH address and two mainnet WIF keys,
+# RPC port 8332 and P2P port 8333, and BIP32 xprv/xpub carrying Bitcoin's
+# version bytes so descriptors would not parse. One assumed a step of 1000
+# divides the halving interval, which is true of Bitcoin's 210000 and not of
+# 1051200.
 #
-#   blockmanager_tests          blockmanager_flush_block_file -- block file
-#                               flush accounting
-#   denialofservice_tests       stale_tip_peer_management -- connman state
-#   miner_tests                 CreateNewBlock_validity -- TestBlockValidity
-#                               throws; the one most likely to be a real
-#                               product issue rather than stale test data
-#   net_peer_connection_tests   addnode/getaddednodeinfo connection handling
-#   psbt_wallet_tests           import_descriptor asserts descs.size() == 1
-#   rpc_tests                   rpc_rawsign -- "Invalid TrueNorth address: 3H..."
-#                               an inherited Bitcoin P2SH test vector
-#   validation_tests            subsidy_limit_test -- asserts nSubsidy <= 50 *
-#                               COIN; TrueNorth's initial subsidy is 512 COIN.
-#                               Inherited Bitcoin expectation, not a defect.
-#   wallet_tests                scan_for_wallet_transactions -- GetBalance
-#   walletload_tests            wallet_load_descriptors -- LoadWallet
+# Some were tests asserting behaviour TrueNorth deliberately changed:
+# ReadBlock no longer rechecks proof of work (RandomX makes it ~1ms per call,
+# and every production caller runs CheckBlock afterwards), and CSV/BIP68 is
+# active from height 1 on every chain where Bitcoin's mainnet waits until
+# 419328 -- above the 110-block chain miner_tests builds, which is why upstream
+# can still assemble a valid template from a deliberately inconsistent mempool.
 #
-# At least two (rpc_tests, validation_tests) are stale Bitcoin test data rather
-# than product defects and should be straightforward to correct. miner_tests
-# deserves looking at properly before launch.
+# Two were real product defects, reachable only once the mainnet genesis fix
+# let the suites run far enough to hit them:
 #
-# test/run-unit-suites.sh compares in both directions, so CI fails and tells
-# you to delete entries as they start passing. When this file is empty, the
-# script can be replaced with a single test_bitcoin run.
+#   - GetOutputType() in wallet/spend.cpp had no case for WITNESS_V2_QRH, so
+#     every P2QRH coin was bucketed as OutputType::UNKNOWN -- and P2QRH is the
+#     wallet's default address type.
+#
+#   - STALE_CHECK_INTERVAL was Bitcoin's 10 minutes while TipMayBeStale() calls
+#     a tip stale after 3 * nPowTargetSpacing, 6 minutes at a 2-minute block
+#     time. The check ran less often than the tip went stale.
+#
+# One standing constraint came out of it: no unit test can mine on mainnet
+# params any more. miner_tests grinds real RandomX, and at the launch
+# difficulty that is ~960k hashes per block, roughly 22 days for its 110
+# blocks. Bitcoin avoids this with the precomputed BLOCKINFO nonce table, which
+# is useless here because those nonces were found against SHA256d. Precomputing
+# RandomX equivalents is not an option either, at ~4.8 hours per block. Tests
+# that mine must use regtest -- and specifically regtest, not another cheap
+# chain: it is the only one with fPowNoRetargeting, which is what makes the
+# tip->nHeight++ hack in miner_tests survivable now that LWMA walks 90
+# ancestors on every block.
+#
+# test/run-unit-suites.sh compares in both directions, so CI fails if anything
+# regresses. With this file empty the script could be replaced by a single
+# test_bitcoin run, though keeping it costs nothing and preserves the
+# per-suite isolation that stops one abort hiding everything behind it.
 #
 # Note: that script needs bash 4+ (mapfile) and will not run on macOS's
 # bash 3.2. CI is Linux, so this only affects local runs.
-
-blockmanager_tests
-denialofservice_tests
-miner_tests
-net_peer_connection_tests
-psbt_wallet_tests
-rpc_tests
-validation_tests
-wallet_tests
-walletload_tests

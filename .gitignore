@@ -26,3 +26,6 @@ target/
 /guix-build-*
 
 /ci/scratch/
+
+# Functional test scratch (datadirs, block files) created by test_runner.py
+test/cache/

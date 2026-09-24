@@ -40,6 +40,23 @@ using node::BlockAssembler;
 
 namespace miner_tests {
 struct MinerTestingSetup : public TestingSetup {
+    // Regtest, not mainnet as upstream uses. This case mines 110 blocks and
+    // TrueNorth grinds each one for real, because the inherited BLOCKINFO
+    // nonce table was computed against SHA256d and never satisfies RandomX.
+    // Mainnet's difficulty makes that impossible: ~960k hashes per block at
+    // the launch target, ~65k even at powLimit, against roughly 56 H/s for a
+    // single-threaded RandomX light-mode solver. Regtest costs ~2 hashes per
+    // block. Nothing here depends on mainnet specifically -- the block
+    // assembler is chain-agnostic.
+    //
+    // Trap for anyone extending this: regtest halves the subsidy every 150
+    // blocks, mainnet every 1051200. The 110 blocks below stay under both, so
+    // every block pays 512 NORTH either way -- but there are only 40 blocks of
+    // headroom. Mine past height 150 here and the subsidy halves on regtest
+    // where it would not on mainnet, and the resulting failure looks like a
+    // subsidy bug rather than a fixture artefact.
+    MinerTestingSetup() : TestingSetup{ChainType::REGTEST} {}
+
     void TestPackageSelection(const CScript& scriptPubKey, const std::vector<CTransactionRef>& txFirst) EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
     void TestBasicMining(const CScript& scriptPubKey, const std::vector<CTransactionRef>& txFirst, int baseheight) EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
     void TestPrioritisedMining(const CScript& scriptPubKey, const std::vector<CTransactionRef>& txFirst) EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
@@ -115,6 +132,16 @@ void MinerTestingSetup::TestPackageSelection(const CScript& scriptPubKey, const 
 
     LOCK(tx_mempool.cs);
     BOOST_CHECK(tx_mempool.size() == 0);
+
+    // Regtest's genesis is stamped Feb 2011 and regtest sets
+    // fPowAllowMinDifficultyBlocks, so against the real clock every tip looks
+    // more than 20 minutes stale -- and WaitAndCreateNewBlock then treats that
+    // staleness as a tip change (node/miner.cpp), handing back a fresh template
+    // where the waitNext() calls below expect nullptr. Pin the clock near the
+    // tip for those checks. This is released again before the untimed
+    // waitNext() further down, which would otherwise spin forever against a
+    // frozen clock.
+    SetMockTime(WITH_LOCK(::cs_main, return m_node.chainman->ActiveChain().Tip()->GetBlockTime()) + 1);
 
     // Block template should only have a coinbase when there's nothing in the mempool
     std::unique_ptr<BlockTemplate> block_template = mining->createNewBlock(options);
@@ -220,6 +247,7 @@ void MinerTestingSetup::TestPackageSelection(const CScript& scriptPubKey, const 
     AddToMempool(tx_mempool, entry.Fee(feeToUse + 2).FromTx(tx));
 
     // waitNext() should return if fees for the new template are at least 1 sat up
+    SetMockTime(0); // untimed waitNext() below: must run against a moving clock
     block_template = block_template->waitNext({.fee_threshold = 1});
     BOOST_REQUIRE(block_template);
     block = block_template->getBlock();
@@ -574,15 +602,20 @@ void MinerTestingSetup::TestBasicMining(const CScript& scriptPubKey, const std::
     tx.vin[0].nSequence = CTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG | 1;
     BOOST_CHECK(!TestSequenceLocks(CTransaction{tx}, tx_mempool)); // Sequence locks fail
 
-    auto block_template = mining->createNewBlock(options);
-    BOOST_REQUIRE(block_template);
+    // None of the absolute height/time locked txs should have made it into the
+    // template, because CreateNewBlock still checks IsFinalTx. The relative
+    // locked ones do get in, because they were added to the mempool directly,
+    // bypassing the validation that would have rejected them.
+    //
+    // Upstream that still yields a *valid* template, because Bitcoin activates
+    // CSV at mainnet height 419328 -- far above this 110-block chain -- so
+    // BIP68 is not enforced. TrueNorth sets CSVHeight = 1 on every chain, so
+    // BIP68 is enforced here and the assembler's own block check rejects the
+    // template it just built. Assert that rather than a block, since a real
+    // mempool would never have held those transactions.
+    BOOST_CHECK_EXCEPTION(mining->createNewBlock(options), std::runtime_error, HasReason("bad-txns-nonfinal"));
 
-    // None of the of the absolute height/time locked tx should have made
-    // it into the template because we still check IsFinalTx in CreateNewBlock,
-    // but relative locked txs will if inconsistently added to mempool.
-    // For now these will still generate a valid template until BIP68 soft fork
-    CBlock block{block_template->getBlock()};
-    BOOST_CHECK_EQUAL(block.vtx.size(), 3U);
+    CBlock block;
     // However if we advance height by 1 and time by SEQUENCE_LOCK_TIME, all of them should be mined
     for (int i = 0; i < CBlockIndex::nMedianTimeSpan; ++i) {
         CBlockIndex* ancestor{Assert(m_node.chainman->ActiveChain().Tip()->GetAncestor(m_node.chainman->ActiveChain().Tip()->nHeight - i))};
@@ -591,7 +624,7 @@ void MinerTestingSetup::TestBasicMining(const CScript& scriptPubKey, const std::
     m_node.chainman->ActiveChain().Tip()->nHeight++;
     SetMockTime(m_node.chainman->ActiveChain().Tip()->GetMedianTimePast() + 1);
 
-    block_template = mining->createNewBlock(options);
+    auto block_template = mining->createNewBlock(options);
     BOOST_REQUIRE(block_template);
     block = block_template->getBlock();
     BOOST_CHECK_EQUAL(block.vtx.size(), 5U);

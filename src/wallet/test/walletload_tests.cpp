@@ -70,7 +70,7 @@ BOOST_FIXTURE_TEST_CASE(wallet_load_descriptors, TestingSetup)
     {
         // Write valid descriptor with invalid ID
         WalletBatch batch(*database);
-        std::string desc = "wpkh([d34db33f/84h/0h/0h]xpub6DJ2dNUysrn5Vt36jH2KLBT2i1auw1tTSSomg8PhqNiUtx8QX2SvC9nrHu81fT41fvDUnhMjEzQgXnQjKEu3oaqMSzhSrHMxyyoEAmUHQbY/0/*)#cjjspncu";
+        std::string desc = "wpkh([d34db33f/84h/0h/0h]Tpub17Tk3cYqAKMoe3etkuBna3yaSUy8WS5M9vZeX3YkKYqefpZzCKSWKfpeode9SPVTCMmrSV4n4KjgbLHPXADB8tPFWAfAWkxGg71q8gSrqJPX/0/*)#7nxjs340";
         WalletDescriptor wallet_descriptor(std::make_shared<DummyDescriptor>(desc), 0, 0, 0, 0);
         BOOST_CHECK(batch.WriteDescriptor(uint256::ONE, wallet_descriptor));
     }

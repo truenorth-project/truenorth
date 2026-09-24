@@ -62,14 +62,42 @@ BOOST_AUTO_TEST_CASE(block_subsidy_test)
 BOOST_AUTO_TEST_CASE(subsidy_limit_test)
 {
     const auto chainParams = CreateChainParams(*m_node.args, ChainType::MAIN);
+    const Consensus::Params& consensus = chainParams->GetConsensus();
+    const int interval = consensus.nSubsidyHalvingInterval;
+    const CAmount nInitialSubsidy = 512 * COIN;
+    const CAmount nTailSubsidy = 8 * COIN;
+
+    // Tail emission means there is no finite total supply to assert against, so
+    // this walks the schedule instead: the subsidy stays inside its bounds, the
+    // running total stays in MoneyRange, and emission over the window matches
+    // the halving schedule exactly.
+    //
+    // The step has to divide the halving interval, or blocks either side of a
+    // halving are charged the wrong subsidy and the total comes out wrong.
+    // Bitcoin's step of 1000 divides its 210000 interval; it does not divide
+    // 1051200 (remainder 200).
+    const int step = 100;
+    BOOST_REQUIRE_EQUAL(interval % step, 0);
+
     CAmount nSum = 0;
-    for (int nHeight = 0; nHeight < 14000000; nHeight += 1000) {
-        CAmount nSubsidy = GetBlockSubsidy(nHeight, chainParams->GetConsensus());
-        BOOST_CHECK(nSubsidy <= 50 * COIN);
-        nSum += nSubsidy * 1000;
+    for (int nHeight = 0; nHeight < 8 * interval; nHeight += step) {
+        const CAmount nSubsidy = GetBlockSubsidy(nHeight, consensus);
+        BOOST_CHECK(nSubsidy <= nInitialSubsidy);
+        BOOST_CHECK(nSubsidy >= nTailSubsidy);
+        nSum += nSubsidy * step;
         BOOST_CHECK(MoneyRange(nSum));
     }
-    BOOST_CHECK_EQUAL(nSum, CAmount{2099999997690000});
+
+    // 512 >> 6 == 8, so the tail takes over exactly at the sixth halving.
+    BOOST_CHECK_EQUAL(GetBlockSubsidy(6 * interval - 1, consensus), 16 * COIN);
+    BOOST_CHECK_EQUAL(GetBlockSubsidy(6 * interval, consensus), nTailSubsidy);
+
+    // Six halvings paying 512/256/128/64/32/16, then the tail for the two
+    // remaining intervals of the window walked above.
+    CAmount expected = 0;
+    for (int h = 0; h < 6; ++h) expected += (nInitialSubsidy >> h) * interval;
+    expected += nTailSubsidy * 2 * interval;
+    BOOST_CHECK_EQUAL(nSum, expected);
 }
 
 BOOST_AUTO_TEST_CASE(signet_parse_tests)
@@ -147,12 +175,14 @@ BOOST_AUTO_TEST_CASE(test_assumeutxo)
         BOOST_CHECK(!out);
     }
 
+    // Values are TrueNorth's regtest snapshot, not Bitcoin's; they must track
+    // m_assumeutxo_data in CRegTestParams.
     const auto out110 = *params->AssumeutxoForHeight(110);
-    BOOST_CHECK_EQUAL(out110.hash_serialized.ToString(), "b952555c8ab81fec46f3d4253b7af256d766ceb39fb7752b9d18cdf4a0141327");
+    BOOST_CHECK_EQUAL(out110.hash_serialized.ToString(), "11c9581d6c4bf78e7311fdc2223e2abfde357581a22889de26a66a9ad3bd8e9f");
     BOOST_CHECK_EQUAL(out110.m_chain_tx_count, 111U);
 
-    const auto out110_2 = *params->AssumeutxoForBlockhash(uint256{"6affe030b7965ab538f820a56ef56c8149b7dc1d1c144af57113be080db7c397"});
-    BOOST_CHECK_EQUAL(out110_2.hash_serialized.ToString(), "b952555c8ab81fec46f3d4253b7af256d766ceb39fb7752b9d18cdf4a0141327");
+    const auto out110_2 = *params->AssumeutxoForBlockhash(uint256{"635e110a2f30b4857c6f0eb93e099e1881e8a43cfe25595ac02e4b6e88943521"});
+    BOOST_CHECK_EQUAL(out110_2.hash_serialized.ToString(), "11c9581d6c4bf78e7311fdc2223e2abfde357581a22889de26a66a9ad3bd8e9f");
     BOOST_CHECK_EQUAL(out110_2.m_chain_tx_count, 111U);
 }
 
