@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [master]
   workflow_dispatch:
+  schedule:
+    # 06:15 UTC daily, for the functional suite below. It is too slow to run on
+    # every push on a 2-core runner, but a daily signal beats none.
+    - cron: '15 6 * * *'
 
 # Cancel in-progress runs on the same ref when a new commit lands -- avoids
 # burning Actions minutes on stacked pushes.
@@ -142,8 +146,8 @@ jobs:
         #
         # The failing set is compared against test/ci-known-failing-suites.txt
         # in both directions, so a new failure and a newly-fixed suite both
-        # break the build. Everything in that baseline is blocked on the
-        # mainnet placeholder genesis and should empty out at the ceremony.
+        # break the build. That baseline is now EMPTY -- the unit suite is
+        # 143/143 green as of 2026-09-24 -- so any failure here is a regression.
         #
         # This was previously narrowed to truenorth_tests on the grounds that
         # the full suite was slow and flaky. The suite is in much better shape
@@ -174,3 +178,73 @@ jobs:
         # the four `seed_key_*` cases in truenorth_tests above; this is a
         # belt-and-suspenders manual check, run from `test/truenorth/all.sh`
         # or directly before a release tag.
+
+  functional-tests:
+    name: Functional suite (nightly)
+    # Nightly and on demand only. On a 2-core runner this takes hours, which is
+    # too slow to gate every push; the unit suite and the four regression
+    # scripts above carry the per-push signal.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install apt dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake pkg-config python3 \
+            libevent-dev libboost-dev libsqlite3-dev libnuma-dev
+
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/../.ccache
+          key: ccache-func-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
+          restore-keys: |
+            ccache-func-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Configure
+        env:
+          CCACHE_DIR: ${{ github.workspace }}/../.ccache
+        # Matches the smoke-test job: system compiler, ENABLE_IPC=OFF (no
+        # Cap'n Proto needed). BUILD_UTIL/TX/WALLET_TOOL default to BUILD_TESTS
+        # so they are already on, but state them so a future default flip does
+        # not silently drop tool_utils, tool_tx and tool_wallet.
+        run: |
+          cmake -B build \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DENABLE_IPC=OFF \
+            -DBUILD_UTIL=ON -DBUILD_TX=ON -DBUILD_WALLET_TOOL=ON
+
+      - name: Build
+        # truenorth-util, -tx and -wallet are needed by tool_utils, tool_tx and
+        # tool_wallet; without them those tests fail as missing binaries rather
+        # than as anything informative.
+        run: cmake --build build --parallel 4 --target truenorthd truenorth-cli truenorth-util truenorth-tx truenorth-wallet
+
+      - name: Run functional suite
+        timeout-minutes: 280
+        # -j2, NOT the runner's core count. RandomX allocates a 256 MiB light
+        # cache per node and validation is CPU-bound, so oversubscribing does
+        # not add throughput -- it makes every test slower until some exceed
+        # their timeouts and fail as flakes.
+        #
+        # Measured 2026-09-24 on an 8-core/16 GiB host:
+        #   -j8, default timeouts   1116s wall, 10 failures
+        #   -j8 --timeout-factor=4  2759s wall, 12744s CPU, 3 failures
+        #   -j4, default timeouts   2853s wall,  9081s CPU, 0 failures
+        # Half the cores costs the same wall time as inflating timeouts but 29%
+        # less CPU, because the -j8 failures were contention rather than work:
+        # p2p_node_network_limited runs in 80s alone and 577s under -j8.
+        #
+        # Raising the timeout factor instead would hide real hangs, so prefer
+        # lowering -j. If this still flakes on CI hardware, drop to -j1 before
+        # reaching for --timeout-factor.
+        run: python3 build/test/functional/test_runner.py -j2
