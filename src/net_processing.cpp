@@ -102,8 +102,17 @@ static constexpr auto HEADERS_RESPONSE_TIME{2min};
 static constexpr int32_t MAX_OUTBOUND_PEERS_TO_PROTECT_FROM_DISCONNECT = 4;
 /** Timeout for (unprotected) outbound peers to sync to our chainwork */
 static constexpr auto CHAIN_SYNC_TIMEOUT{20min};
-/** How frequently to check for stale tips */
-static constexpr auto STALE_CHECK_INTERVAL{10min};
+/** How frequently to check for stale tips.
+ *
+ * Scaled for TrueNorth's 2-minute blocks. TipMayBeStale() calls the tip stale
+ * after 3 * nPowTargetSpacing, which is 6 minutes here against Bitcoin's 30.
+ * Bitcoin checks every 10 minutes, a third of its threshold; keeping 10 here
+ * would mean the check runs less often than the tip goes stale, so a stalled
+ * tip could sit for 16 minutes -- eight blocks -- before the node looked for
+ * another outbound peer. 2 minutes restores the same 1:3 ratio.
+ *
+ * Must stay above EXTRA_PEER_CHECK_INTERVAL; see the static_assert below. */
+static constexpr auto STALE_CHECK_INTERVAL{2min};
 /** How frequently to check for extra outbound peers and disconnect */
 static constexpr auto EXTRA_PEER_CHECK_INTERVAL{45s};
 /** Minimum time an outbound-peer-eviction candidate must be connected for, in order to evict */
