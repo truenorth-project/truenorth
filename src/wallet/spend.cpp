@@ -250,6 +250,8 @@ void CoinsResult::Add(OutputType type, const COutput& out)
 static OutputType GetOutputType(TxoutType type, bool is_from_p2sh)
 {
     switch (type) {
+        case TxoutType::WITNESS_V2_QRH:
+            return OutputType::BECH32M_QRH;
         case TxoutType::WITNESS_V1_TAPROOT:
             return OutputType::BECH32M;
         case TxoutType::WITNESS_V0_KEYHASH:
