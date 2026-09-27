@@ -420,7 +420,7 @@ routine maintenance.
 
 | Operator | Clearnet | Onion | Notes |
 |---|---|---|---|
-| robert-pathy | `seed.nyc.tncoin.xyz:49555` | `qpjxqbcp4vkoalprpzuvvzyos7lej6qi3muhpsycgfmog6tlluayctad.onion:49555` | DigitalOcean droplet (nyc3, `s-1vcpu-1gb`), Debian 12, direct public IP bound to the NIC. Hostname is an A record for `138.197.97.151`. The compiled-in fallback uses the raw IP; the hostname is a friendlier alias for operators adding this seed manually via `-addnode=`. |
+| robert-pathy | `seed.nyc.tncoin.xyz:49555` | `qpjxqbcp4vkoalprpzuvvzyos7lej6qi3muhpsycgfmog6tlluayctad.onion:49555` | DigitalOcean droplet (nyc3, `s-1vcpu-1gb`), Ubuntu 24.04, direct public IP bound to the NIC. Hostname is an A record for `138.197.97.151`. The compiled-in fallback uses the raw IP; the hostname is a friendlier alias for operators adding this seed manually via `-addnode=`. |
 | crellinj | `132.145.111.0:49555` | `mggupu2hkgxxv67wdizwgjcwg24yzydznwjsbeja27f36ojsjcqfeoad.onion:49555` | Oracle Cloud "Always Free" tier (Toronto region), Ubuntu, direct public IP bound to the NIC. `truenorthd` runs under a systemd unit with `Restart=on-failure`; `dbcache`/`maxmempool` tuned down per this guide's low-memory stanza for the 1 GiB shape. |
 
 ### Topology B — onion-only
@@ -450,3 +450,4 @@ running and won't be until genesis.
 | Operator | Clearnet | Onion | Notes |
 |---|---|---|---|
 | crellinj | `132.145.109.161:9555` | `ufa3acqngpjtthlfadii7q3ir6ojghlhsykgc7acjtjzqi6kfmqvexqd.onion:9555` | Oracle Cloud "Always Free" tier, direct public IP bound to the NIC. Separate box from the testnet4 seed above — the 1 GiB shape can't run both chains reliably at once. `truenorthd` is built and configured, systemd unit staged but disabled (won't start on reboot); will be started manually at or after the mainnet genesis ceremony. |
+| robert-pathy | `seed.tor.tncoin.xyz:9555` | `r6n2ct64fxc4xjjio6uak3gakec76sthsfpkw5riwc3ug3yj3lq2fuad.onion:9555` | DigitalOcean droplet (tor1, `s-1vcpu-1gb`), Ubuntu 24.04, direct public IP bound to the NIC. Hostname is an A record for `159.89.123.124`. Separate box from our testnet4 seed (nyc3) for the same 1 GiB reason. Tor hidden service is up now; `truenorthd` is staged but not running (its container is gated behind a compose profile so it can't start by accident) and will be started at or after the mainnet genesis ceremony. |
