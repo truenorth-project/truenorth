@@ -226,10 +226,22 @@ jobs:
             -DBUILD_UTIL=ON -DBUILD_TX=ON -DBUILD_WALLET_TOOL=ON
 
       - name: Build
-        # truenorth-util, -tx and -wallet are needed by tool_utils, tool_tx and
-        # tool_wallet; without them those tests fail as missing binaries rather
-        # than as anything informative.
-        run: cmake --build build --parallel 4 --target truenorthd truenorth-cli truenorth-util truenorth-tx truenorth-wallet
+        # Build the DEFAULT target, not an explicit list. An explicit list has
+        # now silently omitted a needed artifact twice:
+        #
+        #   - libtruenorth_pow_testlib.so, which the Python framework dlopens to
+        #     solve blocks (test_framework/randomx.py). Missing it failed 35
+        #     tests with "RandomX test library not found".
+        #   - the truenorth multitool binary, which tool_bitcoin.py execs.
+        #
+        # Both exist in a developer tree from an earlier full build, so the
+        # suite passes locally and fails only on a clean CI checkout -- the
+        # same masking that hid the CONFIGURE_DEPENDS glob bug. The default
+        # target covers every non-EXCLUDE_FROM_ALL target, so adding a test
+        # that needs a new artifact cannot break CI this way again. It also
+        # builds test_bitcoin, which this job does not run; that costs a few
+        # minutes on a cold cache and nothing once ccache is warm.
+        run: cmake --build build --parallel 4
 
       - name: Run functional suite
         timeout-minutes: 280
