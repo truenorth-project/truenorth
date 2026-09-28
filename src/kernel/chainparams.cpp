@@ -164,14 +164,14 @@ public:
         m_assumed_blockchain_size = 1;
         m_assumed_chain_state_size = 1;
 
-        // Timestamp 4070908800 (2099-01-01) is a placeholder; mainnet is
-        // not launchable from this binary. Update and re-mine at launch.
-        // Still a placeholder: the coinbase message is replaced at the genesis
-        // ceremony and the block re-mined. The difficulty and timestamp are
-        // final, so only the message changes -- nTime equals nLaunchTime
-        // (1791158400 = 2026-10-05 00:00:00 UTC) as the runbook requires, and
-        // nBits is the launch difficulty rather than powLimit so the chain does
-        // not open with a burst of near-free blocks before LWMA has a window.
+        // The coinbase message is still the pre-launch placeholder: it is
+        // replaced at the genesis ceremony and the block re-mined. Difficulty
+        // and timestamp are final, so only the message changes -- nTime equals
+        // nLaunchTime (1791158400 = 2026-10-05 00:00:00 UTC) as the runbook
+        // requires, and nBits is the launch difficulty rather than powLimit so
+        // the chain does not open with a burst of near-free blocks before LWMA
+        // has a window. Expected work at 0x1e1179ec is ~960k hashes; the 60953
+        // nonce below was a lucky draw, so re-mining will likely take longer.
         genesis = CreateGenesisBlock(truenorth::GENESIS_TIMESTAMP_MSG_MAIN, 1791158400, 60953, 0x1e1179ec, 1, 512 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
         assert(consensus.hashGenesisBlock == uint256{"2fdb4e8d1508d699d64de43d6424e92c58f3d7c3f038795bc77bb29d0eb73bc1"});
@@ -455,9 +455,11 @@ public:
         m_assumed_blockchain_size = 1;
         m_assumed_chain_state_size = 1;
 
-        // TrueNorth testnet4 genesis -- placeholder, will be re-mined when
-        // (and if) we decide to publicly launch this chain. testnet3 is the
-        // June 1 launch target.
+        // TrueNorth testnet4 genesis, re-mined for the 2026-09-23 chain reset.
+        // This is the live public test chain, not a placeholder. Its coinbase
+        // message comes from GENESIS_TIMESTAMP_MSG_TEST, which testnet3, signet
+        // and regtest also use -- editing that constant invalidates this genesis
+        // and theirs, so it must not be touched at the mainnet ceremony.
         genesis = CreateGenesisBlock(truenorth::GENESIS_TIMESTAMP_MSG_TEST, 1790186400, 2, 0x207fffff, 1, 512 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
         assert(consensus.hashGenesisBlock == uint256{"ab30dfbf9dd9e1ecca22d845bcd5df40feb2d03547906cd039b412dd55d12750"});

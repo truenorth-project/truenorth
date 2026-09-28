@@ -17,8 +17,17 @@
 // mainnet only.
 //
 // Mainnet wants a recent newspaper headline, set at the ceremony (task #31).
-// The test chains just need something distinctive, and should not be edited
-// without resetting the chain in question.
+//
+// GENESIS_TIMESTAMP_MSG_TEST is used by FOUR chains -- testnet3, testnet4,
+// signet and regtest -- each asserting its own genesis hash in chainparams.
+// Editing it breaks all four asserts at once: the binary then aborts on
+// startup on every chain, the whole functional suite dies with it, and the
+// live testnet4 chain (genesis ab30dfbf...) is invalidated. Do not edit it
+// without deliberately resetting every chain that uses it.
+//
+// NOTE both constants below currently hold the SAME placeholder text, so a
+// find-and-replace on that text silently hits both. At the ceremony, edit the
+// _MAIN line by name and then confirm _TEST is byte-identical to what shipped.
 namespace truenorth {
 
 inline constexpr const char* GENESIS_TIMESTAMP_MSG_MAIN =
