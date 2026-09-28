@@ -199,19 +199,21 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential cmake pkg-config python3 \
-            libevent-dev libboost-dev libsqlite3-dev libnuma-dev
+            libevent-dev libboost-dev libsqlite3-dev libnuma-dev \
+            ccache
 
       - name: Restore ccache
         uses: actions/cache@v4
         with:
-          path: ${{ github.workspace }}/../.ccache
+          # Must match where ccache actually writes. The Build step does not
+          # set CCACHE_DIR, so ccache uses its default -- caching any other
+          # path restores nothing and every nightly rebuilds from scratch.
+          path: ~/.cache/ccache
           key: ccache-func-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
           restore-keys: |
             ccache-func-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Configure
-        env:
-          CCACHE_DIR: ${{ github.workspace }}/../.ccache
         # Matches the smoke-test job: system compiler, ENABLE_IPC=OFF (no
         # Cap'n Proto needed). BUILD_UTIL/TX/WALLET_TOOL default to BUILD_TESTS
         # so they are already on, but state them so a future default flip does
