@@ -1,0 +1,20 @@
+# TrueNorth mainnet fixed seeds.
+#
+# Last-resort bootstrap: compiled into the binary and used when no DNS seed
+# answers and no -addnode is supplied. An entry here cannot be corrected
+# without cutting a new release, so only endpoints the project operates and
+# can vouch for are listed.
+#
+# Operators and their published endpoints are tracked in
+# doc/public-seed-setup.md. Further operator seeds are welcome. For any
+# endpoint whose address may change, prefer a DNS seed in CMainParams::vSeeds
+# over an entry here: DNS resolves at runtime and degrades gracefully when a
+# host is down, whereas a stale fixed seed ships until the next tag.
+
+# septentrion
+43sw3tah3xtt2zjajkkimuwwif6ucrjhgigshrdfz2ri2vann24gozqd.onion:9555
+ggnrzqqof7samxqjd2j3utk3nchwk2b2a75q42tpq2ry3qvxnou2nuid.onion:9555
+
+# crellinj
+132.145.109.161:9555
+ufa3acqngpjtthlfadii7q3ir6ojghlhsykgc7acjtjzqi6kfmqvexqd.onion:9555

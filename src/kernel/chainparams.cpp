@@ -230,7 +230,20 @@ public:
 
         bech32_hrp = "north";
 
-        vFixedSeeds.clear(); // TrueNorth: no fixed seeds yet
+        // Compiled-in bootstrap of last resort, generated from
+        // contrib/seeds/nodes_main.txt by contrib/seeds/generate-seeds.py.
+        // Without this assignment the generated array is dead code and a
+        // fresh node with no -addnode and no DNS seed cannot find the
+        // network at all.
+        vFixedSeeds = std::vector<uint8_t>(std::begin(chainparams_seed_main), std::end(chainparams_seed_main));
+
+        vSeeds.clear();
+        // No DNS seeds yet: no operator has published a crawler hostname for
+        // mainnet. Bootstrap therefore rests on the fixed seeds above plus
+        // -addnode. Adding one later is a one-line emplace_back here, and is
+        // preferable to a new fixed seed for any endpoint whose address may
+        // change -- DNS resolves at runtime and degrades gracefully when the
+        // host is down, whereas a stale fixed seed ships until the next tag.
 
         fDefaultConsistencyChecks = false;
         m_is_mockable_chain = false;
