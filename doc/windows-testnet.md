@@ -101,8 +101,14 @@ $ADDR = .\truenorth-cli.exe -testnet4 -rpcwallet=mywallet getnewaddress
     -datadir="$env:APPDATA\TrueNorth" `
     -address=$ADDR `
     -threads=$([Environment]::ProcessorCount) `
-    -budgetseconds=300
+    -budgetseconds=15
 ```
+
+`-budgetseconds` is the template refetch interval and must stay well under
+the block interval: the miner has no long-poll path, so it keeps hashing a
+template another miner already replaced until the timer expires. At a
+2-minute target, 300 seconds discards roughly 45% of your work. See
+`doc/testnet.md` for the detail.
 
 The miner authenticates against the daemon automatically from the
 credentials in `truenorth.conf` — no separate RPC flags needed. Same
@@ -226,7 +232,7 @@ Write-Host "RPC is up. Starting miner."
 while ($true) {
     $minerArgs = @(
         "-chain=testnet4", "-datadir=$DataDir", "-address=$Address",
-        "-threads=$Threads", "-budgetseconds=300"
+        "-threads=$Threads", "-budgetseconds=15"
     )
     $proc = Start-Process -FilePath $MinerExe -ArgumentList $minerArgs -WindowStyle Hidden -PassThru `
         -RedirectStandardOutput "${LogFile}.out" -RedirectStandardError "${LogFile}.err"

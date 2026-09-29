@@ -152,8 +152,18 @@ ADDR=$(./truenorth-cli -testnet4 -rpcwallet=mywallet getnewaddress)
     -datadir=$HOME/.truenorth \
     -address=$ADDR \
     -threads=$(nproc) \
-    -budgetseconds=300
+    -budgetseconds=15
 ```
+
+`-budgetseconds` is how long the miner works a block template before
+refetching it. **Keep it well below the block interval.** The miner has no
+long-poll or notification path yet, so when another miner finds a block it
+keeps hashing the now-dead template until this timer expires, and every one
+of those hashes is discarded. With a 2-minute target, a 300-second budget
+throws away roughly 45% of your work — measured, not estimated. 15 seconds
+costs four extra RPC calls a minute and recovers nearly all of it. Refetching
+does not rebuild the RandomX dataset; that is keyed to the seed epoch
+(~2048 blocks), not the template.
 
 Light-mode RandomX hashes at a few hundred H/s per modern CPU core; an
 8-core box will produce blocks regularly at testnet's permissive difficulty
