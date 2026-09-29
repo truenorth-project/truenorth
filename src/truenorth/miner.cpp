@@ -92,9 +92,9 @@ const TranslateFn G_TRANSLATION_FUN{nullptr};
 #include <cstdlib>
 #include <cstring>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <string>
-#include <memory>
 #include <thread>
 #include <vector>
 
@@ -990,8 +990,7 @@ try {
             std::fprintf(stderr,
                          "  no solution in %lldms (%.1f H/s); %s\n",
                          static_cast<long long>(elapsed_ms), hps,
-                         interrupted ? "tip moved (long-poll), refetching template"
-                                     : "budget expired, refetching template");
+                         interrupted ? "tip moved (long-poll), refetching template" : "budget expired, refetching template");
             continue;
         }
 
