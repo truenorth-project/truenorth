@@ -33,6 +33,8 @@
 //                   [-rpcwaittimeout=<seconds>]  (default 60; 0 = fail-fast)
 //                   [-mode=auto|light|fast]
 //                   [-largepages=auto|on|off] [-numa=auto|on|off]
+//                   [-longpoll=1]   (abandon a template as soon as the tip
+//                                    moves; with this on, raise -budgetseconds)
 //   truenorth-miner -benchmark=1 -threads=N [-budgetseconds=N]
 //                   [-mode=auto|light|fast]
 //
@@ -92,6 +94,7 @@ const TranslateFn G_TRANSLATION_FUN{nullptr};
 #include <limits>
 #include <optional>
 #include <string>
+#include <memory>
 #include <thread>
 #include <vector>
 
@@ -235,7 +238,8 @@ uint256 Uint256FromHexOrDie(const std::string& hex, const char* what)
 // transport / HTTP / JSON-RPC error, throws std::runtime_error with a
 // clear message. Callers that want to distinguish (e.g. submitblock's
 // "inconclusive" string result on rejection) inspect the returned value.
-UniValue RpcCall(const RpcConfig& cfg, const std::string& method, const UniValue& params)
+UniValue RpcCall(const RpcConfig& cfg, const std::string& method, const UniValue& params,
+                 int timeout_seconds = 30)
 {
     // Cold start typically races the daemon's RPC bind: the daemon process
     // is running (systemd After=/Requires= is satisfied) but the RPC
@@ -251,7 +255,7 @@ UniValue RpcCall(const RpcConfig& cfg, const std::string& method, const UniValue
     while (true) {
         raii_event_base base = obtain_event_base();
         raii_evhttp_connection evcon = obtain_evhttp_connection_base(base.get(), cfg.host, cfg.port);
-        evhttp_connection_set_timeout(evcon.get(), 30); // seconds
+        evhttp_connection_set_timeout(evcon.get(), timeout_seconds); // seconds
 
         HTTPReply response;
         raii_evhttp_request req = obtain_evhttp_request(RpcHttpDone, &response);
@@ -485,7 +489,8 @@ bool MineOnce(CBlock& block,
               const uint256& seed_key,
               std::chrono::seconds budget,
               int num_threads,
-              uint64_t& out_hashes)
+              uint64_t& out_hashes,
+              const std::atomic<bool>* abandon)
 {
     if (num_threads < 1) num_threads = 1;
 
@@ -558,6 +563,11 @@ bool MineOnce(CBlock& block,
                 // 256 of its own hashes.
                 if ((local_hashes & 0xff) == 0) {
                     if (std::chrono::steady_clock::now() > t_deadline) break;
+                    // Long-poll said the tip moved: this template is dead and
+                    // every further hash against it is discarded. Relaxed load
+                    // is sufficient -- a few hundred extra hashes before the
+                    // store is visible costs nothing.
+                    if (abandon != nullptr && abandon->load(std::memory_order_relaxed)) break;
                 }
             }
 
@@ -714,6 +724,11 @@ try {
     int rpc_wait_timeout_seconds = 60; //!< 0 = fail-fast; >0 = retry connection for N seconds
     int max_blocks = 0;
     int budget_seconds = 30;
+    //! Opt-in for now. With long-poll on, RAISE budget_seconds: the node
+    //! releases the blocked getblocktemplate the moment the tip moves, so the
+    //! budget stops being the staleness bound and becomes only a backstop.
+    //! That is both more efficient and fewer RPC calls than short polling.
+    bool use_longpoll = false;
     int num_threads = 1;
     bool benchmark_mode = false;
     std::string mode_str = "auto";       //!< auto | light | fast
@@ -755,6 +770,8 @@ try {
             max_blocks = std::stoi(val);
         else if (key == "-budgetseconds")
             budget_seconds = std::stoi(val);
+        else if (key == "-longpoll")
+            use_longpoll = (val == "1");
         else if (key == "-threads")
             num_threads = std::stoi(val);
         else if (key == "-benchmark")
@@ -857,7 +874,7 @@ try {
     cfg.rpc_wait_timeout_seconds = rpc_wait_timeout_seconds;
 
     std::fprintf(stderr,
-                 "truenorth-miner -- chain=%s address=%s datadir=%s rpc=%s:%d threads=%d maxblocks=%d budget=%ds mode=%s largepages=%s numa=%s(active=%s,nodes=%d)\n",
+                 "truenorth-miner -- chain=%s address=%s datadir=%s rpc=%s:%d threads=%d maxblocks=%d budget=%ds mode=%s largepages=%s numa=%s(active=%s,nodes=%d) longpoll=%s\n",
                  chain_str.c_str(), address.c_str(),
                  datadir.empty() ? "<default>" : datadir.c_str(),
                  cfg.host.c_str(), cfg.port,
@@ -866,7 +883,8 @@ try {
                  truenorth::LargePagesPrefName(truenorth::CurrentLargePagesPreference()),
                  truenorth::numa::PrefName(truenorth::numa::CurrentPreference()),
                  truenorth::numa::ShouldEnable() ? "yes" : "no",
-                 truenorth::numa::NumNodes());
+                 truenorth::numa::NumNodes(),
+                 use_longpoll ? "on" : "off");
 
     int blocks_found = 0;
     // Anti-fingerprint: seed extranonce with OS randomness so this miner does
@@ -883,6 +901,11 @@ try {
         rules.push_back("segwit");
         UniValue gbt_arg(UniValue::VOBJ);
         gbt_arg.pushKV("rules", rules);
+        if (use_longpoll) {
+            UniValue caps(UniValue::VARR);
+            caps.push_back("longpoll");
+            gbt_arg.pushKV("capabilities", caps);
+        }
         gbt_params.push_back(gbt_arg);
         UniValue tmpl = RpcCall(cfg, "getblocktemplate", gbt_params);
         const int height = tmpl["height"].getInt<int>();
@@ -900,11 +923,45 @@ try {
         arith_uint256 target;
         target.SetCompact(block.nBits);
 
+        // Long-poll watcher. getblocktemplate with a longpollid blocks on the
+        // node until the tip (or a significant mempool change) invalidates the
+        // template, then returns -- at which point the workers should stop
+        // hashing a block that can no longer be accepted.
+        //
+        // The flag is shared_ptr-owned and the thread is detached rather than
+        // joined: if MineOnce returns first (a win, or budget expiry) we must
+        // not stall the miner waiting on a call that is still blocked. A late
+        // thread then stores into a flag this iteration no longer reads, which
+        // is harmless. In practice the thread does not linger, because our own
+        // winning block moves the tip and releases its long-poll.
+        //
+        // Any failure here is swallowed: a long-poll problem must never stop
+        // mining, and budget_seconds remains the backstop.
+        auto abandon = std::make_shared<std::atomic<bool>>(false);
+        if (use_longpoll && tmpl.exists("longpollid") && tmpl["longpollid"].isStr()) {
+            const std::string lpid = tmpl["longpollid"].get_str();
+            const int lp_timeout = static_cast<int>(budget_seconds) + 10;
+            std::thread([cfg, lpid, abandon, lp_timeout]() {
+                try {
+                    UniValue lp_params(UniValue::VARR);
+                    UniValue lp_rules(UniValue::VARR);
+                    lp_rules.push_back("segwit");
+                    UniValue lp_arg(UniValue::VOBJ);
+                    lp_arg.pushKV("rules", lp_rules);
+                    lp_arg.pushKV("longpollid", lpid);
+                    lp_params.push_back(lp_arg);
+                    RpcCall(cfg, "getblocktemplate", lp_params, lp_timeout);
+                    abandon->store(true, std::memory_order_relaxed);
+                } catch (const std::exception&) {
+                }
+            }).detach();
+        }
+
         uint64_t hashes = 0;
         const auto t0 = std::chrono::steady_clock::now();
         const bool found = MineOnce(block, target, seed,
                                     std::chrono::seconds(budget_seconds),
-                                    num_threads, hashes);
+                                    num_threads, hashes, abandon.get());
         const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                                     std::chrono::steady_clock::now() - t0)
                                     .count();
@@ -912,9 +969,12 @@ try {
                            (static_cast<double>(elapsed_ms) / 1000.0 + 1e-3);
 
         if (!found) {
+            const bool interrupted = abandon->load(std::memory_order_relaxed);
             std::fprintf(stderr,
-                         "  no solution in %llds (%.1f H/s); refetching template\n",
-                         static_cast<long long>(budget_seconds), hps);
+                         "  no solution in %lldms (%.1f H/s); %s\n",
+                         static_cast<long long>(elapsed_ms), hps,
+                         interrupted ? "tip moved (long-poll), refetching template"
+                                     : "budget expired, refetching template");
             continue;
         }
 
