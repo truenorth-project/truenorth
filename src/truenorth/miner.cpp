@@ -952,7 +952,24 @@ try {
                     lp_params.push_back(lp_arg);
                     RpcCall(cfg, "getblocktemplate", lp_params, lp_timeout);
                     abandon->store(true, std::memory_order_relaxed);
-                } catch (const std::exception&) {
+                } catch (const std::exception& e) {
+                    // Never rethrow: a long-poll problem must not stop mining,
+                    // and -budgetseconds remains the backstop.
+                    //
+                    // But do NOT fail silently. Operators are told to RAISE the
+                    // budget once long-poll is on, so a persistently failing
+                    // long-poll degrades to a very long stale-template window --
+                    // strictly worse than never having enabled it, and with
+                    // nothing in the log to say so. Warn once per process;
+                    // warning every cycle would drown the mining output.
+                    static std::atomic<bool> warned{false};
+                    if (!warned.exchange(true)) {
+                        std::fprintf(stderr,
+                                     "  [WARN] long-poll failed (%s). Mining continues, but "
+                                     "templates now go stale for up to -budgetseconds=%d. "
+                                     "If this persists, drop the budget or unset -longpoll.\n",
+                                     e.what(), lp_timeout - 10);
+                    }
                 }
             }).detach();
         }
