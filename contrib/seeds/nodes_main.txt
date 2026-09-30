@@ -18,3 +18,7 @@ ggnrzqqof7samxqjd2j3utk3nchwk2b2a75q42tpq2ry3qvxnou2nuid.onion:9555
 # crellinj
 132.145.109.161:9555
 ufa3acqngpjtthlfadii7q3ir6ojghlhsykgc7acjtjzqi6kfmqvexqd.onion:9555
+
+# robert-pathy
+159.89.123.124:9555
+r6n2ct64fxc4xjjio6uak3gakec76sthsfpkw5riwc3ug3yj3lq2fuad.onion:9555
