@@ -2,7 +2,7 @@
 
 A Canadian-themed cryptocurrency forked from Bitcoin Core, using **RandomX** (CPU-friendly, ASIC-resistant) proof-of-work and **LWMA-1** per-block difficulty adjustment.
 
-**Status**: Public testnet4 (open to anyone; see [`doc/testnet.md`](doc/testnet.md) to join). Mainnet launch **targeted for 2026-10-05** — see [Mainnet](#mainnet) below.
+**Status**: Public testnet4 (open to anyone; see [`doc/testnet.md`](doc/testnet.md) to join). Mainnet launch **targeted for 2026-10-12** — see [Mainnet](#mainnet) below.
 
 ---
 
@@ -140,7 +140,7 @@ Address example:
 
 ### Mainnet
 
-**Target launch: 2026-10-05.** Network parameters are finalized in
+**Target launch: 2026-10-12.** Network parameters are finalized in
 `src/kernel/chainparams.cpp` (P2P port 9555, RPC port 9554, address
 prefixes: `T…` P2PKH / `T…` P2SH / `north1…` bech32 / `north1z…` P2QRH
 default, `Tpub…`/`Tprv…` BIP32 extended keys). Public testnet4 has been

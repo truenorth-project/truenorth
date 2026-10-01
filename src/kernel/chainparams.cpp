@@ -164,17 +164,28 @@ public:
         m_assumed_blockchain_size = 1;
         m_assumed_chain_state_size = 1;
 
-        // The coinbase message is still the pre-launch placeholder: it is
-        // replaced at the genesis ceremony and the block re-mined. Difficulty
-        // and timestamp are final, so only the message changes -- nTime equals
-        // nLaunchTime (1791158400 = 2026-10-05 00:00:00 UTC) as the runbook
-        // requires, and nBits is the launch difficulty rather than powLimit so
-        // the chain does not open with a burst of near-free blocks before LWMA
-        // has a window. Expected work at 0x1e1179ec is ~960k hashes; the 60953
-        // nonce below was a lucky draw, so re-mining will likely take longer.
-        genesis = CreateGenesisBlock(truenorth::GENESIS_TIMESTAMP_MSG_MAIN, 1791158400, 60953, 0x1e1179ec, 1, 512 * COIN);
+        // nTime == consensus.nLaunchTime (1791763200 = 2026-10-12 00:00:00 UTC),
+        // as the runbook requires. nBits is the launch difficulty rather than
+        // powLimit so the chain does not open with a burst of near-free blocks
+        // before LWMA has a window.
+        //
+        // CEREMONY TODO: the coinbase message is still the pre-launch
+        // placeholder. Picking the headline changes the merkle root, hence the
+        // block hash, so the ceremony must:
+        //   1. set GENESIS_TIMESTAMP_MSG_MAIN to the headline -- that line ONLY.
+        //      _TEST is shared by testnet3, testnet4, signet and regtest, and
+        //      editing it breaks all four genesis asserts at once.
+        //   2. re-run truenorth-mine-genesis -chain=main -time=1791763200
+        //   3. paste the new nNonce and both asserts below.
+        // nTime does NOT change again.
+        //
+        // Expected work at 0x1e1179ec is ~960k hashes. The tool is parallel and
+        // fast-mode, so that is a few minutes on all cores -- but it is a
+        // geometric draw: this nonce took 466603 attempts and the previous one
+        // 61124, both well under the mean. Do not plan around a lucky run.
+        genesis = CreateGenesisBlock(truenorth::GENESIS_TIMESTAMP_MSG_MAIN, 1791763200, 466260, 0x1e1179ec, 1, 512 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256{"2fdb4e8d1508d699d64de43d6424e92c58f3d7c3f038795bc77bb29d0eb73bc1"});
+        assert(consensus.hashGenesisBlock == uint256{"62493de17bc0f59ffd5407a25531443dda91ca969ec99a3f17a1cc2bd2cc2b99"});
         assert(genesis.hashMerkleRoot == uint256{"bedb5be1cd03ead77e25a27dbf4ffbd4fe8496f085cf42e4d1ce935b153dc565"});
 
         // Pre-launch: no accumulated chain work; assumeValid anchors
@@ -194,9 +205,9 @@ public:
         // shadow mining from RC binaries. See src/consensus/params.h
         // and src/validation.cpp::ContextualCheckBlockHeader.
         //
-        // Verify with: date -u -d @1791158400
+        // Verify with: date -u -d @1791763200
         // (previous value 1759622400 was 2025-10-05 — off by a year).
-        consensus.nLaunchTime = 1791158400;
+        consensus.nLaunchTime = 1791763200;
         m_checkpoint_data = {
             /* .mapCheckpoints = */ {
                 {0, consensus.hashGenesisBlock},

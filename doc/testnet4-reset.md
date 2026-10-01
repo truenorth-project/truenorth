@@ -86,4 +86,4 @@ to configure.
 
 Unaffected. Mainnet's `powLimit` is 2^224 and the widest possible LWMA multiply
 there is 2^245.5, so the overflow was never reachable and `917d097` changes no
-mainnet behaviour. The launch target remains 2026-10-05.
+mainnet behaviour. The launch target is 2026-10-12 (moved from 2026-10-05 on 2026-09-30).
