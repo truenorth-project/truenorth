@@ -21,16 +21,22 @@
 #include <primitives/block.h>
 #include <primitives/transaction.h>
 #include <script/script.h>
+#include <streams.h>
 #include <truenorth/genesis_spec.h>
+#include <truenorth/numa.h>
+#include <truenorth/randomx_wrapper.h>
 #include <uint256.h>
 
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace {
@@ -88,7 +94,7 @@ struct ChainSpec {
     const char* msg; // per-chain pszTimestamp; see genesis_spec.h
 };
 
-bool MineFor(const ChainSpec& spec, uint64_t max_nonce_tries)
+bool MineFor(const ChainSpec& spec, int num_threads)
 {
     arith_uint256 target;
     bool neg = false, over = false;
@@ -106,9 +112,97 @@ bool MineFor(const ChainSpec& spec, uint64_t max_nonce_tries)
                                   nVersion, reward);
     const auto t0 = std::chrono::steady_clock::now();
 
-    for (uint64_t i = 0; i < max_nonce_tries; ++i) {
+    // Parallel nonce search.
+    //
+    // The original loop called CBlockHeader::GetPoWHash(), which goes through
+    // RandomXLightHash -- LIGHT mode, 5-30 H/s per thread -- on one core. At
+    // mainnet's launch nBits that is ~960k expected hashes, i.e. many hours.
+    // MinerThread gives each worker its own FAST-mode VM hashing lock-free,
+    // which is what truenorth-miner uses, so this scales with cores and runs
+    // ~10x faster per core besides.
+    //
+    // Workers stride the nonce space from their own offset. The 80-byte header
+    // is serialised once and each worker patches only the 4 nonce bytes, so no
+    // worker re-serialises and none of them share mutable state.
+    //
+    // Deterministic: returns the LOWEST valid nonce, same as the old
+    // single-threaded loop, so re-runs are idempotent regardless of -threads.
+    // Workers do not stop at the first hit by anyone; each continues until its
+    // own candidate passes the best known winner, so no lower nonce can be
+    // skipped. Costs a few wasted hashes per worker, not minutes.
+    truenorth::SetMinerMode(truenorth::RandomXMode::FAST);
+    truenorth::SetRandomXFallbackNotices(true);
+
+    DataStream hdr_ss;
+    hdr_ss << static_cast<const CBlockHeader&>(genesis);
+    const unsigned char* hdr_begin = reinterpret_cast<const unsigned char*>(hdr_ss.data());
+    const std::vector<unsigned char> hdr_template(hdr_begin, hdr_begin + hdr_ss.size());
+    constexpr std::size_t NONCE_OFFSET = 76; // version 4 + prev 32 + merkle 32 + time 4 + bits 4
+
+    // `best` is the lowest valid nonce seen so far, or kNoWinner if none.
+    // Workers monotonically lower it and stop once their own candidate passes
+    // it, which is what makes the result deterministic -- see below.
+    constexpr uint64_t kNoWinner = std::numeric_limits<uint64_t>::max();
+    std::atomic<uint64_t> best{kNoWinner};
+    std::atomic<uint64_t> total_attempts{0};
+
+    {
+        std::vector<std::thread> workers;
+        workers.reserve(static_cast<std::size_t>(num_threads));
+        for (int t = 0; t < num_threads; ++t) {
+            workers.emplace_back([&, t]() {
+                // Genesis epoch seed. truenorth::kGenesisSeed is uint256::ZERO
+                // but lives in bitcoin_common, which this target does not link;
+                // GetPoWHash()'s own default is the same value, and it is what
+                // the committed genesis was mined under.
+                truenorth::MinerThread mt(uint256::ZERO,
+                                          truenorth::numa::NodeForThread(t, num_threads));
+                std::vector<unsigned char> hdr = hdr_template;
+                uint256 h;
+                uint64_t local = 0;
+                for (uint64_t n = static_cast<uint64_t>(t);
+                     n <= std::numeric_limits<uint32_t>::max();
+                     n += static_cast<uint64_t>(num_threads)) {
+                    // Stop only once this worker's own candidate has passed the
+                    // best known winner -- NOT on the first hit by anyone. That
+                    // is what keeps the result the lowest valid nonce rather
+                    // than whichever one got there first: workers scan upward,
+                    // `best` only decreases, so when every worker has stopped,
+                    // every nonce below `best` has been examined by exactly the
+                    // worker whose stride covers it. A load per hash is free
+                    // next to a RandomX hash.
+                    if (n > best.load(std::memory_order_relaxed)) break;
+                    const uint32_t nonce = static_cast<uint32_t>(n);
+                    hdr[NONCE_OFFSET] = static_cast<unsigned char>(nonce);
+                    hdr[NONCE_OFFSET + 1] = static_cast<unsigned char>(nonce >> 8);
+                    hdr[NONCE_OFFSET + 2] = static_cast<unsigned char>(nonce >> 16);
+                    hdr[NONCE_OFFSET + 3] = static_cast<unsigned char>(nonce >> 24);
+                    mt.Hash(hdr.data(), hdr.size(), h);
+                    ++local;
+                    if (UintToArith256(h) <= target) {
+                        // Lower `best` to n if n is smaller. Reload on failure:
+                        // another worker may have set something lower still.
+                        uint64_t cur = best.load(std::memory_order_relaxed);
+                        while (n < cur &&
+                               !best.compare_exchange_weak(cur, n,
+                                                           std::memory_order_release,
+                                                           std::memory_order_relaxed)) {
+                        }
+                        break;
+                    }
+                }
+                total_attempts.fetch_add(local, std::memory_order_relaxed);
+            });
+        }
+        for (auto& w : workers)
+            w.join();
+    }
+
+    if (best.load(std::memory_order_acquire) != kNoWinner) {
+        genesis.nNonce = static_cast<uint32_t>(best.load(std::memory_order_acquire));
         const uint256 pow_hash = genesis.GetPoWHash();
-        if (UintToArith256(pow_hash) <= target) {
+        const uint64_t i = total_attempts.load(std::memory_order_relaxed) - 1;
+        {
             const auto elapsed_ms =
                 std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::steady_clock::now() - t0)
@@ -129,14 +223,8 @@ bool MineFor(const ChainSpec& spec, uint64_t max_nonce_tries)
             std::fflush(stdout);
             return true;
         }
-        ++genesis.nNonce;
-        if (genesis.nNonce == 0) {
-            std::fprintf(stderr, "[%s] nonce wrapped without solution\n", spec.name);
-            return false;
-        }
     }
-    std::fprintf(stderr, "[%s] exhausted max_nonce_tries=%llu without solution\n",
-                 spec.name, static_cast<unsigned long long>(max_nonce_tries));
+    std::fprintf(stderr, "[%s] nonce space exhausted without solution\n", spec.name);
     return false;
 }
 
@@ -156,11 +244,16 @@ int main(int argc, char* argv[])
     std::string chain_filter;
     uint32_t override_time = 0;
     uint32_t override_nbits = 0;
+    // Default to every core. The search is embarrassingly parallel and this
+    // tool is run interactively during the genesis ceremony, so there is no
+    // reason to leave cores idle.
+    int num_threads = static_cast<int>(std::thread::hardware_concurrency());
+    if (num_threads < 1) num_threads = 1;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         const auto eq = arg.find('=');
         if (eq == std::string::npos) {
-            std::fprintf(stderr, "usage: %s [-chain=NAME] [-time=UNIX] [-nbits=0xHEX]\n", argv[0]);
+            std::fprintf(stderr, "usage: %s [-chain=NAME] [-time=UNIX] [-nbits=0xHEX] [-threads=N]\n", argv[0]);
             return 1;
         }
         const std::string key = arg.substr(0, eq);
@@ -171,6 +264,9 @@ int main(int argc, char* argv[])
             override_time = static_cast<uint32_t>(std::stoul(val));
         } else if (key == "-nbits") {
             override_nbits = static_cast<uint32_t>(std::stoul(val, nullptr, 0));
+        } else if (key == "-threads") {
+            num_threads = std::stoi(val);
+            if (num_threads < 1) num_threads = 1;
         } else {
             std::fprintf(stderr, "unknown option: %s\n", key.c_str());
             return 1;
@@ -195,7 +291,7 @@ int main(int argc, char* argv[])
 
     // Default per-chain nTimes.
     //
-    // Mainnet nTime is set to 2026-10-05 00:00:00 UTC (1791158400), the
+    // Mainnet nTime is set to 2026-10-12 00:00:00 UTC (1791763200), the
     // coordinated launch instant. This matches Consensus::Params::nLaunchTime
     // in kernel/chainparams.cpp, so the genesis block's timestamp equals
     // the point after which post-genesis blocks are permitted. See
@@ -212,7 +308,7 @@ int main(int argc, char* argv[])
         // network. Starting at the floor (as the test chains do) would produce
         // a burst of near-free blocks before LWMA has a window -- testnet4's
         // 2026-09-23 reset mined 316 blocks in 22 minutes doing exactly that.
-        {"main", 1791158400, 0x1e1179ecu, GENESIS_TIMESTAMP_MSG_MAIN},
+        {"main", 1791763200, 0x1e1179ecu, GENESIS_TIMESTAMP_MSG_MAIN},
         {"testnet3", 1748000010, 0x207fffffu, GENESIS_TIMESTAMP_MSG_TEST},
         {"testnet4", 1790186400, 0x207fffffu, GENESIS_TIMESTAMP_MSG_TEST},
         {"signet", 1748000030, 0x207fffffu, GENESIS_TIMESTAMP_MSG_TEST},
@@ -226,7 +322,10 @@ int main(int argc, char* argv[])
         any_matched = true;
         if (override_time != 0) chain.nTime = override_time;
         if (override_nbits != 0) chain.nBits = override_nbits;
-        if (!MineFor(chain, /*max_nonce_tries=*/1'000'000)) {
+        // No attempt cap. The old 1'000'000 limit sat below mainnet's ~960k
+        // expected attempts, so roughly a third of runs would have given up
+        // without finding genesis. Search the whole nonce space instead.
+        if (!MineFor(chain, num_threads)) {
             all_ok = false;
             break;
         }
