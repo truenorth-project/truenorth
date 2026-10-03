@@ -100,15 +100,15 @@ $ADDR = .\truenorth-cli.exe -testnet4 -rpcwallet=mywallet getnewaddress
     -chain=testnet4 `
     -datadir="$env:APPDATA\TrueNorth" `
     -address=$ADDR `
-    -threads=$([Environment]::ProcessorCount) `
-    -budgetseconds=15
+    -threads=$([Environment]::ProcessorCount)
 ```
 
-`-budgetseconds` is the template refetch interval and must stay well under
-the block interval: the miner has no long-poll path, so it keeps hashing a
-template another miner already replaced until the timer expires. At a
-2-minute target, 300 seconds discards roughly 45% of your work. See
-`doc/testnet.md` for the detail.
+The miner long-polls by default: the node releases `getblocktemplate` the
+instant the tip moves, so a template another miner has already replaced is
+dropped at once. Nothing needs tuning. `-budgetseconds` is only a backstop
+and defaults to 300; it matters again only if you pass `-longpoll=0`, where
+it becomes the staleness bound and must stay well under the block interval.
+See `doc/testnet.md` for the detail.
 
 The miner authenticates against the daemon automatically from the
 credentials in `truenorth.conf` — no separate RPC flags needed. Same
@@ -232,7 +232,7 @@ Write-Host "RPC is up. Starting miner."
 while ($true) {
     $minerArgs = @(
         "-chain=testnet4", "-datadir=$DataDir", "-address=$Address",
-        "-threads=$Threads", "-budgetseconds=15"
+        "-threads=$Threads"
     )
     $proc = Start-Process -FilePath $MinerExe -ArgumentList $minerArgs -WindowStyle Hidden -PassThru `
         -RedirectStandardOutput "${LogFile}.out" -RedirectStandardError "${LogFile}.err"

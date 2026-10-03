@@ -27,14 +27,20 @@
 // Usage:
 //   truenorth-miner -chain=regtest -datadir=/path/to/dd
 //                   -address=bcrt1q... [-threads=N] [-maxblocks=N]
-//                   [-budgetseconds=N]
+//                   [-budgetseconds=N]  (default 300 with long-poll on;
+//                                        30 with -longpoll=0 or -benchmark=1)
 //                   [-rpchost=127.0.0.1] [-rpcport=<port>]
 //                   [-rpcuser=<u>] [-rpcpassword=<p>]
 //                   [-rpcwaittimeout=<seconds>]  (default 60; 0 = fail-fast)
 //                   [-mode=auto|light|fast]
 //                   [-largepages=auto|on|off] [-numa=auto|on|off]
-//                   [-longpoll=1]   (abandon a template as soon as the tip
-//                                    moves; with this on, raise -budgetseconds)
+//                   [-longpoll=0]   (disable long-poll. On by default: the
+//                                    node releases getblocktemplate the
+//                                    moment the tip moves, so a dead template
+//                                    is abandoned at once. With it off the
+//                                    miner short-polls instead, and
+//                                    -budgetseconds becomes the staleness
+//                                    bound.)
 //   truenorth-miner -benchmark=1 -threads=N [-budgetseconds=N]
 //                   [-mode=auto|light|fast]
 //
@@ -723,12 +729,19 @@ try {
     std::string rpcpassword;           //!< optional; empty -> cookie-file auth
     int rpc_wait_timeout_seconds = 60; //!< 0 = fail-fast; >0 = retry connection for N seconds
     int max_blocks = 0;
-    int budget_seconds = 30;
-    //! Opt-in for now. With long-poll on, RAISE budget_seconds: the node
-    //! releases the blocked getblocktemplate the moment the tip moves, so the
-    //! budget stops being the staleness bound and becomes only a backstop.
-    //! That is both more efficient and fewer RPC calls than short polling.
-    bool use_longpoll = false;
+    //! Resolved after parsing: the correct default depends on -longpoll, so
+    //! the two cannot be defaulted independently. With long-poll on, the node
+    //! releases the blocked getblocktemplate the moment the tip moves, so
+    //! staleness is bounded by that and this is only a backstop for a
+    //! long-poll that fails or is unsupported. With long-poll off, this IS
+    //! the staleness bound and must stay well under the block interval.
+    int budget_seconds = 0;
+    bool budget_explicit = false;
+    //! On by default; opt out with -longpoll=0. Short polling wastes work: at
+    //! a 2-minute target a 300 s budget discards ~45% of it, and even a tight
+    //! 15 s poll spends on average half its interval hashing a template the
+    //! network has already replaced.
+    bool use_longpoll = true;
     int num_threads = 1;
     bool benchmark_mode = false;
     std::string mode_str = "auto";       //!< auto | light | fast
@@ -768,9 +781,10 @@ try {
             rpc_wait_timeout_seconds = std::stoi(val);
         else if (key == "-maxblocks")
             max_blocks = std::stoi(val);
-        else if (key == "-budgetseconds")
+        else if (key == "-budgetseconds") {
             budget_seconds = std::stoi(val);
-        else if (key == "-longpoll")
+            budget_explicit = true;
+        } else if (key == "-longpoll")
             use_longpoll = (val == "1");
         else if (key == "-threads")
             num_threads = std::stoi(val);
@@ -786,6 +800,14 @@ try {
             Die("unknown option: " + key);
     }
     if (num_threads < 1) Die("-threads must be >= 1");
+
+    // Benchmark mode talks to no node and fetches no templates, so long-poll
+    // never applies there and the short default stands.
+    constexpr int kBudgetWithLongpoll = 300;
+    constexpr int kBudgetShortPoll = 30;
+    if (!budget_explicit) {
+        budget_seconds = (use_longpoll && !benchmark_mode) ? kBudgetWithLongpoll : kBudgetShortPoll;
+    }
 
     // Resolve huge-pages preference and install it before any Cache
     // is constructed. Preference must be set BEFORE SetMinerMode
@@ -967,7 +989,7 @@ try {
                         std::fprintf(stderr,
                                      "  [WARN] long-poll failed (%s). Mining continues, but "
                                      "templates now go stale for up to -budgetseconds=%d. "
-                                     "If this persists, drop the budget or unset -longpoll.\n",
+                                     "If this persists, lower -budgetseconds or set -longpoll=0.\n",
                                      e.what(), lp_timeout - 10);
                     }
                 }
