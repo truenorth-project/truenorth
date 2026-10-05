@@ -323,7 +323,8 @@ Bug reports and feature discussion also go through [GitHub Issues](https://githu
 | [`doc/testnet.md`](doc/testnet.md) | Testnet4 bootstrap: seed `.onion`, sample config |
 | [`doc/windows-testnet.md`](doc/windows-testnet.md) | Windows-specific testnet4 setup: Tor Expert Bundle, PowerShell paths, unattended idle-priority mining |
 | [`doc/mining-policy.md`](doc/mining-policy.md) | Project stance on mining topology: solo + P2Pool preferred, centralized pools not restricted, 33% single-pool norm |
-| [`doc/exchange-listing-guidance.md`](doc/exchange-listing-guidance.md) | Confirmation-depth requirements and timing recommendations for exchange operators considering NORTH; safety guide for users evaluating listing claims |
+| [`doc/exchange-listing-guidance.md`](doc/exchange-listing-guidance.md) | Deposit confirmation depth for exchange operators considering NORTH; safety guide for users evaluating listing claims |
+| [`doc/reorg-economics.md`](doc/reorg-economics.md) | Cost arithmetic behind the deposit-depth recommendation; how to size a deposit cap from measured hashrate |
 | [`doc/notarization-design.md`](doc/notarization-design.md) | Design space for notarizing TrueNorth block hashes into Bitcoin (planned but not implemented; TRUENORTH_SPEC §9) |
 | [`doc/public-seed-setup.md`](doc/public-seed-setup.md) | Operator guide for running a public dual-stack (clearnet + Tor onion) seed node |
 | [`test/truenorth/`](test/truenorth/) | End-to-end regression scripts (sync, multitx, seed rotation, reorg, IBD, QRH) |
