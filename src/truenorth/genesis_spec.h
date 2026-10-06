@@ -31,7 +31,7 @@
 namespace truenorth {
 
 inline constexpr const char* GENESIS_TIMESTAMP_MSG_MAIN =
-    "TrueNorth - Canadian RandomX genesis - pre-launch placeholder";
+    "2026-10-05 Canada honours its top educators with Prime Minister's Awards - Canada.ca";
 
 inline constexpr const char* GENESIS_TIMESTAMP_MSG_TEST =
     "TrueNorth - Canadian RandomX genesis - pre-launch placeholder";

@@ -169,24 +169,33 @@ public:
         // powLimit so the chain does not open with a burst of near-free blocks
         // before LWMA has a window.
         //
-        // CEREMONY TODO: the coinbase message is still the pre-launch
-        // placeholder. Picking the headline changes the merkle root, hence the
-        // block hash, so the ceremony must:
-        //   1. set GENESIS_TIMESTAMP_MSG_MAIN to the headline -- that line ONLY.
-        //      _TEST is shared by testnet3, testnet4, signet and regtest, and
-        //      editing it breaks all four genesis asserts at once.
-        //   2. re-run truenorth-mine-genesis -chain=main -time=1791763200
-        //   3. paste the new nNonce and both asserts below.
-        // nTime does NOT change again.
+        // Genesis was mined at the launch ceremony on 2026-10-05. The coinbase
+        // message is a Government of Canada news release of that date, held in
+        // GENESIS_TIMESTAMP_MSG_MAIN (src/truenorth/genesis_spec.h). That
+        // message fixes the merkle root and hence the block hash, so neither it
+        // nor nTime changes again.
         //
-        // Expected work at 0x1e1179ec is ~960k hashes. The tool is parallel and
-        // fast-mode, so that is a few minutes on all cores -- but it is a
-        // geometric draw: this nonce took 466603 attempts and the previous one
-        // 61124, both well under the mean. Do not plan around a lucky run.
-        genesis = CreateGenesisBlock(truenorth::GENESIS_TIMESTAMP_MSG_MAIN, 1791763200, 466260, 0x1e1179ec, 1, 512 * COIN);
+        // Do not edit GENESIS_TIMESTAMP_MSG_TEST to match: it is shared by
+        // testnet3, testnet4, signet and regtest, and changing it breaks all
+        // four genesis asserts at once.
+        //
+        // The message is 84 bytes, giving a 92-byte coinbase scriptSig against
+        // the consensus ceiling of 100 (src/consensus/tx_check.cpp,
+        // bad-cb-length). The scriptSig is not just the message: a 5-byte push
+        // of 486604799, a 1-byte OP_4, then the message's push prefix. So the
+        // message ceiling is 92 bytes, not 100 -- a 95-byte first attempt mined
+        // a genesis the daemon then refused to load. truenorth-mine-genesis now
+        // checks this before mining.
+        //
+        // Expected work at 0x1e1179ec is ~960k hashes; this nonce took 741580
+        // attempts, and the placeholder draws before it took 466603 and 61124.
+        // It is a geometric draw -- do not plan around a lucky run. The mining
+        // tool returns the lowest winning nonce, so the value below reproduces
+        // at any thread count.
+        genesis = CreateGenesisBlock(truenorth::GENESIS_TIMESTAMP_MSG_MAIN, 1791763200, 741213, 0x1e1179ec, 1, 512 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256{"62493de17bc0f59ffd5407a25531443dda91ca969ec99a3f17a1cc2bd2cc2b99"});
-        assert(genesis.hashMerkleRoot == uint256{"bedb5be1cd03ead77e25a27dbf4ffbd4fe8496f085cf42e4d1ce935b153dc565"});
+        assert(consensus.hashGenesisBlock == uint256{"470c8b8ae824c06575cfae0851282c495b861829211194842590dc6a2c829981"});
+        assert(genesis.hashMerkleRoot == uint256{"2e4de71a24b24ac64cea9bbc52cb6a588c9a0bb53b6745a603240fd9efc6b289"});
 
         // Pre-launch: no accumulated chain work; assumeValid anchors
         // to genesis (skips no signatures, since there are no blocks

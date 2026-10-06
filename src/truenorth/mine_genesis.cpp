@@ -320,6 +320,29 @@ int main(int argc, char* argv[])
     for (auto& chain : chains) {
         if (!chain_filter.empty() && chain_filter != chain.name) continue;
         any_matched = true;
+        // Reject a timestamp message that cannot produce a valid coinbase
+        // BEFORE spending the mining budget on it. Consensus requires
+        // 2 <= scriptSig.size() <= 100 (src/consensus/tx_check.cpp), and the
+        // scriptSig carries more than the message: a 5-byte push of 486604799,
+        // a 1-byte OP_4, then the message's own push prefix -- 1 byte up to 75
+        // bytes of message, 2 bytes (OP_PUSHDATA1) beyond that. The ceiling on
+        // the message is therefore 92 bytes, not 100. Mining first and
+        // discovering this at daemon startup wastes the whole run.
+        {
+            const std::size_t msg_len = std::strlen(chain.msg);
+            const std::size_t push_len = msg_len <= 75 ? 1 + msg_len : 2 + msg_len;
+            const std::size_t script_sig_len = 5 + 1 + push_len;
+            if (script_sig_len > 100 || msg_len < 1) {
+                std::fprintf(stderr,
+                             "FATAL [%s]: timestamp message is %zu bytes, giving a %zu-byte "
+                             "coinbase scriptSig; consensus allows at most 100 "
+                             "(bad-cb-length). Shorten the message to <= 92 bytes.\n",
+                             chain.name, msg_len, script_sig_len);
+                return 1;
+            }
+            std::fprintf(stderr, "[%s] coinbase scriptSig: %zu bytes (limit 100)\n",
+                         chain.name, script_sig_len);
+        }
         if (override_time != 0) chain.nTime = override_time;
         if (override_nbits != 0) chain.nBits = override_nbits;
         // No attempt cap. The old 1'000'000 limit sat below mainnet's ~960k
