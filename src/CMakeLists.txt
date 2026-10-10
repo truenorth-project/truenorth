@@ -92,14 +92,21 @@ target_include_directories(bitcoin_consensus PRIVATE ${CMAKE_SOURCE_DIR}/src/ran
 # numa.cpp wrapper compiles stub implementations when HAVE_LIBNUMA is
 # not defined (macOS, Windows, or Linux without libnuma-dev installed).
 # See src/truenorth/numa.h.
-if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+if(WITH_NUMA)
   find_library(NUMA_LIBRARY numa)
   if(NUMA_LIBRARY)
     target_link_libraries(bitcoin_consensus PRIVATE ${NUMA_LIBRARY})
     target_compile_definitions(bitcoin_consensus PRIVATE HAVE_LIBNUMA=1)
     message(STATUS "libnuma found at ${NUMA_LIBRARY} -- NUMA support enabled")
   else()
-    message(STATUS "libnuma not found -- NUMA support disabled (install libnuma-dev on Debian/Ubuntu, numactl-devel on RHEL)")
+    message(FATAL_ERROR
+      "WITH_NUMA is ON but libnuma was not found. Install libnuma-dev "
+      "(Debian/Ubuntu) or numactl-devel (RHEL), or configure with "
+      "-DWITH_NUMA=OFF to build without NUMA support.\n"
+      "This is fatal rather than a warning because v30.5.0 shipped a "
+      "linux-x86_64 binary with NUMA silently stubbed out: release.yml did "
+      "not install libnuma-dev, find_library returned NOTFOUND, and the only "
+      "trace was one message(STATUS) line in the configure output.")
   endif()
 endif()
 

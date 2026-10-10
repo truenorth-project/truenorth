@@ -208,6 +208,52 @@ jobs:
           ./build/bin/truenorth-cli -regtest -datadir="$DD" generatetoaddress 1 "$ADDR" > /dev/null
           COUNT=$(./build/bin/truenorth-cli -regtest -datadir="$DD" getblockcount)
           ./build/bin/truenorth-cli -regtest -datadir="$DD" stop > /dev/null
+
+          # Capability checks on the artifact itself. The regtest run above
+          # proves the daemon works; it does not prove the binary we are about
+          # to publish has the features it is supposed to. v30.5.0 shipped
+          # linux-x86_64 with NUMA silently stubbed out -- release.yml did not
+          # install libnuma-dev, find_library returned NOTFOUND, the build
+          # succeeded, and the only trace was one message(STATUS) line.
+          TAG="${{ steps.tag.outputs.tag }}"
+
+          echo "--- version must match the tag ---"
+          VER="$(./build/bin/truenorthd -version | head -1)"
+          echo "$VER"
+          case "$VER" in
+            *"${TAG#v}"*) echo "OK: reports ${TAG#v}" ;;
+            *) echo "FAIL: version does not contain ${TAG#v}. CLIENT_VERSION_* in CMakeLists.txt is stale."; exit 1 ;;
+          esac
+
+          echo "--- mainnet genesis must load (regtest above does not test it) ---"
+          MD=$(mktemp -d)
+          timeout 120 ./build/bin/truenorthd -chain=main -datadir="$MD" \
+              -listen=0 -discover=0 -dnsseed=0 -connect=0 \
+              -rpcport=49931 -port=49932 -printtoconsole > "$MD/out.log" 2>&1 || true
+          if grep -q 'init message: Done loading' "$MD/out.log"; then
+              grep -oE 'new best=[0-9a-f]{64}' "$MD/out.log" | head -1
+              echo "OK: mainnet genesis accepted"
+          else
+              echo "FAIL: daemon did not finish init on mainnet"
+              tail -20 "$MD/out.log"
+              exit 1
+          fi
+          rm -rf "$MD"
+
+          # Node-counting is NOT a usable NUMA check: runners are
+          # single-socket, so nodes=1 is correct there and indistinguishable
+          # from the stub. Check the dynamic link instead.
+          if [ "$RUNNER_OS" = "Linux" ]; then
+              echo "--- miner must be linked against libnuma ---"
+              if ldd ./build/bin/truenorth-miner | grep -q 'libnuma\.so'; then
+                  echo "OK: libnuma linked"
+              else
+                  echo "FAIL: truenorth-miner is not linked against libnuma."
+                  echo "NUMA is compiled out, costing multi-socket miners throughput."
+                  echo "Install libnuma-dev in the apt step above."
+                  exit 1
+              fi
+          fi
           [ "$COUNT" = "1" ] || { echo "FAIL: smoke produced $COUNT blocks"; exit 1; }
 
       - name: Package tarball (native)

@@ -127,6 +127,13 @@ if(WITH_ZMQ)
 endif()
 
 option(WITH_USDT "Enable tracepoints for Userspace, Statically Defined Tracing." OFF)
+
+# NUMA-aware thread pinning and per-node RandomX datasets. Linux-only
+# (libnuma); ON by default there because a release binary built without it
+# loses measurable mining throughput on multi-socket hosts and nothing in
+# the build output makes that obvious. Configure -DWITH_NUMA=OFF to build
+# deliberately without it.
+cmake_dependent_option(WITH_NUMA "Enable NUMA-aware thread pinning (requires libnuma)." ON "CMAKE_SYSTEM_NAME MATCHES \"Linux\"" OFF)
 if(WITH_USDT)
   find_package(USDT MODULE REQUIRED)
 endif()
