@@ -13,7 +13,7 @@
 
 ## 2. Consensus & Proof of Work
 - **Consensus:** Proof of Work
-- **Algorithm:** RandomX. CPU-optimized, strongest mainstream ASIC-resistance,
+- **Algorithm:** RandomX. CPU-optimized and ASIC-resistant by design,
   battle-tested on Monero since 2019. Integrated as a bundled library into the
   Bitcoin Core fork. Replaces SHA-256d as the block-header PoW hash.
 - **Customized variant ("RandomNorth"):** a unique Argon2 salt (and, optionally,
@@ -94,8 +94,11 @@ to double-spend. New coins are vulnerable. Total hashrate is low, and hashpower 
 common algorithms can be rented cheaply.
 
 **Design choices that mitigate it:**
-- **RandomX (CPU-optimized, strong ASIC-resistance).** Battle-tested on Monero since
-  2019. No efficient ASIC market that meaningfully out-competes CPUs.
+- **RandomX (CPU-optimized, ASIC-resistant by design).** Battle-tested on Monero
+  since 2019. ASIC resistance is a design goal rather than a proof: RandomX ASICs
+  have been built (the iPollo X1), and the aim is to hold any specialized-hardware
+  advantage small enough that commodity CPUs stay competitive, not to make such
+  hardware impossible.
 - **Customized "RandomNorth" variant.** A unique RandomX configuration isolates this
   chain's PoW from stock RandomX / xmrig hashpower. Only purpose-built miners can
   mine or attack it.
