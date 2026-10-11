@@ -22,6 +22,21 @@ You can obtain these keys by
 
 #### Usage
 
+**This script does not work for TrueNorth releases.** It is inherited from
+Bitcoin Core unmodified and is retained only for upstream-merge hygiene. It
+hardcodes `https://bitcoincore.org` and `https://bitcoin.org` as download
+hosts, and it validates a checksum file against a *plurality* of signatures
+from the Bitcoin Core `guix.sigs` builder keys. TrueNorth publishes on GitHub
+Releases and its `SHA256SUMS.asc` carries a single signature, so neither
+assumption holds.
+
+To verify a TrueNorth release, follow the manual steps in the top-level
+[`README.md`](/README.md) and [`SECURITY.md`](/SECURITY.md): import
+`contrib/keys/septentrion-dev.asc`, run `gpg --verify SHA256SUMS.asc
+SHA256SUMS`, then `sha256sum -c SHA256SUMS`.
+
+The rest of this file describes the upstream tool's behaviour.
+
 This script attempts to download the checksum file (`SHA256SUMS`) and corresponding
 signature file `SHA256SUMS.asc` from https://bitcoincore.org and https://bitcoin.org.
 
