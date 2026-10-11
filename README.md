@@ -1,8 +1,17 @@
 # TrueNorth Core
 
-A Canadian-themed cryptocurrency forked from Bitcoin Core, using **RandomX** (CPU-friendly, ASIC-resistant) proof-of-work and **LWMA-1** per-block difficulty adjustment.
+TrueNorth is a Canadian, CPU-mined fork of Bitcoin Core. Proof of work is **RandomNorth**, a
+RandomX variant with a custom Argon2 salt and per-epoch seed-key rotation, so stock
+xmrig hashpower cannot be aimed at the chain. Blocks target two minutes with
+**LWMA-1** per-block retargeting, the subsidy floors at 8 NORTH instead of
+terminating (tail emission), and **P2QRH** quantum-resistant addresses (`north1z...`)
+are the wallet default. Ticker NORTH, SLIP-44 coin type 1867.
 
-**Status**: Public testnet4 (open to anyone; see [`doc/testnet.md`](doc/testnet.md) to join). Mainnet launch **targeted for 2026-10-12** — see [Mainnet](#mainnet) below.
+**Status**: Mainnet launches **2026-10-12 00:00:00 UTC**, enforced in consensus — no
+node accepts a block before it. Mainnet genesis is
+`470c8b8ae824c06575cfae0851282c495b861829211194842590dc6a2c829981`; see
+[Mainnet](#mainnet) below. Public testnet4 is live and open to anyone, see
+[`doc/testnet.md`](doc/testnet.md) to join.
 
 ---
 
