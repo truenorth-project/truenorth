@@ -41,7 +41,11 @@ fixed forever, even when adding PQ schemes with kilobyte-sized pubkeys.
 - Bech32m (BIP-350) with witness version 2
 - Mainnet HRP: `north`; address form `north1z…`
 - Testnet4 HRP: `tnorth4`; address form `tnorth41z…`
-- Total length: 62 chars (10 more than Taproot due to witness version character)
+- Total length: 65 chars on mainnet, 67 on testnet4. Three more than Taproot's
+  62, and the difference is the HRP (`north` against `bc`), not the witness
+  version character -- Taproot and P2QRH each have exactly one of those,
+  `p` for v1 and `z` for v2. Both encode a 32-byte program, so both carry 52
+  data characters and a 6-character checksum.
 - Wallets should label as "P2QRH" in UI
 
 ## Commitment format
