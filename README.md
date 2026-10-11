@@ -59,13 +59,26 @@ Release key fingerprint:
 3F0BAE0458615427B8CA935E3E242DF5E4478AE5
 ```
 
-Check that fingerprint against a source other than this file before trusting
-it — anyone who can alter the repository can alter both the key and the
-fingerprint printed next to it.
-`gpg --verify` prints `Good signature`, then a warning that the key is not
-certified with a trusted signature. That is expected — it only means you have
-not told GPG you trust this key. What matters is the `Good signature` line and
-that the primary key fingerprint it prints matches the one above.
+Signing is done by a subkey, so GPG reports two different fingerprints:
+
+```
+primary (identity, certification only)   3F0BAE0458615427B8CA935E3E242DF5E4478AE5
+signing subkey (what signs releases)     895B7591E9701E99D87D58A9B932A2FBD92C626D
+```
+
+`gpg --verify` opens with `Signature made … using EDDSA key 895B…626D`. That
+is the subkey and it will not match the fingerprint above — expected, not a
+problem. It then prints `Good signature`, a warning that the key is not
+certified with a trusted signature (which only means you have not told GPG you
+trust it), and finally both fingerprints, labelled `Primary key fingerprint`
+and `Subkey fingerprint`. Compare the primary against the value above.
+
+`git verify-tag` and `git log --show-signature` report only the subkey, so
+`895B7591E9701E99D87D58A9B932A2FBD92C626D` is the value to expect there.
+
+Check the primary fingerprint against a source other than this file before
+trusting it — anyone who can alter the repository can alter both the key and
+the fingerprint printed next to it.
 
 
 The binaries are built by GitHub Actions from the tagged source rather than on
@@ -260,9 +273,12 @@ cache + dataset per socket and pins worker threads to their local
 socket. Measured improvement on dual-socket Xeon: **~20-40% hashrate**.
 
 Linux setup: install libnuma (`libnuma-dev` on Debian/Ubuntu,
-`numactl-devel` on RHEL/Fedora) BEFORE building. If libnuma isn't
-present at build time, NUMA support compiles as no-op stubs and
-`-numa=on` will log a warning.
+`numactl-devel` on RHEL/Fedora) BEFORE CONFIGURING, not merely before
+compiling. CMake caches the library lookup in `CMakeCache.txt`, so
+installing libnuma after a configure step and rebuilding still produces
+no-op stubs. If you have already configured, delete the build directory
+and configure again. Without libnuma at configure time, NUMA support
+compiles as no-op stubs and `-numa=on` logs a warning.
 
 No manual configuration otherwise — the miner detects topology at
 startup, distributes worker threads across nodes round-robin, and pins
