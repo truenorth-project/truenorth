@@ -6,7 +6,7 @@ To quickly get started fuzzing Bitcoin Core using [libFuzzer](https://llvm.org/d
 
 ```sh
 $ git clone https://github.com/bitcoin/bitcoin
-$ cd bitcoin/
+$ cd truenorth/
 $ cmake --preset=libfuzzer
 # macOS users: If you have problem with this step then make sure to read "macOS hints for
 # libFuzzer" on https://github.com/truenorth-project/truenorth/blob/master/doc/fuzzing.md#macos-hints-for-libfuzzer
@@ -213,7 +213,7 @@ To quickly get started fuzzing Bitcoin Core using [afl++](https://github.com/AFL
 
 ```sh
 $ git clone https://github.com/bitcoin/bitcoin
-$ cd bitcoin/
+$ cd truenorth/
 $ git clone https://github.com/AFLplusplus/AFLplusplus
 $ make -C AFLplusplus/ source-only
 # If afl-clang-lto is not available, see
@@ -244,7 +244,7 @@ To quickly get started fuzzing Bitcoin Core using [Honggfuzz](https://github.com
 
 ```sh
 $ git clone https://github.com/bitcoin/bitcoin
-$ cd bitcoin/
+$ cd truenorth/
 $ git clone https://github.com/google/honggfuzz
 $ cd honggfuzz/
 $ make

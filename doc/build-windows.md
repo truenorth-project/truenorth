@@ -38,11 +38,11 @@ If you want to build the Windows installer using the `deploy` build target, you 
 
 Acquire the source in the usual way:
 
-    git clone https://github.com/bitcoin/bitcoin.git
-    cd bitcoin
+    git clone https://github.com/truenorth-project/truenorth.git
+    cd truenorth
 
-Note that for WSL the Bitcoin Core source path MUST be somewhere in the default mount file system, for
-example /usr/src/bitcoin, AND not under /mnt/d/. If this is not the case the dependency autoconf scripts will fail.
+Note that for WSL the TrueNorth source path MUST be somewhere in the default mount file system, for
+example /usr/src/truenorth, AND not under /mnt/d/. If this is not the case the dependency autoconf scripts will fail.
 This means you cannot use a directory that is located directly on the host Windows file system to perform the build.
 
 Build using:

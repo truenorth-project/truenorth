@@ -1,6 +1,6 @@
 # Assumeutxo Usage
 
-Assumeutxo is a feature that allows fast bootstrapping of a validating bitcoind
+Assumeutxo is a feature that allows fast bootstrapping of a validating truenorthd
 instance.
 
 For notes on the design of Assumeutxo, please refer to [the design doc](/doc/design/assumeutxo.md).

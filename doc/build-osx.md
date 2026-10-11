@@ -67,11 +67,11 @@ you can omit `capnp` and use `-DENABLE_IPC=OFF` in the `cmake -B` step below.
 ### 4. Clone Bitcoin repository
 
 `git` should already be installed by default on your system.
-Now that all the required dependencies are installed, let's clone the Bitcoin Core repository to a directory.
+Now that all the required dependencies are installed, let's clone the TrueNorth repository to a directory.
 All build scripts and commands will run from this directory.
 
 ``` bash
-git clone https://github.com/bitcoin/bitcoin.git
+git clone https://github.com/truenorth-project/truenorth.git
 ```
 
 ### 5. Install Optional Dependencies
@@ -202,11 +202,11 @@ By default, blockchain and wallet data files will be stored in:
 Before running, you may create an empty configuration file:
 
 ```shell
-mkdir -p "/Users/${USER}/Library/Application Support/Bitcoin"
+mkdir -p "/Users/${USER}/Library/Application Support/TrueNorth"
 
-touch "/Users/${USER}/Library/Application Support/Bitcoin/bitcoin.conf"
+touch "/Users/${USER}/Library/Application Support/TrueNorth/truenorth.conf"
 
-chmod 600 "/Users/${USER}/Library/Application Support/Bitcoin/bitcoin.conf"
+chmod 600 "/Users/${USER}/Library/Application Support/TrueNorth/truenorth.conf"
 ```
 
 You can monitor the download process by looking at the debug.log file:

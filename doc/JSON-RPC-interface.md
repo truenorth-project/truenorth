@@ -137,7 +137,7 @@ RPC interface will be abused.
   withstand arbitrary Internet traffic, so changing the above settings
   to expose it to the Internet (even using something like a Tor onion
   service) could expose you to unconsidered vulnerabilities.  See
-  `bitcoind -help` for more information about these settings and other
+  `truenorthd -help` for more information about these settings and other
   settings described in this document.
 
     Related, if you use Bitcoin Core inside a Docker container, you may
