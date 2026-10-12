@@ -150,6 +150,14 @@ struct HTTPReply {
     std::string body;
 };
 
+// Thrown when the daemon was reachable but did not answer within the per-call
+// timeout, as distinct from not being reachable at all. Callers care about the
+// difference: a long-poll that times out is the normal outcome on a quiet chain
+// and needs no report, while a connection failure means something is wrong.
+struct RpcTimeout : std::runtime_error {
+    using std::runtime_error::runtime_error;
+};
+
 void RpcHttpDone(struct evhttp_request* req, void* ctx)
 {
     HTTPReply* reply = static_cast<HTTPReply*>(ctx);
@@ -303,8 +311,17 @@ UniValue RpcCall(const RpcConfig& cfg, const std::string& method, const UniValue
         event_base_dispatch(base.get());
 
         if (response.status == 0) {
-            // Transport-level failure. Retry if still within the wait window.
-            if (wait_seconds > 0 && std::chrono::steady_clock::now() < deadline) {
+            // Transport-level failure. libevent already told us which kind via
+            // the error callback, so use it rather than lumping them together.
+            const bool timed_out = (response.error == EVREQ_HTTP_TIMEOUT);
+
+            // Retry a connection failure only. The wait window exists for a
+            // cold start, where the daemon process is up but its RPC listener
+            // has not finished binding -- that presents as a refused
+            // connection or EOF, never as a timeout. A request that was
+            // accepted and then ran out of time is a different condition, and
+            // retrying it inside the same window just burns the window.
+            if (!timed_out && wait_seconds > 0 && std::chrono::steady_clock::now() < deadline) {
                 if (!waiting_notice_printed) {
                     std::fprintf(stderr,
                                  "truenorth-miner: waiting for truenorthd RPC at %s:%d to accept connections...\n",
@@ -313,6 +330,11 @@ UniValue RpcCall(const RpcConfig& cfg, const std::string& method, const UniValue
                 }
                 std::this_thread::sleep_for(std::chrono::seconds(1));
                 continue;
+            }
+            if (timed_out) {
+                throw RpcTimeout("RPC " + method + " timed out after " +
+                                 std::to_string(timeout_seconds) + "s at " + cfg.host + ":" +
+                                 std::to_string(cfg.port) + " -- reachable, no answer in time");
             }
             const std::string suffix = wait_seconds > 0 ? " after " + std::to_string(wait_seconds) + "s wait" : "";
             throw std::runtime_error("could not connect to truenorthd at " + cfg.host + ":" +
@@ -972,8 +994,22 @@ try {
                     lp_arg.pushKV("rules", lp_rules);
                     lp_arg.pushKV("longpollid", lpid);
                     lp_params.push_back(lp_arg);
-                    RpcCall(cfg, "getblocktemplate", lp_params, lp_timeout);
+                    // No retry window for a long-poll. Retrying one makes no
+                    // sense: the call blocks until the tip moves, so a failure
+                    // to connect should surface immediately rather than being
+                    // re-attempted for rpc_wait_timeout_seconds.
+                    RpcConfig lp_cfg = cfg;
+                    lp_cfg.rpc_wait_timeout_seconds = 0;
+                    RpcCall(lp_cfg, "getblocktemplate", lp_params, lp_timeout);
                     abandon->store(true, std::memory_order_relaxed);
+                } catch (const RpcTimeout&) {
+                    // Not an error. The tip did not move within lp_timeout, so
+                    // the long-poll had nothing to report. -budgetseconds
+                    // expiry refetches the template anyway, which is exactly
+                    // what happens next. Saying nothing is correct here: the
+                    // previous version reported this as "could not connect to
+                    // truenorthd (is the daemon running?)", which sent
+                    // operators looking for a daemon fault that did not exist.
                 } catch (const std::exception& e) {
                     // Never rethrow: a long-poll problem must not stop mining,
                     // and -budgetseconds remains the backstop.
