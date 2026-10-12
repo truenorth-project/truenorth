@@ -52,6 +52,7 @@
 #include <arith_uint256.h>
 #include <chainparams.h>
 #include <chainparamsbase.h>
+#include <common/system.h>
 #include <consensus/amount.h>
 #include <consensus/merkle.h>
 #include <consensus/validation.h>
@@ -742,6 +743,23 @@ std::string ResolveCookiePath(const std::string& datadir, ChainType chain)
 
 int main(int argc, char* argv[])
 try {
+    // Winsock must be initialised before libevent touches a socket. Without
+    // this, libevent's own signal socketpair fails on Windows with
+    // WSANOTINITIALISED ("WSAStartup not called"), every RPC call then fails at
+    // the transport layer, and the miner waits out -rpcwaittimeout and exits
+    // without ever hashing. A no-op on every other platform.
+    //
+    // truenorthd has always done this in init.cpp. The miner did not, which
+    // only started to matter when it stopped shelling out to truenorth-cli and
+    // began speaking HTTP JSON-RPC directly: before that it never created an
+    // event base of its own, so there was no Winsock dependency to satisfy.
+    // The released v30.5.0 Windows miner therefore cannot connect to a healthy
+    // daemon at all, while Linux and macOS are unaffected.
+    if (!SetupNetworking()) {
+        std::fprintf(stderr, "truenorth-miner: initializing networking failed\n");
+        return 1;
+    }
+
     std::string chain_str = "main";
     std::string address;
     std::string datadir;
