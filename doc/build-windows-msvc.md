@@ -55,6 +55,7 @@ In the following instructions, the "Debug" configuration can be specified instea
 ```
 cmake -B build --preset vs2022-static          # It might take a while if the vcpkg binary cache is unpopulated or invalidated.
 cmake --build build --config Release           # Append "-j N" for N parallel jobs.
+cmake --build build --config Release --target truenorth-miner   # the miner is NOT built by default
 ctest --test-dir build --build-config Release  # Append "-j N" for N parallel tests.
 cmake --install build --config Release         # Optional.
 ```

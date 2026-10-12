@@ -96,6 +96,7 @@ Run `cmake -B build -LH` to see the full list of available options.
 
 ```bash
 cmake --build build     # Append "-j N" for N parallel jobs.
+cmake --build build --target truenorth-miner   # the miner is NOT built by default
 ctest --test-dir build  # Append "-j N" for N parallel tests.
 ```
 

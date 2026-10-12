@@ -115,5 +115,6 @@ Build and run the tests:
 
 ```bash
 cmake --build build     # Append "-j N" for N parallel jobs.
+cmake --build build --target truenorth-miner   # the miner is NOT built by default
 ctest --test-dir build  # Append "-j N" for N parallel tests.
 ```

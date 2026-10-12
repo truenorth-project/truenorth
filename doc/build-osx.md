@@ -170,6 +170,7 @@ Run the following in your terminal to compile Bitcoin Core:
 
 ``` bash
 cmake --build build     # Append "-j N" here for N parallel jobs.
+cmake --build build --target truenorth-miner   # the miner is NOT built by default
 ctest --test-dir build  # Append "-j N" for N parallel tests.
 ```
 
