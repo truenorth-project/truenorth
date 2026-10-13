@@ -89,35 +89,30 @@ conservative direction is opposite for the two questions.
 
 ## Cost to reorg
 
-Reorg cost is linear in both honest hashrate and depth, so a figure only means
-something against a stated network size. At 120-second spacing, **against a
-36 MH/s network**, with the attacker sustaining 2× that (72 MH/s rented at
-`r` = $0.002 per H/s per day, the attacker-favourable end of the range above):
-
-| Confirmations | Chain time | Attacker cost to reorg |
-|---|---|---|
-| 6 | 12 min | ~$1,200 |
-| 30 | 60 min | ~$6,000 |
-| 100 | ~3.3 hr | ~$20,000 |
-| 200 | ~6.7 hr | ~$40,000 |
-| 500 | ~16.7 hr | ~$100,000 |
-
-**Scale proportionally for any other network size:** a tenth of the hashrate
-is a tenth of the cost at the same depth.
-
-The 36 MH/s figure is illustrative and is not a description of this network. It
-originates in the `powLimit` analysis, where it is the hashrate mainnet's
-inherited proof-of-work floor implicitly assumed, not a measurement. Substitute
-the measured value before quoting any number here:
+Reorg cost is linear in both honest hashrate and depth, so a figure means
+nothing without a stated network size. Measure it rather than assuming one:
 
 ```bash
 truenorth-cli getnetworkhashps 1000
 ```
 
-On 2026-10-13 that returned about 2.5 MH/s, so the costs in the table above
-should be read as roughly fourteen times smaller than printed. At that
-hashrate 72 confirmations protects something in the low thousands of dollars,
-not the tens of thousands this table implies.
+That returned about **2.5 MH/s on 2026-10-13**. Against that, with the attacker
+sustaining 2× the honest network, across both ends of the `r` range above:
+
+| Confirmations | Chain time | at `r` = $0.002 | at `r` = $0.005 |
+|---|---|---|---|
+| 6 | 12 min | ~$85 | ~$210 |
+| 30 | 60 min | ~$420 | ~$1,060 |
+| 72 — the cap | ~2.4 hr | ~$1,020 | ~$2,540 |
+
+The table stops at 72 because consensus refuses any deeper reorg. Past that
+depth the cost is not merely large, it is irrelevant, which is the whole reason
+the recommended deposit depth is a fixed 100 rather than a computed figure.
+
+**Scale proportionally for any other network size:** a tenth of the hashrate is
+a tenth of the cost at the same depth. The figures above are a snapshot on a
+chain whose hashrate grew roughly eightfold in its first two days, so re-measure
+rather than reusing this table.
 
 Collapsed, with `r` kept visible rather than folded into a constant:
 
@@ -174,9 +169,9 @@ that any depth below the cap is priced for the wrong adversary.
 ## Depth is not safe or unsafe on its own
 
 What matters is whether rewriting a chosen depth costs more than the deposit
-it protects. Six confirmations covers about $3 at 100 kH/s and roughly
-$85–210 at the 2.5 MH/s measured on 2026-10-13, so an exchange that caps deposits
-low enough can run a shallow policy rationally — it just has to track hashrate,
+it protects. Six confirmations covers roughly $3–8 at 100 kH/s and $85–210 at
+the 2.5 MH/s measured on 2026-10-13, so an exchange that caps deposits low
+enough can run a shallow policy rationally — it just has to track hashrate,
 hold the cap, and accept that the cap does not bind an incumbent majority.
 
 Three regimes:
