@@ -62,9 +62,10 @@ reasoning, and let operators make informed choices.
 - **Prefer P2Pool** when the tradeoffs work for your hardware and
   patience for setup. Configuration guides live outside this repo.
 - **If running a centralized pool**, publish your coinbase-inclusion
-  policy so miners can make an informed choice. Rotate coinbase
-  addresses across blocks to reduce apparent concentration in
-  block-explorer views.
+  policy so miners can make an informed choice, and keep a stable
+  identifying tag in your coinbase so that anyone can measure your
+  share of blocks. Concentration that cannot be measured cannot be
+  answered.
 - **Any pool**, centralized or peer-to-peer, should keep the
   operator's aggregate share below 33% of network hash whenever
   possible. Above 33% enables selfish-mining strategies; above 50%
