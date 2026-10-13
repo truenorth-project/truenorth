@@ -7,30 +7,92 @@ from the consensus reorg cap, not from anything in this file. This document
 exists so the cost claims can be checked independently, and so an operator who
 chooses to run inside the cap can size a deposit limit for it.
 
-## Rented hashrate
+## Where an attacker gets hashrate
 
-RandomX is CPU-only, which cuts both ways. There is no ASIC advantage for
-defenders, and equally no capital-investment barrier separating an attacker
-from one: capacity is rentable on demand from any cloud provider.
+RandomX is CPU-only, which cuts both ways: there is no ASIC advantage for
+defenders, and no capital-investment barrier separating an attacker from one
+either. Commodity CPUs are the hardware. But "CPU-only" is not the same as
+"rentable on demand", and the difference matters for every figure below.
 
-Cost to sustain a reorg for one day at commodity on-demand pricing:
+### Hashrate marketplaces cannot supply RandomNorth today
 
-| Cloud capacity | Approx hashrate | Approx cost/day |
-|---|---|---|
-| 5 × c5.24xlarge | ~250 kH/s | ~$500 |
-| 10 × c5.24xlarge | ~500 kH/s | ~$1,000 |
-| 50 × c5.24xlarge | ~2.5 MH/s | ~$5,000 |
-| 100 × c5.24xlarge | ~5 MH/s | ~$10,000 |
+NiceHash and comparable marketplaces sell hashpower for specific algorithms.
+They sell RandomX. They do not sell RandomNorth, because the custom Argon2 salt
+means a stock RandomX miner computes a different proof of work: the hashes are
+real, and they are for a chain nobody is paying for.
 
-At these prices rentable capacity is effectively unbounded, so an attacker's
-upper bound is set by willingness to spend rather than by availability.
+**Treat this as a current fact with a short shelf life, not a property of the
+design.** The salt is a constant in open-source mining software; supporting
+RandomNorth means changing it and recompiling. That work has already been done
+by at least one third party — a pool distributing its own miner — within days
+of mainnet launch. So the engineering barrier is demonstrably close to zero,
+and the chain is plainly not too small to attract the effort. What is absent is
+a marketplace listing decision and nothing else.
+
+If a marketplace does list RandomNorth, rental becomes a product again:
+instant, contract-free, and priced by a market rather than by this document.
+Every figure below would then need recomputing from marketplace pricing
+instead of from cloud compute. Check whether that has happened before relying
+on this section.
+
+### The major clouds prohibit mining outright
+
+An attacker who cannot buy hashes must rent or own general-purpose compute and
+run the miner. The obvious source is excluded by contract rather than by price.
+AWS Service Terms §1.25:
+
+> You will not use, and will not facilitate or allow End Users to use, the
+> Services to mine cryptocurrency.
+
+Microsoft Azure and Google Cloud both prohibit mining without prior written
+approval. Oracle Cloud prohibits it outright. So the hyperscalers are not an
+open market for this workload at any price, and an on-demand price list does
+not describe an available transaction.
+
+Detection is weaker than the prohibition, and it is worth being accurate about
+that. Cloud mining detection keys on queries to known mining domains and known
+pool ports, plus optional runtime process inspection. A miner pointed at the
+attacker's own node on port 9555 matches none of those signatures, and an
+attacker does not enable runtime monitoring on their own account. The binding
+risk is breach of terms and loss of the account and its instances, not reliable
+discovery.
+
+That leaves four real sources, none of them a price list:
+
+- **Breach of terms on a hyperscaler.** Cheapest per hash, and the position is
+  revocable at the provider's discretion at any moment.
+- **Mining-tolerant hosts and bare metal.** Smaller, dearer, and they want
+  identity and payment details.
+- **Owned hardware.** No terms problem, but capital outlay and lead time.
+- **Compromised compute.** How illicit mining is mostly actually done, and a
+  cost model this document does not attempt.
+
+### The rental rate, if you need one
+
+For an attacker who does rent, the cost per unit of hashrate per day is `r`.
+It is set by silicon generation far more than by provider, so quote it with the
+hardware and the date attached:
+
+| Basis | Measured hashrate | On-demand | `r` per H/s per day |
+|---|---|---|---|
+| 2 × Xeon Platinum 8275CL (48 cores) | 18.5–25.8 kH/s | ~$98/day | ~$0.004–0.005 |
+| 2 × EPYC 9654-class (192 cores) | ~88–110 kH/s | ~$236/day | ~$0.002–0.003 |
+
+Hashrates are published xmrig RandomX benchmarks for those CPUs; pricing is
+us-east-1 on-demand as of 2026-10-13. Interruptible capacity discounts `r` by
+roughly 70%, which a bounded attack window can tolerate. Cloud pricing and
+silicon both move, so re-derive rather than quoting this table in a year.
+
+**Use $0.005 when the question is whether an attack is affordable, and $0.002
+when the question is whether a deposit is safe.** They differ by 2.5× and the
+conservative direction is opposite for the two questions.
 
 ## Cost to reorg
 
 Reorg cost is linear in both honest hashrate and depth, so a figure only means
 something against a stated network size. At 120-second spacing, **against a
-36 MH/s network**, with the attacker sustaining 2× that (72 MH/s rented,
-extrapolating the table above linearly at ~$0.002 per H/s per day):
+36 MH/s network**, with the attacker sustaining 2× that (72 MH/s rented at
+`r` = $0.002 per H/s per day, the attacker-favourable end of the range above):
 
 | Confirmations | Chain time | Attacker cost to reorg |
 |---|---|---|
@@ -54,26 +116,32 @@ truenorth-cli getnetworkhashps 1000
 
 On 2026-10-13 that returned about 2.5 MH/s, so the costs in the table above
 should be read as roughly fourteen times smaller than printed. At that
-hashrate 72 confirmations protects on the order of $1,000, not $40,000.
+hashrate 72 confirmations protects something in the low thousands of dollars,
+not the tens of thousands this table implies.
 
-Collapsed, with `r` at $0.002 per H/s per day, the table is just:
-
-```
-attacker cost  ~=  (network H/s  ×  confirmations) / 180,000   dollars
-```
-
-Read the other way, that is the deposit value a given depth protects:
+Collapsed, with `r` kept visible rather than folded into a constant:
 
 ```
-max safe deposit  ~=  (network H/s  ×  confirmations) / 180,000   dollars
+attacker cost  ~=  2 × network H/s × r × (confirmations / 720)   dollars
 ```
 
-Measure the hashrate rather than assuming one — `truenorth-cli
-getnetworkhashps 1000` on any synced node. The soft input is `r`: $0.002 is
-derived from the capacity table above, while a per-thread estimate from the
-repo's own benchmarks gives roughly $0.007. The lower figure is the
-attacker-favourable end, which is the conservative choice for anyone deciding
-whether to accept a deposit.
+720 is blocks per day at 120-second spacing. Read the other way, the same
+expression gives the deposit value a given depth protects.
+
+Folding `r` into a single divisor is convenient, and it is also how a stale
+assumption becomes invisible — so both ends of the range above are given
+explicitly rather than one being adopted as the constant:
+
+```
+r = $0.002  ->  cost  ~=  (network H/s × confirmations) / 180,000
+r = $0.005  ->  cost  ~=  (network H/s × confirmations) /  72,000
+```
+
+Measure the hashrate rather than assuming one: `truenorth-cli
+getnetworkhashps 1000` on any synced node. At the 2.5 MH/s measured on
+2026-10-13, that puts six confirmations between roughly $85 and $210 of
+protected deposit value, and 72 confirmations between roughly $1,000 and
+$2,500.
 
 ## The incumbent case: a pool that already holds the hashrate
 
@@ -106,8 +174,8 @@ that any depth below the cap is priced for the wrong adversary.
 ## Depth is not safe or unsafe on its own
 
 What matters is whether rewriting a chosen depth costs more than the deposit
-it protects. Six confirmations covers about $3 at 100 kH/s and about $85 at the
-2.5 MH/s measured on 2026-10-13, so an exchange that caps individual deposits
+it protects. Six confirmations covers about $3 at 100 kH/s and roughly
+$85–210 at the 2.5 MH/s measured on 2026-10-13, so an exchange that caps deposits
 low enough can run a shallow policy rationally — it just has to track hashrate,
 hold the cap, and accept that the cap does not bind an incumbent majority.
 
