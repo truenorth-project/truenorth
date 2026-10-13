@@ -325,7 +325,8 @@ Opt out for a specific address if you need P2WPKH for interop with older tooling
 ## Community
 
 TrueNorth has **no official** Twitter or X account, Discord, Telegram, Matrix room or
-YouTube channel. Anything claiming to be one of those is not connected to this project. There has been no presale, no ICO, no airdrop and no founder allocation, and
+YouTube channel, and exactly one website: <https://truenorth-project.github.io/>.
+Anything claiming otherwise is not connected to this project. There has been no presale, no ICO, no airdrop and no founder allocation, and
 the protocol takes no dev fee: the coinbase carries a single output paying whoever mined
 the block, and consensus caps only the amount, never the recipient. The genesis reward is
 an `OP_RETURN` and is unspendable by anyone. The subsidy schedule is the only way coins
@@ -342,6 +343,7 @@ then verify the signature as described under [Pre-built binaries](#pre-built-bin
 
 The project communicates in these places and nowhere else:
 
+- **Website** — <https://truenorth-project.github.io/>
 - **This repository** — source, releases, issues and discussions
 - **IRC** on OFTC — `#truenorth` and `#truenorth-dev`
 - **Nostr** — `npub1w2kxm7jq9ynqnr0p93j5casz88pxz56jhp9zadl53f4cl59ye8tqejqyw5`
