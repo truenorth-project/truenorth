@@ -324,10 +324,32 @@ Opt out for a specific address if you need P2WPKH for interop with older tooling
 
 ## Community
 
+TrueNorth has **no official** Twitter or X account, Discord, Telegram, Matrix room or
+YouTube channel. Anything claiming to be one of those is not connected to this project. There has been no presale, no ICO, no airdrop and no founder allocation, and
+the protocol takes no dev fee: the coinbase carries a single output paying whoever mined
+the block, and consensus caps only the amount, never the recipient. The genesis reward is
+an `OP_RETURN` and is unspendable by anyone. The subsidy schedule is the only way coins
+come into existence.
+
+Pools and third-party miner binaries set their own fees, which are theirs and not the
+protocol's. Check what a pool takes, and what binary it asks you to run, before pointing
+hashrate at it.
+
+Nobody involved in the project will message you first, ask for a seed phrase, ask you to
+validate a wallet, or offer to send coins. Download binaries from the
+[releases page](https://github.com/truenorth-project/truenorth/releases) and nowhere else,
+then verify the signature as described under [Pre-built binaries](#pre-built-binaries).
+
+The project communicates in these places and nowhere else:
+
+- **This repository** — source, releases, issues and discussions
+- **IRC** on OFTC — `#truenorth` and `#truenorth-dev`
+- **Nostr** — `npub1w2kxm7jq9ynqnr0p93j5casz88pxz56jhp9zadl53f4cl59ye8tqejqyw5`
+
 Real-time discussion happens on the OFTC IRC network:
 
-- **`#truenorth`** — general testnet4 discussion, operator questions, tester onboarding
-- **`#truenorth-dev`** — developer coordination, release cuts, bug triage, launch planning
+- **`#truenorth`** — general discussion, operator questions, new-node onboarding
+- **`#truenorth-dev`** — developer coordination, release cuts, bug triage
 
 Connect via:
 
@@ -336,7 +358,7 @@ Connect via:
 
 OFTC allows nick registration over Tor without prior clearnet connection (unlike some other networks). Register with NickServ (`/msg NickServ REGISTER <password> <email>`) if you want a persistent identity; anonymous participation via a random nick is fine too. See [oftc.net/UsingTor](https://www.oftc.net/UsingTor/) for Tor-specific connection guidance.
 
-Bug reports and feature discussion also go through [GitHub Issues](https://github.com/truenorth-project/truenorth/issues). Security-sensitive matters: contact channel ops directly (topic pinned in `#truenorth-dev`).
+Bug reports and feature discussion also go through [GitHub Issues](https://github.com/truenorth-project/truenorth/issues). Do not report a security problem there, or in IRC. See [`SECURITY.md`](SECURITY.md), which routes vulnerability reports to GitHub private vulnerability reporting or to email.
 
 ---
 
