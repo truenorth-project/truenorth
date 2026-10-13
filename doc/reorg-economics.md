@@ -43,6 +43,19 @@ extrapolating the table above linearly at ~$0.002 per H/s per day):
 **Scale proportionally for any other network size:** a tenth of the hashrate
 is a tenth of the cost at the same depth.
 
+The 36 MH/s figure is illustrative and is not a description of this network. It
+originates in the `powLimit` analysis, where it is the hashrate mainnet's
+inherited proof-of-work floor implicitly assumed, not a measurement. Substitute
+the measured value before quoting any number here:
+
+```bash
+truenorth-cli getnetworkhashps 1000
+```
+
+On 2026-10-13 that returned about 2.5 MH/s, so the costs in the table above
+should be read as roughly fourteen times smaller than printed. At that
+hashrate 72 confirmations protects on the order of $1,000, not $40,000.
+
 Collapsed, with `r` at $0.002 per H/s per day, the table is just:
 
 ```
@@ -62,12 +75,41 @@ repo's own benchmarks gives roughly $0.007. The lower figure is the
 attacker-favourable end, which is the conservative choice for anyone deciding
 whether to accept a deposit.
 
+## The incumbent case: a pool that already holds the hashrate
+
+Everything above prices an attacker who must acquire capacity. It does not
+describe the cheapest attacker available on a chain where one pool already
+mines most of the blocks.
+
+That operator rents nothing. Their cost to rewrite a span is the subsidy and
+fees given up on the branch they abandon, and because reorging a span also
+recaptures its coinbase (see *What this does not model* below), the two largely
+cancel. The rental table is not a loose upper bound on their cost. It does not
+apply to them at all.
+
+What follows for anyone sizing a deposit policy:
+
+- Between **6 and 72 confirmations**, a value cap computed from the formula
+  above is protection against an outsider and not against the largest
+  incumbent. Treat that arithmetic as a floor on safety rather than a measure
+  of it.
+- **Above 72 confirmations** nothing changes. Consensus refuses the reorg
+  whoever proposes it and whatever it cost them. That is the only
+  recommendation in these documents which holds against an incumbent majority,
+  and it is why the guidance is a fixed depth rather than a computed cap.
+- Concentration is measurable from the chain. Count coinbase tags over a recent
+  window before relying on any figure here, and recount periodically.
+
+A large pool behaving normally does not change the arithmetic. The point is
+that any depth below the cap is priced for the wrong adversary.
+
 ## Depth is not safe or unsafe on its own
 
 What matters is whether rewriting a chosen depth costs more than the deposit
-it protects. Six confirmations covers about $3 at 100 kH/s and about $1,200 at
-36 MH/s, so an exchange that caps individual deposits low enough can run a
-shallow policy rationally — it just has to track hashrate and hold the cap.
+it protects. Six confirmations covers about $3 at 100 kH/s and about $85 at the
+2.5 MH/s measured on 2026-10-13, so an exchange that caps individual deposits
+low enough can run a shallow policy rationally — it just has to track hashrate,
+hold the cap, and accept that the cap does not bind an incumbent majority.
 
 Three regimes:
 
