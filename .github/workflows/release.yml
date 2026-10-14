@@ -226,10 +226,24 @@ jobs:
           esac
 
           echo "--- mainnet genesis must load (regtest above does not test it) ---"
+          # No `timeout` here: it is GNU coreutils and absent on macOS
+          # runners, where it failed as "command not found", was swallowed
+          # by `|| true`, and then reported as the daemon failing to init.
+          # Background the daemon and poll its log instead -- portable, and
+          # it returns as soon as the marker appears rather than always
+          # waiting out the full budget.
           MD=$(mktemp -d)
-          timeout 120 ./build/bin/truenorthd -chain=main -datadir="$MD" \
+          ./build/bin/truenorthd -chain=main -datadir="$MD" \
               -listen=0 -discover=0 -dnsseed=0 -connect=0 \
-              -rpcport=49931 -port=49932 -printtoconsole > "$MD/out.log" 2>&1 || true
+              -rpcport=49931 -port=49932 -printtoconsole > "$MD/out.log" 2>&1 &
+          TN_PID=$!
+          for _ in $(seq 1 120); do
+              if grep -q 'init message: Done loading' "$MD/out.log"; then break; fi
+              if ! kill -0 "$TN_PID" 2>/dev/null; then break; fi
+              sleep 1
+          done
+          kill "$TN_PID" 2>/dev/null || true
+          wait "$TN_PID" 2>/dev/null || true
           if grep -q 'init message: Done loading' "$MD/out.log"; then
               grep -oE 'new best=[0-9a-f]{64}' "$MD/out.log" | head -1
               echo "OK: mainnet genesis accepted"
