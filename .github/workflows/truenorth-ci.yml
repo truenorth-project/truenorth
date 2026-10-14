@@ -259,6 +259,19 @@ jobs:
         # p2p_node_network_limited runs in 80s alone and 577s under -j8.
         #
         # Raising the timeout factor instead would hide real hangs, so prefer
-        # lowering -j. If this still flakes on CI hardware, drop to -j1 before
-        # reaching for --timeout-factor.
-        run: python3 build/test/functional/test_runner.py -j2
+        # lowering -j.
+        #
+        # 2026-10-13: -j2 flaked anyway. feature_assumeutxo failed on
+        # n1.wait_until_stopped(timeout=5) after a -stopatheight trip. Every
+        # assertion in the test had already passed; the node simply did not
+        # get the 5 seconds it needed to flush and exit. That 5s is
+        # upstream's and untouched, and the sibling wallet_assumeutxo.py
+        # allows 60s for the same wait. The same run spent 1915s on
+        # p2p_headers_sync_with_minchainwork, so the box was starved.
+        #
+        # Next escalation is NOT --timeout-factor, which would mask exactly
+        # this class of failure -- a process that does not exit. It is
+        # cutting RandomX mining volume in the slowest tests, starting with
+        # NODE2_BLOCKS_REQUIRED in p2p_headers_sync_with_minchainwork: one
+        # test is a quarter of the suite's accumulated runtime.
+        run: python3 build/test/functional/test_runner.py -j1
