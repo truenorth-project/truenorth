@@ -23,6 +23,15 @@ tags from there, so everything below happens on `master`.
   even when there are none, and keep known issues honest.
 * Run [`contrib/devtools/check-upstream-identifiers.py`](/contrib/devtools/check-upstream-identifiers.py)
   and confirm nothing new has appeared on the shipped surface.
+* Run the full local regression set, `test/truenorth/all.sh`. Four of those
+  scripts are deliberately absent from CI because they execute
+  `truenorth-miner` or mine enough regtest blocks to look like mining on a
+  hosted runner: `local_testnet_sync.sh`, `local_testnet_multitx.sh`,
+  `local_testnet_qrh.sh` and `local_testnet_seed_rotation.sh`. Nothing else
+  covers the miner's template handling, the BIP141 commitment, or the
+  per-epoch seed rotation, so skipping this step ships those paths untested.
+* Run the functional suite once, deliberately, via `workflow_dispatch` or
+  locally. It has no schedule for the same reason.
 * Check that `doc/` contains no instruction that would send a reader to
   upstream Bitcoin Core infrastructure. The documentation is inherited, so this
   regresses rather than staying fixed.

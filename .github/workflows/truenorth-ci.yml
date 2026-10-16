@@ -6,10 +6,13 @@ on:
   pull_request:
     branches: [master]
   workflow_dispatch:
-  schedule:
-    # 06:15 UTC daily, for the functional suite below. It is too slow to run on
-    # every push on a 2-core runner, but a daily signal beats none.
-    - cron: '15 6 * * *'
+  # NO schedule. The functional suite below mines thousands of regtest blocks,
+  # and this chain's proof of work is RandomX rather than SHA256d, so "generate"
+  # is sustained hashing rather than a nonce bump. GitHub's Additional Product
+  # Terms for Actions name cryptomining as prohibited use, and a daily
+  # unattended multi-hour CPU-bound job is not something to ask anyone to
+  # distinguish from it. Run the suite deliberately via workflow_dispatch, or
+  # locally -- see test/truenorth/all.sh.
 
 # Cancel in-progress runs on the same ref when a new commit lands -- avoids
 # burning Actions minutes on stacked pushes.
@@ -123,7 +126,11 @@ jobs:
             -DENABLE_IPC=OFF
 
       - name: Build truenorthd + truenorth-cli + truenorth-miner + test_bitcoin
-        # truenorth-miner is needed for the regression scripts below.
+        # truenorth-miner is built but never run here: building it catches
+        # compile and link regressions (the libnuma stub and the Windows
+        # Winsock defect were both of that shape), while executing it would be
+        # proof-of-work on a hosted runner. The scripts that run it are local
+        # only -- see the note further down.
         # test_bitcoin is the Boost.Test runner for the unit suite.
         # Bounded -j: GitHub Actions runners (7 GiB RAM on ubuntu-latest)
         # OOM-kill cc1plus when -j is unbounded on a from-scratch build.
@@ -157,13 +164,15 @@ jobs:
         # it -- a daily signal beats none.
         run: ./test/run-unit-suites.sh build/bin/test_bitcoin test/ci-known-failing-suites.txt
 
-      - name: Regression -- 2-node sync
-        timeout-minutes: 5
-        run: bash test/truenorth/local_testnet_sync.sh
-
-      - name: Regression -- multi-tx mining (template-tx inclusion + BIP141 commitment)
-        timeout-minutes: 5
-        run: bash test/truenorth/local_testnet_multitx.sh
+      # local_testnet_sync.sh and local_testnet_multitx.sh are intentionally
+      # NOT in CI. Both invoke the truenorth-miner binary to mine blocks, and
+      # multitx additionally generates 101 of them. GitHub's Additional Product
+      # Terms for Actions name cryptomining as prohibited use, and the terms
+      # carve out no exception for proof of work on worthless regtest coins.
+      #
+      # This follows the existing precedent for local_testnet_seed_rotation.sh.
+      # Run all four from test/truenorth/all.sh locally, and before a release
+      # tag -- doc/release-process.md lists it as a pre-tag step.
 
       - name: Regression -- reorg + fork-choice
         timeout-minutes: 5
