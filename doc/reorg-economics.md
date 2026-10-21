@@ -7,6 +7,16 @@ from the consensus reorg cap, not from anything in this file. This document
 exists so the cost claims can be checked independently, and so an operator who
 chooses to run inside the cap can size a deposit limit for it.
 
+**Everything below is worked examples.** The figures are arithmetic over a
+range of network sizes, chosen to show the shape of the cost curve. They are
+not a report on the live chain and are not maintained against it. Current
+hashrate is a one-command measurement and belongs in the reader's own
+calculation, not in this file:
+
+```bash
+truenorth-cli getnetworkhashps 1000
+```
+
 ## Where an attacker gets hashrate
 
 RandomX is CPU-only, which cuts both ways: there is no ASIC advantage for
@@ -21,13 +31,12 @@ They sell RandomX. They do not sell RandomNorth, because the custom Argon2 salt
 means a stock RandomX miner computes a different proof of work: the hashes are
 real, and they are for a chain nobody is paying for.
 
-**Treat this as a current fact with a short shelf life, not a property of the
-design.** The salt is a constant in open-source mining software; supporting
-RandomNorth means changing it and recompiling. That work has already been done
-by at least one third party — a pool distributing its own miner — within days
-of mainnet launch. So the engineering barrier is demonstrably close to zero,
-and the chain is plainly not too small to attract the effort. What is absent is
-a marketplace listing decision and nothing else.
+**Treat this as a listing decision with a short shelf life, not a property of
+the design.** The salt is a constant in open-source mining software; supporting
+RandomNorth means changing it and recompiling. Third parties have already
+shipped RandomNorth-capable miners, so the engineering barrier is demonstrably
+close to zero. What is absent is a marketplace listing decision and nothing
+else.
 
 If a marketplace does list RandomNorth, rental becomes a product again:
 instant, contract-free, and priced by a market rather than by this document.
@@ -90,29 +99,28 @@ conservative direction is opposite for the two questions.
 ## Cost to reorg
 
 Reorg cost is linear in both honest hashrate and depth, so a figure means
-nothing without a stated network size. Measure it rather than assuming one:
+nothing without a stated network size. These rows are examples spanning two
+orders of magnitude; read across to the column for the depth in question, and
+interpolate or scale for a network size between them.
 
-```bash
-truenorth-cli getnetworkhashps 1000
-```
+Attacker sustaining 2× the honest network. Each cell spans both ends of the
+`r` range above, $0.002 to $0.005 per H/s per day.
 
-That returned about **2.5 MH/s on 2026-10-13**. Against that, with the attacker
-sustaining 2× the honest network, across both ends of the `r` range above:
-
-| Confirmations | Chain time | at `r` = $0.002 | at `r` = $0.005 |
+| Example network | 6 conf (12 min) | 30 conf (60 min) | 72 conf (~2.4 hr) |
 |---|---|---|---|
-| 6 | 12 min | ~$85 | ~$210 |
-| 30 | 60 min | ~$420 | ~$1,060 |
-| 72 — the cap | ~2.4 hr | ~$1,020 | ~$2,540 |
+| 100 kH/s | $3 – $8 | $17 – $42 | $40 – $100 |
+| 500 kH/s | $17 – $42 | $83 – $210 | $200 – $500 |
+| 1 MH/s | $33 – $83 | $170 – $420 | $400 – $1,000 |
+| 5 MH/s | $170 – $420 | $830 – $2,100 | $2,000 – $5,000 |
+
+**Cost is exactly linear in hashrate**, so no row needs to match a real network:
+ten times the hashrate is ten times the cost at the same depth, and a network
+between two rows sits between their figures. Use the formula below with a
+measured value rather than picking the nearest row.
 
 The table stops at 72 because consensus refuses any deeper reorg. Past that
 depth the cost is not merely large, it is irrelevant, which is the whole reason
 the recommended deposit depth is a fixed 100 rather than a computed figure.
-
-**Scale proportionally for any other network size:** a tenth of the hashrate is
-a tenth of the cost at the same depth. The figures above are a snapshot on a
-chain whose hashrate grew roughly eightfold in its first two days, so re-measure
-rather than reusing this table.
 
 Collapsed, with `r` kept visible rather than folded into a constant:
 
@@ -132,11 +140,10 @@ r = $0.002  ->  cost  ~=  (network H/s × confirmations) / 180,000
 r = $0.005  ->  cost  ~=  (network H/s × confirmations) /  72,000
 ```
 
-Measure the hashrate rather than assuming one: `truenorth-cli
-getnetworkhashps 1000` on any synced node. At the 2.5 MH/s measured on
-2026-10-13, that puts six confirmations between roughly $85 and $210 of
-protected deposit value, and 72 confirmations between roughly $1,000 and
-$2,500.
+Both forms take a measured hashrate, not one of the example rows. Read either
+direction: given a network size and a depth, the expression gives the attacker's
+cost; given a network size and a deposit value, it gives the depth at which the
+deposit stops being worth attacking.
 
 ## The incumbent case: a pool that already holds the hashrate
 
@@ -169,10 +176,10 @@ that any depth below the cap is priced for the wrong adversary.
 ## Depth is not safe or unsafe on its own
 
 What matters is whether rewriting a chosen depth costs more than the deposit
-it protects. Six confirmations covers roughly $3–8 at 100 kH/s and $85–210 at
-the 2.5 MH/s measured on 2026-10-13, so an exchange that caps deposits low
-enough can run a shallow policy rationally — it just has to track hashrate,
-hold the cap, and accept that the cap does not bind an incumbent majority.
+it protects. From the example rows, six confirmations covers roughly $3–8 at
+100 kH/s and $170–420 at 5 MH/s, so an exchange that caps deposits low enough
+can run a shallow policy rationally — it just has to track hashrate, hold the
+cap, and accept that the cap does not bind an incumbent majority.
 
 Three regimes:
 
