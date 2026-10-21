@@ -1,12 +1,12 @@
-Contributing to Bitcoin Core
-============================
+Contributing to TrueNorth Core
+==============================
 
-The Bitcoin Core project operates an open contributor model where anyone is
+The TrueNorth Core project operates an open contributor model where anyone is
 welcome to contribute towards development in the form of peer review, testing
 and patches. This document explains the practical process and guidelines for
 contributing.
 
-First, in terms of structure, there is no particular concept of "Bitcoin Core
+First, in terms of structure, there is no particular concept of "TrueNorth Core
 developers" in the sense of privileged people. Open source often naturally
 revolves around a meritocracy where contributors earn trust from the developer
 community over time. Nevertheless, some hierarchy is necessary for practical
@@ -24,9 +24,9 @@ as a new contributor. It also will teach you much more about the code and
 process than opening pull requests. Please refer to the [peer review](#peer-review)
 section below.
 
-Before you start contributing, familiarize yourself with the Bitcoin Core build
+Before you start contributing, familiarize yourself with the TrueNorth Core build
 system and tests. Refer to the documentation in the repository on how to build
-Bitcoin Core and how to run the unit tests, functional tests, and fuzz tests.
+TrueNorth Core and how to run the unit tests, functional tests, and fuzz tests.
 
 There are many open issues of varying difficulty waiting to be fixed.
 If you're looking for somewhere to start contributing, check out the
@@ -36,7 +36,8 @@ list or changes that are
 Some of them might no longer be applicable. So if you are interested, but
 unsure, you might want to leave a comment on the issue first.
 
-You may also participate in the [Bitcoin Core PR Review Club](https://bitcoincore.reviews/).
+You may also follow the upstream [Bitcoin Core PR Review Club](https://bitcoincore.reviews/),
+which reviews changes this project inherits. TrueNorth has no equivalent of its own.
 
 ### Good First Issue Label
 
@@ -54,12 +55,12 @@ and is also an effective way to request assistance if and when you need it.
 Communication Channels
 ----------------------
 
-Most communication about Bitcoin Core development happens on IRC, in the
-`#bitcoin-core-dev` channel on Libera Chat. The easiest way to participate on IRC is
-with the web client, [web.libera.chat](https://web.libera.chat/#bitcoin-core-dev). Chat
-history logs can be found
-on [https://www.erisian.com.au/bitcoin-core-dev/](https://www.erisian.com.au/bitcoin-core-dev/)
-and [https://gnusha.org/bitcoin-core-dev/](https://gnusha.org/bitcoin-core-dev/).
+Most communication about TrueNorth Core development happens on IRC, in the
+`#truenorth-dev` channel on OFTC; `#truenorth` is the general channel.
+Connection details, including OFTC's onion service for joining over Tor,
+are under [Community](README.md#community) in the README.
+
+Discussion of specific issues and pull requests happens in this repository.
 
 Discussion about codebase improvements happens in GitHub issues and pull
 requests.
@@ -275,11 +276,11 @@ workload on reviewing.
 "Decision Making" Process
 -------------------------
 
-The following applies to code changes to the Bitcoin Core project (and related
-projects such as libsecp256k1), and is not to be confused with overall Bitcoin
-Network Protocol consensus changes.
+The following applies to code changes to the TrueNorth Core project (and related
+projects such as libsecp256k1), and is not to be confused with overall TrueNorth
+network protocol consensus changes.
 
-Whether a pull request is merged into Bitcoin Core rests with the project merge
+Whether a pull request is merged into TrueNorth Core rests with the project merge
 maintainers.
 
 Maintainers will take into consideration if a patch is in line with the general
@@ -298,7 +299,7 @@ In general, all pull requests must:
     demonstrating the bug and also proving the fix. This helps prevent regression.
   - Change relevant comments and documentation when behaviour of code changes.
 
-Patches that change Bitcoin consensus rules are considerably more involved than
+Patches that change TrueNorth consensus rules are considerably more involved than
 normal because they affect the entire ecosystem and so must be preceded by
 extensive mailing list discussions and have a numbered BIP. While each case will
 be different, one should be prepared to expend more time and effort than for
@@ -359,7 +360,7 @@ higher in terms of discussion and peer review requirements, keeping in mind that
 mistakes could be very costly to the wider community. This includes refactoring
 of consensus-critical code.
 
-Where a patch set proposes to change the Bitcoin consensus, it must have been
+Where a patch set proposes to change the TrueNorth consensus, it must have been
 discussed extensively on the mailing list and IRC, be accompanied by a widely
 discussed BIP and have a generally widely perceived technical consensus of being
 a worthwhile change based on the judgement of the maintainers.

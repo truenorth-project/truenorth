@@ -1,4 +1,4 @@
-# `bitcoin.conf` Configuration File
+# `truenorth.conf` Configuration File
 
 The configuration file is used by `truenorthd`, `bitcoin-qt` and `truenorth-cli`.
 
@@ -12,11 +12,11 @@ Users should never make any configuration changes which they do not understand. 
 
 Options specified in the configuration file can be overridden by options in the [`settings.json` file](files.md) and by options specified on the command line.
 
-The `settings.json` file contains dynamic settings that are set by the Bitcoin Core GUI and RPCs at runtime, and augment or replace the static settings specified in the `bitcoin.conf` file.
+The `settings.json` file contains dynamic settings that are set by the TrueNorth Core GUI and RPCs at runtime, and augment or replace the static settings specified in the `bitcoin.conf` file.
 
-Command line options also augment or replace `bitcoin.conf` options, and can be useful for scripting and debugging.
+Command line options also augment or replace `truenorth.conf` options, and can be useful for scripting and debugging.
 
-It is possible to see which setting values are in use by checking `debug.log` output. Any unrecognized options that are found in `bitcoin.conf` also show up as warnings in `debug.log` output.
+It is possible to see which setting values are in use by checking `debug.log` output. Any unrecognized options that are found in `truenorth.conf` also show up as warnings in `debug.log` output.
 
 ## Configuration File Format
 
@@ -69,9 +69,9 @@ However, there are exceptions to this general rule. For example, it is an error 
 
 ## Configuration File Path
 
-The configuration file is not automatically created; you can create it using your favorite text editor. By default, the configuration file name is `bitcoin.conf` and it is located in the Bitcoin data directory, but both the Bitcoin data directory and the configuration file path may be changed using the `-datadir` and `-conf` command-line options.
+The configuration file is not automatically created; you can create it using your favorite text editor. By default, the configuration file name is `truenorth.conf` and it is located in the TrueNorth data directory, but both the TrueNorth data directory and the configuration file path may be changed using the `-datadir` and `-conf` command-line options.
 
-The `includeconf=<file>` option in the `bitcoin.conf` file can be used to include additional configuration files.
+The `includeconf=<file>` option in the `truenorth.conf` file can be used to include additional configuration files.
 
 ### Default configuration file locations
 
@@ -88,5 +88,5 @@ To use the generated configuration file, copy the example file into your data di
 
 ```
 # example copy command for linux user
-cp share/examples/bitcoin.conf ~/.bitcoin
+cp share/examples/truenorth.conf ~/.truenorth
 ```

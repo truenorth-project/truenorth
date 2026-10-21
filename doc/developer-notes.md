@@ -190,7 +190,7 @@ Refer to [/test/functional/README.md#style-guidelines](/test/functional/README.m
 
 ## Coding Style (Doxygen-compatible comments)
 
-Bitcoin Core uses [Doxygen](https://www.doxygen.nl/) to generate its official documentation.
+TrueNorth Core uses [Doxygen](https://www.doxygen.nl/) to generate its official documentation.
 
 Use Doxygen-compatible comment blocks for functions, methods, and fields.
 
@@ -361,7 +361,7 @@ see [test/functional/](/test/functional) for tests that run in `-regtest` mode.
 
 ### DEBUG_LOCKORDER
 
-Bitcoin Core is a multi-threaded application, and deadlocks or other
+TrueNorth Core is a multi-threaded application, and deadlocks or other
 multi-threading bugs can be very difficult to track down. The `-DCMAKE_BUILD_TYPE=Debug`
 build option adds `-DDEBUG_LOCKORDER` to the compiler flags. This inserts
 run-time checks to keep track of which locks are held and adds warnings to the
@@ -509,7 +509,7 @@ llvm-cov show \
     --show-line-counts-or-regions \
     --show-expansions \
     --output-dir=build/coverage_report \
-    --project-title="Bitcoin Core Coverage Report"
+    --project-title="TrueNorth Core Coverage Report"
 ```
 
 > **Note:** The "functions have mismatched data" warning can be safely ignored, the coverage report will still be generated correctly despite this warning.
@@ -553,7 +553,7 @@ llvm-cov show \
     --show-line-counts-or-regions \
     --show-expansions \
     --output-dir=build/coverage_report \
-    --project-title="Bitcoin Core Fuzz Coverage Report"
+    --project-title="TrueNorth Core Fuzz Coverage Report"
 ```
 
 The generated coverage report can be accessed at `build/coverage_report/index.html`.
@@ -604,7 +604,7 @@ See the functional test documentation for how to invoke perf within tests.
 
 ### Sanitizers
 
-Bitcoin Core can be compiled with various "sanitizers" enabled, which add
+TrueNorth Core can be compiled with various "sanitizers" enabled, which add
 instrumentation for issues regarding things like memory safety, thread race
 conditions, or undefined behavior. This is controlled with the
 `-DSANITIZERS` cmake build flag, which should be a comma separated list of
@@ -728,9 +728,9 @@ and its `cs_KeyStore` lock for example).
 # Development guidelines
 
 A few non-style-related recommendations for developers, as well as points to
-pay attention to for reviewers of Bitcoin Core code.
+pay attention to for reviewers of TrueNorth Core code.
 
-## General Bitcoin Core
+## General TrueNorth Core
 
 - New features should be exposed on RPC first, then can be made available in the GUI.
 
@@ -899,7 +899,7 @@ int GetInt(Tabs tab)
 
 - For `strprintf`, `LogInfo`, `LogDebug`, etc formatting characters don't need size specifiers (hh, h, l, ll, j, z, t, L) for arithmetic types.
 
-  - *Rationale*: Bitcoin Core uses tinyformat, which is type safe. Leave them out to avoid confusion.
+  - *Rationale*: TrueNorth Core uses tinyformat, which is type safe. Leave them out to avoid confusion.
 
 - Use `.c_str()` sparingly. Its only valid use is to pass C++ strings to C functions that take NULL-terminated
   strings.
@@ -1323,7 +1323,7 @@ A few guidelines for introducing and reviewing new RPC interfaces:
   RPCs whose behavior does *not* depend on the current chainstate may omit this
   call.
 
-  - *Rationale*: In previous versions of Bitcoin Core, the wallet was always
+  - *Rationale*: In previous versions of TrueNorth Core, the wallet was always
     in-sync with the chainstate (by virtue of them all being updated in the
     same cs_main lock). In order to maintain the behavior that wallet RPCs
     return results as of at least the highest best-known block an RPC

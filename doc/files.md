@@ -1,4 +1,4 @@
-# Bitcoin Core file system
+# TrueNorth Core file system
 
 **Contents**
 
@@ -22,7 +22,7 @@
 
 ## Data directory location
 
-The data directory is the default location where the Bitcoin Core files are stored.
+The data directory is the default location where the TrueNorth Core files are stored.
 
 1. The default data directory paths for supported platforms are:
 
@@ -50,7 +50,7 @@ Subdirectory       | File(s)               | Description
 -------------------|-----------------------|------------
 `blocks/`          |                       | Blocks directory; can be specified by `-blocksdir` option (except for `blocks/index/`)
 `blocks/index/`    | LevelDB database      | Block index; `-blocksdir` option does not affect this path
-`blocks/`          | `blkNNNNN.dat`<sup>[\[2\]](#note2)</sup> | Actual Bitcoin blocks (dumped in network format, 128 MiB per file)
+`blocks/`          | `blkNNNNN.dat`<sup>[\[2\]](#note2)</sup> | Actual TrueNorth blocks (dumped in network format, 128 MiB per file)
 `blocks/`          | `revNNNNN.dat`<sup>[\[2\]](#note2)</sup> | Block undo data (custom format)
 `blocks/`          | `xor.dat`             | Rolling XOR pattern for block and undo data files
 `chainstate/`      | LevelDB database      | Blockchain state (a compact representation of all currently unspent transaction outputs (UTXOs) and metadata about the transactions they are from)
@@ -104,7 +104,7 @@ Subdirectory | File                 | Description
 
 ## Legacy subdirectories and files
 
-These subdirectories and files are no longer used by Bitcoin Core:
+These subdirectories and files are no longer used by TrueNorth Core:
 
 Path           | Description | Repository notes
 ---------------|-------------|-----------------
@@ -133,7 +133,7 @@ Subdirectory | File(s)           | Description
 
 ## Installed Files
 
-This table describes the files installed by Bitcoin Core across different platforms.
+This table describes the files installed by TrueNorth Core across different platforms.
 
 | **Path**                                                   | **Description**                                                             |
 |------------------------------------------------------------|-----------------------------------------------------------------------------|
@@ -144,8 +144,8 @@ This table describes the files installed by Bitcoin Core across different platfo
 | bin/bitcoin-qt                                             | Bitcoin node and wallet GUI                                                 |
 | bin/truenorth-tx                                             | Tool for creating and modifying transactions                                |
 | bin/truenorth-util                                           | Miscellaneous utilities                                                     |
-| bin/truenorth-wallet                                         | Bitcoin wallet tool                                                         |
-| bin/truenorthd                                               | Bitcoin node and wallet daemon                                              |
+| bin/truenorth-wallet                                         | TrueNorth wallet tool                                                         |
+| bin/truenorthd                                               | TrueNorth node and wallet daemon                                              |
 | *lib/libbitcoinkernel.so*                                  | Shared library containing core consensus and validation code                |
 | *lib/pkgconfig/libbitcoinkernel.pc*                        | Pkg-config metadata for linking to `libbitcoinkernel`                       |
 | *libexec/bench_bitcoin*                                    | Benchmarking tool for measuring node performance                            |
@@ -166,4 +166,4 @@ This table describes the files installed by Bitcoin Core across different platfo
 ## Filesystem recommendations
 
 When choosing a filesystem for the data directory (`datadir`) or blocks directory (`blocksdir`) on **macOS**,the `exFAT` filesystem should be avoided.
-There have been multiple reports of database corruption and data loss when using this filesystem with Bitcoin Core, see [Issue #31454](https://github.com/bitcoin/bitcoin/issues/31454) for more details.
+There have been multiple reports of database corruption and data loss when using this filesystem with TrueNorth Core, see [Issue #31454](https://github.com/bitcoin/bitcoin/issues/31454) for more details.
