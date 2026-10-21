@@ -7,8 +7,7 @@ xmrig hashpower cannot be aimed at the chain. Blocks target two minutes with
 terminating (tail emission), and **P2QRH** quantum-resistant addresses (`north1z...`)
 are the wallet default. Ticker NORTH, SLIP-44 coin type 1867.
 
-**Status**: Mainnet launches **2026-10-12 00:00:00 UTC**, enforced in consensus — no
-node accepts a block before it. Mainnet genesis is
+**Status**: Mainnet is live since **2026-10-12 00:00:00 UTC**. Mainnet genesis is
 `470c8b8ae824c06575cfae0851282c495b861829211194842590dc6a2c829981`; see
 [Mainnet](#mainnet) below. Public testnet4 is live and open to anyone, see
 [`doc/testnet.md`](doc/testnet.md) to join.
