@@ -625,7 +625,10 @@ class AssumeutxoTest(BitcoinTestFramework):
         # assertions and the -stopatheight tripping.
         self.connect_nodes(0, 1, wait_for_connect=False)
 
-        n1.wait_until_stopped(timeout=5)
+        # RandomX block validation makes syncing to -stopatheight slower than
+        # upstream's 5 s allowance. Matches wallet_assumeutxo.py, which waits
+        # 60 s for the identical shutdown.
+        n1.wait_until_stopped(timeout=60)
 
         self.log.info("Checking that blocks are segmented on disk")
         assert self.has_blockfile(n1, "00000"), "normal blockfile missing"
