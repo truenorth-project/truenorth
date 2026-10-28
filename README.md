@@ -323,13 +323,21 @@ Opt out for a specific address if you need P2WPKH for interop with older tooling
 
 ## Community
 
-TrueNorth has **no official** Twitter or X account, Discord, Telegram, Matrix room or
-YouTube channel, and exactly one website: <https://truenorth-project.github.io/>.
+TrueNorth has **no official** Twitter or X account, Facebook group, Discord, Telegram,
+Matrix room or YouTube channel, and exactly one website: <https://truenorth-project.github.io/>.
 Anything claiming otherwise is not connected to this project. There has been no presale, no ICO, no airdrop and no founder allocation, and
 the protocol takes no dev fee: the coinbase carries a single output paying whoever mined
 the block, and consensus caps only the amount, never the recipient. The genesis reward is
 an `OP_RETURN` and is unspendable by anyone. The subsidy schedule is the only way coins
 come into existence.
+
+TrueNorth is a popular name and part of the project's Canadian identity. It is also used
+by unrelated schemes, including automated crypto-trading platforms and crypto trading
+sites. None of them has any connection to this project. TrueNorth runs no trading
+platform, takes no deposits, manages no accounts and promises no returns. If anything
+using this name asks you to send it money or coins, it is not this project. This project
+stands for something anyone can check: open source, signed releases, no dev fee, and
+nothing to deposit.
 
 Pools and third-party miner binaries set their own fees, which are theirs and not the
 protocol's. Check what a pool takes, and what binary it asks you to run, before pointing
