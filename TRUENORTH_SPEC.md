@@ -1,7 +1,7 @@
 # TrueNorth (NORTH) v1 Coin Specification
 
 > **Status:** v1, shipped. Mainnet live since **2026-10-12 00:00:00 UTC**.
-> Public testnet4 live since 2026-08. Describes TrueNorth Core v30.5.1.
+> Public testnet4 live since 2026-08. Describes TrueNorth Core v30.5.2.
 > **Name / Ticker:** TrueNorth / NORTH. Canadian-themed.
 > **Base codebase:** fork of Bitcoin Core.
 >
@@ -132,9 +132,12 @@ common algorithms can be rented cheaply.
   `ContextualCheckBlockHeader` (`src/validation.cpp`). The rule constrains block
   timestamps; it does not establish when the work for a block was done. Not
   enforced on testnet, signet or regtest (`nLaunchTime = 0`).
-- **Checkpoint mechanism.** Inherited from Bitcoin Core. As of v30.5.1 mainnet
-  carries only the genesis entry; post-launch checkpoints are added at release
-  time per [`doc/checkpoint-process.md`](doc/checkpoint-process.md).
+- **Checkpoints.** Inherited mechanism: a node rejects any chain whose block at a
+  checkpointed height has a different hash, whatever its work. Mainnet carries
+  checkpoints at heights 5,000, 10,000 and 15,000 as of v30.5.2, and each release
+  adds a recent one per [`doc/checkpoint-process.md`](doc/checkpoint-process.md).
+  A checkpoint protects only nodes running a release that contains it, including
+  a node syncing from scratch.
 - **Exchange guidance.** A fixed deposit depth of 100 confirmations, above the
   reorg cap and independent of hashrate. See
   [`doc/exchange-listing-guidance.md`](doc/exchange-listing-guidance.md) and
@@ -161,7 +164,6 @@ common algorithms can be rented cheaply.
   instant tools (checkpoints), not hashpower retaliation.
 
 ## Open Items
-- Post-launch checkpoints (§9): none shipped yet.
 - Notarization (§9): design only.
 - Post-quantum signature schemes for P2QRH (§7): reserved `scheme_id`s, not activated.
 
