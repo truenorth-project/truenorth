@@ -369,6 +369,15 @@ OFTC allows nick registration over Tor without prior clearnet connection (unlike
 
 Bug reports and feature discussion also go through [GitHub Issues](https://github.com/truenorth-project/truenorth/issues). Do not report a security problem there, or in IRC. See [`SECURITY.md`](SECURITY.md), which routes vulnerability reports to GitHub private vulnerability reporting or to email.
 
+### Community resources
+
+Run independently by community members, not by the project. They're listed
+because they're useful; the project doesn't operate them and can't vouch for their
+uptime or their numbers. Check anything that matters against your own node.
+
+- **Block explorer:** <https://tnexplore.com> ([source](https://gitlab.com/ironfist-2000/truenorth-explorer)),
+  with a JSON API documented at <https://tnexplore.com/api/v1/docs>
+
 ---
 
 ## Documentation
