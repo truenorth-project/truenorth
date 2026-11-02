@@ -197,14 +197,11 @@ public:
         assert(consensus.hashGenesisBlock == uint256{"470c8b8ae824c06575cfae0851282c495b861829211194842590dc6a2c829981"});
         assert(genesis.hashMerkleRoot == uint256{"2e4de71a24b24ac64cea9bbc52cb6a588c9a0bb53b6745a603240fd9efc6b289"});
 
-        // Pre-launch: no accumulated chain work; assumeValid anchors
-        // to genesis (skips no signatures, since there are no blocks
-        // below it). m_checkpoint_data has only the genesis entry --
-        // consensus rules already enforce genesis identity, so the
-        // effective protection is zero until post-launch releases
-        // add higher-height checkpoints per doc/checkpoint-process.md.
-        consensus.nMinimumChainWork = uint256{};
-        consensus.defaultAssumeValid = consensus.hashGenesisBlock;
+        // Minimum chain work and assumeValid track the most recent
+        // checkpoint in m_checkpoint_data below. Update all three
+        // together per doc/checkpoint-process.md.
+        consensus.nMinimumChainWork = uint256{"000000000000000000000000000000000000000000000000000001638b65e2e0"}; // block 15000
+        consensus.defaultAssumeValid = uint256{"9d4a1eccf44f0d32dbc93c84c9cf5b437993cb969a2a0d55154a2ab3503c4506"}; // block 15000
         // Reorg-depth cap: reject any reorg deeper than 72 blocks
         // (~2h 24min at 2-minute block time). Defence-in-depth
         // between checkpoints. See src/consensus/params.h.
@@ -220,6 +217,9 @@ public:
         m_checkpoint_data = {
             /* .mapCheckpoints = */ {
                 {0, consensus.hashGenesisBlock},
+                {5000, uint256{"fe463395b07f86911618c7433966a76f63991dc12e5f72ca361eb3637bdb1815"}},
+                {10000, uint256{"977134e7389adb12a64894ecad657c5ed35b5afb3b7a433e7f22a01af9a0e991"}},
+                {15000, uint256{"9d4a1eccf44f0d32dbc93c84c9cf5b437993cb969a2a0d55154a2ab3503c4506"}},
             },
         };
 
