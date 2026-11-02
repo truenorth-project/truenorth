@@ -148,18 +148,14 @@ struct Params {
 
     /**
      * Consensus-level minimum block timestamp for this chain. Blocks with
-     * nTime < nLaunchTime are rejected as invalid. Set on mainnet only to
-     * prevent pre-launch shadow mining: RC binaries built with real
-     * chainparams could otherwise be used to mine and publish a chain
-     * before the coordinated launch time. This rule ensures the first
-     * post-genesis block cannot exist until the wall clock reaches the
-     * launch instant.
+     * nTime < nLaunchTime are rejected as invalid. Set on mainnet only,
+     * to the genesis block's nTime.
+     *
+     * The rule constrains block timestamps; it does not establish when
+     * the work for a block was done.
      *
      * Set to 0 for chains where this rule doesn't apply (testnet, signet,
-     * regtest). Combined with Bitcoin's existing MAX_FUTURE_BLOCK_TIME
-     * (rejects blocks whose timestamp is > 2 hours ahead of local time),
-     * this makes it infeasible to produce accepted blocks before the
-     * chain's launch time regardless of miner clock manipulation.
+     * regtest).
      */
     int64_t nLaunchTime{0};
 

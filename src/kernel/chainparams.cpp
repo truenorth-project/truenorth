@@ -206,13 +206,12 @@ public:
         // (~2h 24min at 2-minute block time). Defence-in-depth
         // between checkpoints. See src/consensus/params.h.
         consensus.max_reorg_depth = 72;
-        // Mainnet launch time: 2026-10-05 00:00:00 UTC.
-        // Blocks with nTime < this are rejected — prevents pre-launch
-        // shadow mining from RC binaries. See src/consensus/params.h
-        // and src/validation.cpp::ContextualCheckBlockHeader.
+        // Mainnet launch time: 2026-10-12 00:00:00 UTC, equal to the
+        // genesis nTime. Blocks with nTime < this are rejected. See
+        // src/consensus/params.h and
+        // src/validation.cpp::ContextualCheckBlockHeader.
         //
         // Verify with: date -u -d @1791763200
-        // (previous value 1759622400 was 2025-10-05 — off by a year).
         consensus.nLaunchTime = 1791763200;
         m_checkpoint_data = {
             /* .mapCheckpoints = */ {
