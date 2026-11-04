@@ -30,6 +30,12 @@ namespace {
 // [ERROR] notices (-largepages=on that couldn't be honoured) always print.
 std::atomic<bool> g_fallback_notices{false};
 
+// Set once any FAST-mode dataset has been allocated. A huge-pages
+// fallback after that point happened at a seed rotation, not at
+// startup, so it is reported at WARN: the operator configured huge
+// pages and the miner is now running without them.
+std::atomic<bool> g_dataset_allocated{false};
+
 // Recommended host flags + RANDOMX_FLAG_V2 (program format v2).
 // randomx_get_flags() does not include V2 by default; we opt in
 // because TrueNorth uses the v2 program format from genesis.
@@ -100,11 +106,13 @@ public:
                 // failed -- likely not enough huge pages reserved for
                 // both. Retry the dataset alone without huge pages;
                 // keep the cache as-is (mixed configuration is fine).
-                if (must_have_large || g_fallback_notices) {
+                const bool at_rotation = g_dataset_allocated;
+                if (must_have_large || at_rotation || g_fallback_notices) {
                     std::fprintf(stderr,
-                                 "TrueNorth: [%s] randomx_alloc_dataset failed with LARGE_PAGES; "
+                                 "TrueNorth: [%s] randomx_alloc_dataset failed with LARGE_PAGES%s; "
                                  "retrying without huge pages\n",
-                                 must_have_large ? "ERROR" : "INFO");
+                                 must_have_large ? "ERROR" : (at_rotation ? "WARN" : "INFO"),
+                                 at_rotation ? " at seed rotation" : "");
                 }
                 randomx_flags ds_flags = FlagsForMode(mode, false);
                 m_dataset = randomx_alloc_dataset(ds_flags);
@@ -137,6 +145,7 @@ public:
                 }
                 randomx_init_cache(m_cache, seed_key.begin(), 32);
             } else {
+                g_dataset_allocated = true;
                 BuildDatasetParallel();
             }
         }
@@ -311,11 +320,23 @@ std::shared_ptr<Cache> LookupAndPromote(const uint256& seed_key, int node)
 // the calling thread is expected to have been pinned to `node` by
 // its MinerThread constructor before this call, RandomX's underlying
 // mmap/VirtualAlloc lands on that node's local memory.
+//
+// A FAST install first drops the slots' references to any other FAST
+// cache, so its ~2 GiB dataset is released before the new one is
+// allocated. Otherwise the old dataset keeps the huge pages reserved
+// for it and the new one falls back to normal pages at every seed
+// rotation. The miner joins its workers between templates, so the slots
+// normally hold the last references. The previous seed is not kept as
+// a FAST secondary; if it is needed again it is rebuilt.
 std::shared_ptr<Cache> InstallNewMain(const uint256& seed_key, RandomXMode mode, int node)
     EXCLUSIVE_LOCKS_REQUIRED(g_slot_mutex)
 {
-    auto fresh = std::make_shared<Cache>(seed_key, mode, g_lp_pref);
     auto& slots = g_slots_by_node[node];
+    if (mode == RandomXMode::FAST) {
+        if (slots.secondary && slots.secondary->mode() == RandomXMode::FAST) slots.secondary.reset();
+        if (slots.main && slots.main->mode() == RandomXMode::FAST) slots.main.reset();
+    }
+    auto fresh = std::make_shared<Cache>(seed_key, mode, g_lp_pref);
     slots.secondary = std::move(slots.main);
     slots.main = fresh;
     return slots.main;

@@ -102,7 +102,9 @@ bool RandomXCacheUsedLargePages();
 // paying the ~1s cache-init cost each time, and lets an unexpected
 // old-seed template survive at least one lookup. Slots are populated
 // lazily as unique seeds are requested; miss on both slots evicts the
-// secondary, demotes the main, and installs a fresh main.
+// secondary, demotes the main, and installs a fresh main. A FAST install
+// releases any other FAST cache first instead of demoting it, so only one
+// dataset is held per node and it can reuse the same huge pages.
 //
 // In-flight MinerThreads and hash calls hold a shared_ptr to their
 // Cache, so eviction from the slot map does NOT free the underlying
