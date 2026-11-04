@@ -377,6 +377,9 @@ uptime or their numbers. Check anything that matters against your own node.
 
 - **Block explorer:** <https://tnexplore.com> ([source](https://gitlab.com/ironfist-2000/truenorth-explorer)),
   with a JSON API documented at <https://tnexplore.com/api/v1/docs>
+- **Community site:** <https://www.tncoin.xyz>, with a mining guide, live network
+  numbers and a pool comparison
+- **Subreddit:** <https://www.reddit.com/r/TrueNorthCoin/>
 
 ---
 
