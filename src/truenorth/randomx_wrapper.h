@@ -66,9 +66,9 @@ const char* ModeName(RandomXMode mode);
 // -------------------------------------------------------------------
 
 enum class LargePagesPref {
-    AUTO, //!< try large pages; fall back on failure without complaint (default)
+    AUTO, //!< try large pages; fall back on failure without complaint (miner default)
     ON,   //!< try large pages; log ERROR (still fall back) so operator sees the miss
-    OFF,  //!< do not attempt large pages
+    OFF,  //!< do not attempt large pages (default until SetLargePagesPreference is called)
 };
 
 // Set the huge-pages preference for subsequent Cache / VM allocations.
@@ -81,7 +81,7 @@ void SetLargePagesPreference(LargePagesPref pref);
 // truenorthd leaves it off. [ERROR] notices always print.
 void SetRandomXFallbackNotices(bool enabled);
 
-// The preference most recently set (or AUTO if never set).
+// The preference most recently set (or OFF if never set).
 LargePagesPref CurrentLargePagesPreference();
 
 // Short label for logging: "auto" / "on" / "off".

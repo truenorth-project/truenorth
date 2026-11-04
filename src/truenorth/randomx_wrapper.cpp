@@ -264,7 +264,11 @@ std::mutex g_slot_mutex;
 std::vector<NodeSlots> g_slots_by_node GUARDED_BY(g_slot_mutex);
 
 RandomXMode g_active_mode GUARDED_BY(g_slot_mutex) = RandomXMode::LIGHT;
-LargePagesPref g_lp_pref GUARDED_BY(g_slot_mutex) = LargePagesPref::AUTO;
+// OFF until a caller opts in. truenorthd never does: its LIGHT-mode
+// caches gain almost nothing from huge pages, and on a box that also
+// mines they would take pages reserved for the miner's dataset.
+// truenorth-miner sets the preference from -largepages (default auto).
+LargePagesPref g_lp_pref GUARDED_BY(g_slot_mutex) = LargePagesPref::OFF;
 
 // Releases all slots at process exit. Cosmetic in production -- the OS
 // reclaims the memory at exit either way -- but eliminates leak reports

@@ -130,6 +130,7 @@ bool MineFor(const ChainSpec& spec, int num_threads)
     // Workers do not stop at the first hit by anyone; each continues until its
     // own candidate passes the best known winner, so no lower nonce can be
     // skipped. Costs a few wasted hashes per worker, not minutes.
+    truenorth::SetLargePagesPreference(truenorth::LargePagesPref::AUTO);
     truenorth::SetMinerMode(truenorth::RandomXMode::FAST);
     truenorth::SetRandomXFallbackNotices(true);
 
