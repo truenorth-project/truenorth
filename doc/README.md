@@ -34,6 +34,7 @@ For TrueNorth-specific docs, see [`/README.md`](../README.md) at the repo root.
 
 - [`managing-wallets.md`](managing-wallets.md).
 - [`descriptors.md`](descriptors.md). Descriptor wallet format.
+- [`payment-uri.md`](payment-uri.md). Draft: the `truenorth:` payment URI scheme (links and QR codes), based on BIP 321, with amounts in NORTH.
 - [`psbt.md`](psbt.md). Partially Signed Transaction format. TrueNorth's RPC help text was rebranded but the on-wire BIP-174 encoding is unchanged.
 - [`multisig-tutorial.md`](multisig-tutorial.md).
 - [`offline-signing-tutorial.md`](offline-signing-tutorial.md).
