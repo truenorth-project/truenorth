@@ -484,7 +484,7 @@ public:
         assert(consensus.hashGenesisBlock == uint256{"ab30dfbf9dd9e1ecca22d845bcd5df40feb2d03547906cd039b412dd55d12750"});
         assert(genesis.hashMerkleRoot == uint256{"bedb5be1cd03ead77e25a27dbf4ffbd4fe8496f085cf42e4d1ce935b153dc565"});
 
-        vFixedSeeds.clear();
+        vFixedSeeds = std::vector<uint8_t>(std::begin(chainparams_seed_testnet4), std::end(chainparams_seed_testnet4));
         vSeeds.clear();
         // No DNS seeds for testnet4 yet. Bootstrap uses the compiled-in
         // fallback list of currently-known operator seeds; see

@@ -619,6 +619,19 @@ BOOST_AUTO_TEST_CASE(reorg_cap_regtest_is_disabled)
     BOOST_CHECK_EQUAL(params->GetConsensus().max_reorg_depth, 0);
 }
 
+// With no DNS seeds, the fixed seeds are the only way a fresh node finds
+// the network. Each list is generated into chainparamsseeds.h, and the
+// array does nothing unless the chain's params assign it.
+BOOST_AUTO_TEST_CASE(fixed_seeds_mainnet_not_empty)
+{
+    BOOST_CHECK(!CChainParams::Main()->FixedSeeds().empty());
+}
+
+BOOST_AUTO_TEST_CASE(fixed_seeds_testnet4_not_empty)
+{
+    BOOST_CHECK(!CChainParams::TestNet4()->FixedSeeds().empty());
+}
+
 // =========================================================================
 // F. P2QRH commitment helper (pure function)
 // =========================================================================
