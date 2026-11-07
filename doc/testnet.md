@@ -11,17 +11,19 @@ will look like at launch.
 |---|---|
 | Chain | testnet4 |
 | Block time | 120 seconds (target) |
-| Address HRP | `tnorth41q...` (segwit) |
+| Address HRP | `tnorth4` (default P2QRH addresses start `tnorth41z...`) |
 | P2P port | 49555 |
 | RPC port (local-only by default) | 49554 |
 | Seed (clearnet) | `seed.nyc.tncoin.xyz:49555` (A record → `138.197.97.151`) |
 | Seed (Tor onion) | `3guf2wvltezb6w3tjjveumtt6lsnb7bjpts6ornk4hj4wlod4s7n53id.onion:49555` |
 
 The clearnet and onion seeds serve the same chain — pick whichever suits
-your operator setup, or use both. There's no DNS seeder yet; the compiled-in
-seeds in the release binary include both endpoints so a fresh node will find
-peers automatically. See [`doc/public-seed-setup.md`](public-seed-setup.md) if
-you want to run your own seed node (either topology).
+your operator setup, or use both. There's no DNS seeder yet. From v30.5.3
+the compiled-in seeds include both endpoints, so a fresh node finds peers
+automatically; on v30.5.2 and earlier the compiled-in list isn't used, so add
+the seeds with `addnode=` (see [Configuration](#configuration)). See
+[`doc/public-seed-setup.md`](public-seed-setup.md) if you want to run your own
+seed node (either topology).
 
 testnet4 was picked over testnet3 because testnet4's chainparams are
 designed for fresh chains: all BIPs activate from genesis, BIP94 timewarp
@@ -83,15 +85,28 @@ rpcbind=127.0.0.1
 rpcallowip=127.0.0.1
 rpcuser=tn_user
 rpcpassword=GENERATE_YOUR_OWN
+
+# Testnet4 has too few transactions for fee estimation, so without this the
+# wallet refuses to send ("Fee estimation failed. Fallbackfee is disabled").
+# In NORTH per kvB: 0.00002 is 2 mie/vB.
+fallbackfee=0.00002
 ```
 
-The compiled-in seed list includes both clearnet and onion endpoints, so
-`addnode=` lines are not required — the daemon finds peers automatically.
+From v30.5.3 the compiled-in seed list includes both clearnet and onion
+endpoints, so `addnode=` lines are not required: the daemon finds peers
+automatically. **On v30.5.2 and earlier** the compiled-in list isn't used and a
+fresh node stays at 0 connections, so add the seeds to the `[testnet4]` block:
+
+```
+addnode=seed.nyc.tncoin.xyz:49555
+addnode=3guf2wvltezb6w3tjjveumtt6lsnb7bjpts6ornk4hj4wlod4s7n53id.onion:49555   # Tor only
+```
 
 **Tor-only variant.** If you want to refuse clearnet peer connections
 entirely (privacy-motivated operators, hidden-service seed operators):
 add `onlynet=onion` in the `[testnet4]` block. This works because the
-compiled-in seeds include onion endpoints too. If Tor is disrupted or your
+compiled-in seeds include onion endpoints too (from v30.5.3; on earlier
+versions keep the onion `addnode=` line above). If Tor is disrupted or your
 SOCKS daemon isn't reachable, the node will have no peers — that's the
 tradeoff you're opting into.
 
