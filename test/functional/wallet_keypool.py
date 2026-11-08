@@ -33,39 +33,39 @@ class KeyPoolTest(BitcoinTestFramework):
         nodes[0].walletpassphrase('test', 10)
         nodes[0].importdescriptors([
             {
-                "desc": "wpkh(tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK/0h/*h)#y4dfsj7n",
+                "desc": "wpkh(tpruZLtDPZhDAKMtwBfMwezyrT6Bhka2nzQRyoaBJBmU82Xm9M6anvmNG2ersDwoUytjv2RNDrkAo6NR6s6pXpH1ttjpDbnm8o1EZKzXFedzDsu/0h/*h)#afkr3gf6",
                 "timestamp": "now",
                 "range": [0,0],
                 "active": True
             },
             {
-                "desc": "pkh(tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK/1h/*h)#a0nyvl0k",
+                "desc": "pkh(tpruZLtDPZhDAKMtwBfMwezyrT6Bhka2nzQRyoaBJBmU82Xm9M6anvmNG2ersDwoUytjv2RNDrkAo6NR6s6pXpH1ttjpDbnm8o1EZKzXFedzDsu/1h/*h)#zzhes89x",
                 "timestamp": "now",
                 "range": [0,0],
                 "active": True
             },
             {
-                "desc": "sh(wpkh(tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK/2h/*h))#lmeu2axg",
+                "desc": "sh(wpkh(tpruZLtDPZhDAKMtwBfMwezyrT6Bhka2nzQRyoaBJBmU82Xm9M6anvmNG2ersDwoUytjv2RNDrkAo6NR6s6pXpH1ttjpDbnm8o1EZKzXFedzDsu/2h/*h))#c8gpm9nj",
                 "timestamp": "now",
                 "range": [0,0],
                 "active": True
             },
             {
-                "desc": "wpkh(tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK/3h/*h)#jkl636gm",
+                "desc": "wpkh(tpruZLtDPZhDAKMtwBfMwezyrT6Bhka2nzQRyoaBJBmU82Xm9M6anvmNG2ersDwoUytjv2RNDrkAo6NR6s6pXpH1ttjpDbnm8o1EZKzXFedzDsu/3h/*h)#t2yssqlj",
                 "timestamp": "now",
                 "range": [0,0],
                 "active": True,
                 "internal": True
             },
             {
-                "desc": "pkh(tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK/4h/*h)#l3crwaus",
+                "desc": "pkh(tpruZLtDPZhDAKMtwBfMwezyrT6Bhka2nzQRyoaBJBmU82Xm9M6anvmNG2ersDwoUytjv2RNDrkAo6NR6s6pXpH1ttjpDbnm8o1EZKzXFedzDsu/4h/*h)#quu7j9kq",
                 "timestamp": "now",
                 "range": [0,0],
                 "active": True,
                 "internal": True
             },
             {
-                "desc": "sh(wpkh(tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK/5h/*h))#qg8wa75f",
+                "desc": "sh(wpkh(tpruZLtDPZhDAKMtwBfMwezyrT6Bhka2nzQRyoaBJBmU82Xm9M6anvmNG2ersDwoUytjv2RNDrkAo6NR6s6pXpH1ttjpDbnm8o1EZKzXFedzDsu/5h/*h))#85knvxpn",
                 "timestamp": "now",
                 "range": [0,0],
                 "active": True,
@@ -73,13 +73,13 @@ class KeyPoolTest(BitcoinTestFramework):
             },
             # P2QRH is the default address type, so shrink it to one key too.
             {
-                "desc": descsum_create("qrh(tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK/6h/*h)"),
+                "desc": descsum_create("qrh(tpruZLtDPZhDAKMtwBfMwezyrT6Bhka2nzQRyoaBJBmU82Xm9M6anvmNG2ersDwoUytjv2RNDrkAo6NR6s6pXpH1ttjpDbnm8o1EZKzXFedzDsu/6h/*h)"),
                 "timestamp": "now",
                 "range": [0,0],
                 "active": True
             },
             {
-                "desc": descsum_create("qrh(tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK/7h/*h)"),
+                "desc": descsum_create("qrh(tpruZLtDPZhDAKMtwBfMwezyrT6Bhka2nzQRyoaBJBmU82Xm9M6anvmNG2ersDwoUytjv2RNDrkAo6NR6s6pXpH1ttjpDbnm8o1EZKzXFedzDsu/7h/*h)"),
                 "timestamp": "now",
                 "range": [0,0],
                 "active": True,

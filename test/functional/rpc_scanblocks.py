@@ -33,11 +33,11 @@ class ScanblocksTest(BitcoinTestFramework):
         _, spk_1, addr_1 = getnewdestination()
         wallet.send_to(from_node=node, scriptPubKey=spk_1, amount=1 * COIN)
 
-        parent_key = "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B"
+        parent_key = "tpuadsaFXyjTJh3Zpeh9qJfaFrkJGn5xxKbLZ7AxahomYJL9yqMMRKaxSXGj3LfYkm27j4aGgJr8ftuyd91EuHv7oaAmFckJLcTieVRvCtsgyGw"
         # send 1.0, mempool only
         # childkey 5 of `parent_key`
         wallet.send_to(from_node=node,
-                       scriptPubKey=address_to_scriptpubkey("mkS4HXoTYWRTescLGaUTGbtTTYX5EjJyEE"),
+                       scriptPubKey=address_to_scriptpubkey("rB9h7j5dMVX6ee9HYC8xbyt7P6MT3AU3XY"),
                        amount=1 * COIN)
 
         # mine a block and assure that the mined blockhash is in the filterresult

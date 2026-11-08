@@ -56,8 +56,8 @@ class ListDescriptorsTest(BitcoinTestFramework):
         assert_equal(descriptor_strings, sorted(descriptor_strings))
 
         self.log.info('Test descriptors with hardened derivations are listed in importable form.')
-        xprv = 'tprv8ZgxMBicQKsPeuVhWwi6wuMQGfPKi9Li5GtX35jVNknACgqe3CY4g5xgkfDDJcmtF7o1QnxWDRYw4H5P26PXq7sbcUkEqeR4fg3Kxp2tigg'
-        xpub_acc = 'tpubDCMVLhErorrAGfApiJSJzEKwqeaf2z3NrkVMxgYQjZLzMjXMBeRw2muGNYbvaekAE8rUFLftyEar4LdrG2wXyyTJQZ26zptmeTEjPTaATts'
+        xprv = 'tpruZLtDPZhDAKMtxygQNTBknpVtCgfYgfUVExBo6ZCjw1iWMw99hnWi9Jm9TDYhE6WCZFnUxsN4iSZx8yHuwWNMXb8oUecEkxgKzEfNhZLbVr3'
+        xpub_acc = 'tpuadyYkP5DTZrLfajMXZouxq9URmfrt1WBA2Rne2A1fHpHLWyprrEQaVzhj56wQW8UUYGqwoR5TUFbs92rPBSvMgSiWGit6v9A2y1rn88DfwaY'
         hardened_path = '/84h/1h/0h'
         wallet = node.get_wallet_rpc('w2')
         wallet.importdescriptors([{

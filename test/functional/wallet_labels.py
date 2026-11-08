@@ -85,7 +85,7 @@ class WalletLabelsTest(BitcoinTestFramework):
             linked_addresses.add(address_group[0][0])
 
         # send SUBSIDY from each address to a third address not in this wallet
-        common_address = "msf4WtN1YQKXvNtvdFYt9JBnUD2FB41kjr"
+        common_address = "rJNhM5eBMPRAv9RstsDPUgBSPkrd4K7cMk"
         node.sendmany(
             amounts={common_address: 2 * SUBSIDY},
             subtractfeefrom=[common_address],
@@ -170,13 +170,13 @@ class WalletLabelsTest(BitcoinTestFramework):
         node.createwallet(wallet_name='watch_only', disable_private_keys=True)
         wallet_watch_only = node.get_wallet_rpc('watch_only')
         BECH32_VALID = {
-            '✔️_VER15_PROG40': 'bcrt10qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqxkg7fn',
-            '✔️_VER16_PROG03': 'bcrt1sqqqqq8uhdgr',
-            '✔️_VER16_PROB02': 'bcrt1sqqqq4wstyw',
+            '✔️_VER15_PROG40': 'rnorth10qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqxjjgct',
+            '✔️_VER16_PROG03': 'rnorth1sqqqqqh0edwp',
+            '✔️_VER16_PROB02': 'rnorth1sqqqq7wy57c',
         }
         BECH32_INVALID = {
-            '❌_VER15_PROG41': 'bcrt1sqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqajlxj8',
-            '❌_VER16_PROB01': 'bcrt1sqq5r4036',
+            '❌_VER15_PROG41': 'rnorth1sqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqgwvcaa',
+            '❌_VER16_PROB01': 'rnorth1sqqvllmwx',
         }
         for l in BECH32_VALID:
             ad = BECH32_VALID[l]

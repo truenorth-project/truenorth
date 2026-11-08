@@ -131,10 +131,10 @@ echo "  miner (bech32):   $MINER_ADDR"
 echo "  qrh dest:         $QRH_ADDR"
 echo "  final dest:       $DEST_ADDR"
 
-# Sanity-check the QRH address prefix. Regtest HRP is 'bcrt' and witness
+# Sanity-check the QRH address prefix. Regtest HRP is 'rnorth' and witness
 # version 2 encodes to the 'z' character in bech32m.
 case "$QRH_ADDR" in
-    bcrt1z*) echo "  qrh prefix ok (bcrt1z...)";;
+    rnorth1z*) echo "  qrh prefix ok (rnorth1z...)";;
     *) echo "  FAIL: qrh address prefix wrong: $QRH_ADDR"; exit 1;;
 esac
 

@@ -531,8 +531,8 @@ class WalletTest(BitcoinTestFramework):
 
         # Test getaddressinfo on external address. Note that these addresses are taken from disablewallet.py
         assert_raises_rpc_error(-5, "Invalid or unsupported Base58-encoded address.", self.nodes[0].getaddressinfo, "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy")
-        address_info = self.nodes[0].getaddressinfo("mneYUmWYsuk7kySiURxCi3AGxrAqZxLgPZ")
-        assert_equal(address_info['address'], "mneYUmWYsuk7kySiURxCi3AGxrAqZxLgPZ")
+        address_info = self.nodes[0].getaddressinfo("rDNBJxnigtqkkjyfk3ci3R9vtQ1DP4DhxL")
+        assert_equal(address_info['address'], "rDNBJxnigtqkkjyfk3ci3R9vtQ1DP4DhxL")
         assert_equal(address_info["scriptPubKey"], "76a9144e3854046c7bd1594ac904e4793b6a45b36dea0988ac")
         assert not address_info["ismine"]
         assert not address_info["isscript"]
@@ -597,8 +597,8 @@ class WalletTest(BitcoinTestFramework):
 
         self.log.info("Testing 'listunspent' outputs the parent descriptor(s) of coins")
         # Create two multisig descriptors, and send a UTxO each.
-        multi_a = descsum_create("wsh(multi(1,tpubD6NzVbkrYhZ4YBNjUo96Jxd1u4XKWgnoc7LsA1jz3Yc2NiDbhtfBhaBtemB73n9V5vtJHwU6FVXwggTbeoJWQ1rzdz8ysDuQkpnaHyvnvzR/*,tpubD6NzVbkrYhZ4YHdDGMAYGaWxMSC1B6tPRTHuU5t3BcfcS3nrF523iFm5waFd1pP3ZvJt4Jr8XmCmsTBNx5suhcSgtzpGjGMASR3tau1hJz4/*))")
-        multi_b = descsum_create("wsh(multi(1,tpubD6NzVbkrYhZ4YHdDGMAYGaWxMSC1B6tPRTHuU5t3BcfcS3nrF523iFm5waFd1pP3ZvJt4Jr8XmCmsTBNx5suhcSgtzpGjGMASR3tau1hJz4/*,tpubD6NzVbkrYhZ4Y2RLiuEzNQkntjmsLpPYDm3LTRBYynUQtDtpzeUKAcb9sYthSFL3YR74cdFgF5mW8yKxv2W2CWuZDFR2dUpE5PF9kbrVXNZ/*))")
+        multi_a = descsum_create("wsh(multi(1,tpuadsaFXyjTJh3ZrFZSLJck9smVq5oYVCvamne9DVDEboYNXxX7NUdqAnzMMKWayFsoQ4smr1sekWYxmNg8aDHL6V8CW9zynYAg5PQd2hdgupM/*,tpuadsaFXyjTJh3ZrMov7reC7VfSHTUE9d2Ab8bBXZMHjsbxbJ6MuezhBUZYe8b6wJ7Mt4JMcPFh2nDnx9PusVrjQ5htmAgGeacRkyfwKd3BNkM/*))")
+        multi_b = descsum_create("wsh(multi(1,tpuadsaFXyjTJh3ZrMov7reC7VfSHTUE9d2Ab8bBXZMHjsbxbJ6MuezhBUZYe8b6wJ7Mt4JMcPFh2nDnx9PusVrjQ5htmAgGeacRkyfwKd3BNkM/*,tpuadsaFXyjTJh3Zr6c3aQieDKuGpm46KLXKPSLcWteoY3Qm3UCLfESxdqPca7EBMj4MrZ6YAhfEk6nXDfYVqSUqtzAm5RH2Yo5VPwsCVFycoDo/*))")
         addr_a = self.nodes[0].deriveaddresses(multi_a, 0)[0]
         addr_b = self.nodes[0].deriveaddresses(multi_b, 0)[0]
         txid_a = self.nodes[0].sendtoaddress(addr_a, 0.01)

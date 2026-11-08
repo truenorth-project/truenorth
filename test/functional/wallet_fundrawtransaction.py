@@ -620,12 +620,12 @@ class RawTransactionsTest(BitcoinTestFramework):
 
         with WalletUnlock(wallet, "test"):
             wallet.importdescriptors([{
-                'desc': descsum_create('wpkh(tprv8ZgxMBicQKsPdYeeZbPSKd2KYLmeVKtcFA7kqCxDvDR13MQ6us8HopUR2wLcS2ZKPhLyKsqpDL2FtL73LMHcgoCL7DXsciA8eX8nbjCR2eG/0h/*h)'),
+                'desc': descsum_create('wpkh(tpruZLtDPZhDAKMtwcqMR6s6AYAoUN3sTr2PQqR2tgRUUUMMCbhcaT6wH3GsjVg6MWHdhqLSsxFNiM3Gy2KaFmGSPGTXyPPsY2RPy5kqLTwkWVm/0h/*h)'),
                 'timestamp': 'now',
                 'active': True
             },
             {
-                'desc': descsum_create('wpkh(tprv8ZgxMBicQKsPdYeeZbPSKd2KYLmeVKtcFA7kqCxDvDR13MQ6us8HopUR2wLcS2ZKPhLyKsqpDL2FtL73LMHcgoCL7DXsciA8eX8nbjCR2eG/1h/*h)'),
+                'desc': descsum_create('wpkh(tpruZLtDPZhDAKMtwcqMR6s6AYAoUN3sTr2PQqR2tgRUUUMMCbhcaT6wH3GsjVg6MWHdhqLSsxFNiM3Gy2KaFmGSPGTXyPPsY2RPy5kqLTwkWVm/1h/*h)'),
                 'timestamp': 'now',
                 'active': True,
                 'internal': True
@@ -765,7 +765,7 @@ class RawTransactionsTest(BitcoinTestFramework):
         wwatch = self.nodes[3].get_wallet_rpc('wwatch')
         # Setup change addresses for the watchonly wallet
         desc_import = [{
-            "desc": descsum_create("wpkh(tpubD6NzVbkrYhZ4YNXVQbNhMK1WqguFsUXceaVJKbmno2aZ3B6QfbMeraaYvnBSGpV3vxLyTTK9DYT1yoEck4XUScMzXoQ2U2oSmE2JyMedq3H/1/*)"),
+            "desc": descsum_create("wpkh(tpuadsaFXyjTJh3ZrSiCG6rMCE9zmiBUqzfPpFnaP5F3MHWuCRPvLBLJKoP1dLWvCJDNF6LT1XihiZU34VT9fUWJ95dCPyG2PM4i5neMi8L2D1u/1/*)"),
             "timestamp": "now",
             "internal": True,
             "active": True,

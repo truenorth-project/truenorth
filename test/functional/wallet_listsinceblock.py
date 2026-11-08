@@ -419,8 +419,8 @@ class ListSinceBlockTest(BitcoinTestFramework):
         self.log.info("Test descriptor lookup by scriptPubKey.")
 
         # Create a watchonly wallet tracking two multisig descriptors.
-        multi_a = descsum_create("wsh(multi(1,tpubD6NzVbkrYhZ4YBNjUo96Jxd1u4XKWgnoc7LsA1jz3Yc2NiDbhtfBhaBtemB73n9V5vtJHwU6FVXwggTbeoJWQ1rzdz8ysDuQkpnaHyvnvzR/*,tpubD6NzVbkrYhZ4YHdDGMAYGaWxMSC1B6tPRTHuU5t3BcfcS3nrF523iFm5waFd1pP3ZvJt4Jr8XmCmsTBNx5suhcSgtzpGjGMASR3tau1hJz4/*))")
-        multi_b = descsum_create("wsh(multi(1,tpubD6NzVbkrYhZ4YHdDGMAYGaWxMSC1B6tPRTHuU5t3BcfcS3nrF523iFm5waFd1pP3ZvJt4Jr8XmCmsTBNx5suhcSgtzpGjGMASR3tau1hJz4/*,tpubD6NzVbkrYhZ4Y2RLiuEzNQkntjmsLpPYDm3LTRBYynUQtDtpzeUKAcb9sYthSFL3YR74cdFgF5mW8yKxv2W2CWuZDFR2dUpE5PF9kbrVXNZ/*))")
+        multi_a = descsum_create("wsh(multi(1,tpuadsaFXyjTJh3ZrFZSLJck9smVq5oYVCvamne9DVDEboYNXxX7NUdqAnzMMKWayFsoQ4smr1sekWYxmNg8aDHL6V8CW9zynYAg5PQd2hdgupM/*,tpuadsaFXyjTJh3ZrMov7reC7VfSHTUE9d2Ab8bBXZMHjsbxbJ6MuezhBUZYe8b6wJ7Mt4JMcPFh2nDnx9PusVrjQ5htmAgGeacRkyfwKd3BNkM/*))")
+        multi_b = descsum_create("wsh(multi(1,tpuadsaFXyjTJh3ZrMov7reC7VfSHTUE9d2Ab8bBXZMHjsbxbJ6MuezhBUZYe8b6wJ7Mt4JMcPFh2nDnx9PusVrjQ5htmAgGeacRkyfwKd3BNkM/*,tpuadsaFXyjTJh3Zr6c3aQieDKuGpm46KLXKPSLcWteoY3Qm3UCLfESxdqPca7EBMj4MrZ6YAhfEk6nXDfYVqSUqtzAm5RH2Yo5VPwsCVFycoDo/*))")
         self.nodes[0].createwallet(wallet_name="wo", disable_private_keys=True)
         wo_wallet = self.nodes[0].get_wallet_rpc("wo")
         wo_wallet.importdescriptors([

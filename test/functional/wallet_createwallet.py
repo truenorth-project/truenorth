@@ -75,12 +75,12 @@ class CreateWalletTest(BitcoinTestFramework):
         assert_raises_rpc_error(-4, "Error: This wallet has no available keys", w3.getnewaddress)
         # Set the seed
         w3.importdescriptors([{
-            'desc': descsum_create('wpkh(tprv8ZgxMBicQKsPcwuZGKp8TeWppSuLMiLe2d9PupB14QpPeQsqoj3LneJLhGHH13xESfvASyd4EFLJvLrG8b7DrLxEuV7hpF9uUc6XruKA1Wq/0h/*)'),
+            'desc': descsum_create('wpkh(tpruZLtDPZhDAKMtw26G7qHnJZfJkUBZLEURCJSfyHeFcfkjofBMUK1zFs6oPpckvXgYkoue142cjGML134o4163YpDSmeyhjZRAoAiabZjg8DU/0h/*)'),
             'timestamp': 'now',
             'active': True
         },
         {
-            'desc': descsum_create('wpkh(tprv8ZgxMBicQKsPcwuZGKp8TeWppSuLMiLe2d9PupB14QpPeQsqoj3LneJLhGHH13xESfvASyd4EFLJvLrG8b7DrLxEuV7hpF9uUc6XruKA1Wq/1h/*)'),
+            'desc': descsum_create('wpkh(tpruZLtDPZhDAKMtw26G7qHnJZfJkUBZLEURCJSfyHeFcfkjofBMUK1zFs6oPpckvXgYkoue142cjGML134o4163YpDSmeyhjZRAoAiabZjg8DU/1h/*)'),
             'timestamp': 'now',
             'active': True,
             'internal': True
@@ -102,12 +102,12 @@ class CreateWalletTest(BitcoinTestFramework):
         with WalletUnlock(w4, "pass"):
             # Now set a seed and it should work. Wallet should also be encrypted
             w4.importdescriptors([{
-                'desc': descsum_create('wpkh(tprv8ZgxMBicQKsPcwuZGKp8TeWppSuLMiLe2d9PupB14QpPeQsqoj3LneJLhGHH13xESfvASyd4EFLJvLrG8b7DrLxEuV7hpF9uUc6XruKA1Wq/0h/*)'),
+                'desc': descsum_create('wpkh(tpruZLtDPZhDAKMtw26G7qHnJZfJkUBZLEURCJSfyHeFcfkjofBMUK1zFs6oPpckvXgYkoue142cjGML134o4163YpDSmeyhjZRAoAiabZjg8DU/0h/*)'),
                 'timestamp': 'now',
                 'active': True
             },
             {
-                'desc': descsum_create('wpkh(tprv8ZgxMBicQKsPcwuZGKp8TeWppSuLMiLe2d9PupB14QpPeQsqoj3LneJLhGHH13xESfvASyd4EFLJvLrG8b7DrLxEuV7hpF9uUc6XruKA1Wq/1h/*)'),
+                'desc': descsum_create('wpkh(tpruZLtDPZhDAKMtw26G7qHnJZfJkUBZLEURCJSfyHeFcfkjofBMUK1zFs6oPpckvXgYkoue142cjGML134o4163YpDSmeyhjZRAoAiabZjg8DU/1h/*)'),
                 'timestamp': 'now',
                 'active': True,
                 'internal': True

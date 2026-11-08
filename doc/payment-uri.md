@@ -63,7 +63,7 @@ The network is part of the address:
 | Testnet3 | `tnorth` | 125 / 16 |
 | Testnet4 | `tnorth4` | 126 / 17 |
 | Signet | `snorth` | 127 / 18 |
-| Regtest | `bcrt` | 111 / 196 |
+| Regtest | `rnorth` | 122 / 123 |
 
 Find the network by **decoding the address with the network's parameters**, as
 `validateaddress` does, **not by matching a string prefix**. `tnorth` is a
@@ -141,7 +141,7 @@ their bech32 HRP (`bc=` for Bitcoin mainnet, `tb=` for testnet). **This
 version does not adopt them.** The address in the path is the only payment
 address, and keys such as `north=`, `tnorth4=` or `bc=` are ordinary unknown
 parameters: ignored (and never paid to). The keys equal to TrueNorth's HRPs
-(`north`, `tnorth`, `tnorth4`, `snorth`, `bcrt`) are reserved, so a later
+(`north`, `tnorth`, `tnorth4`, `snorth`, `rnorth`) are reserved, so a later
 revision can give them BIP 321's meaning.
 
 ## QR codes

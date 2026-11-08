@@ -313,7 +313,7 @@ TrueNorth ships mainnet with **P2QRH (Pay-to-Quantum-Resistant-Hash) as the defa
 
 - **Coins-at-rest are quantum-safe.** A cryptographically-relevant quantum computer cannot recover the pubkey from an unspent P2QRH output — the hash commitment stands between the attacker and the pubkey.
 - **Signature scheme is not pre-committed.** Launch uses secp256k1 Schnorr under the commitment (same signature crypto as Taproot, hidden behind the hash). Post-quantum schemes — ML-DSA, Falcon, SLH-DSA — get reserved `scheme_id` bytes and can be added via soft fork **without disturbing existing UTXOs or changing the address format**.
-- **Address format is fixed forever.** `north1z…` on mainnet, `tnorth41z…` on testnet, `bcrt1z…` on regtest. Adding PQ signatures later does not require users to migrate addresses.
+- **Address format is fixed forever.** `north1z…` on mainnet, `tnorth41z…` on testnet, `rnorth1z…` on regtest. Adding PQ signatures later does not require users to migrate addresses.
 
 Bitcoin will eventually need a PQ transition and will spend years debating one because of its legacy pubkey-exposing outputs. TrueNorth launches with none of that debt: no historical P2QRH outputs to preserve, no legacy commitment format to grandfather. See [`doc/p2qrh.md`](doc/p2qrh.md) for the full protocol spec — output format, scheme registry, sighash, activation, and rationale for every design decision.
 

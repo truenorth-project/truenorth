@@ -26,7 +26,7 @@
 // Build: cmake --build build --target truenorth-miner
 // Usage:
 //   truenorth-miner -chain=regtest -datadir=/path/to/dd
-//                   -address=bcrt1q... [-threads=N] [-maxblocks=N]
+//                   -address=rnorth1q... [-threads=N] [-maxblocks=N]
 //                   [-budgetseconds=N]  (default 300 with long-poll on;
 //                                        30 with -longpoll=0 or -benchmark=1)
 //                   [-rpchost=127.0.0.1] [-rpcport=<port>]

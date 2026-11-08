@@ -56,7 +56,7 @@ class NotificationsTest(BitcoinTestFramework):
     def run_test(self):
         if self.is_wallet_compiled():
             # Setup the descriptors to be imported to the wallet
-            xpriv = "tprv8ZgxMBicQKsPfHCsTwkiM1KT56RXbGGTqvc2hgqzycpwbHqqpcajQeMRZoBD35kW4RtyCemu6j34Ku5DEspmgjKdt2qe4SvRch5Kk8B8A2v"
+            xpriv = "tpruZLtDPZhDAKMtyMPaKTENBvTw17hkZnQF1buJmAKFXsmHkY9MVCZNss9tGMWgxZUpNZtSkjBTbk45QbHkAHobPCaqkChdymBgwFhNUkhsiJy"
             desc_imports = [{
                 "desc": descsum_create(f"wpkh({xpriv}/0/*)"),
                 "timestamp": 0,

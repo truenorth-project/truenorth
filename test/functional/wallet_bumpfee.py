@@ -574,9 +574,9 @@ def test_maxtxfee_fails(self, rbf_node, dest_address):
 
 def test_watchonly_psbt(self, peer_node, rbf_node, dest_address):
     self.log.info('Test that PSBT is returned for bumpfee in watchonly wallets')
-    priv_rec_desc = "wpkh([00000001/84'/1'/0']tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK/0/*)#rweraev0"
+    priv_rec_desc = "wpkh([00000001/84'/1'/0']tpruZLtDPZhDAKMtwBfMwezyrT6Bhka2nzQRyoaBJBmU82Xm9M6anvmNG2ersDwoUytjv2RNDrkAo6NR6s6pXpH1ttjpDbnm8o1EZKzXFedzDsu/0/*)#8zdye8ny"
     pub_rec_desc = rbf_node.getdescriptorinfo(priv_rec_desc)["descriptor"]
-    priv_change_desc = "wpkh([00000001/84'/1'/0']tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK/1/*)#j6uzqvuh"
+    priv_change_desc = "wpkh([00000001/84'/1'/0']tpruZLtDPZhDAKMtwBfMwezyrT6Bhka2nzQRyoaBJBmU82Xm9M6anvmNG2ersDwoUytjv2RNDrkAo6NR6s6pXpH1ttjpDbnm8o1EZKzXFedzDsu/1/*)#kkg9yjru"
     pub_change_desc = rbf_node.getdescriptorinfo(priv_change_desc)["descriptor"]
     # Create a wallet with private keys that can sign PSBTs
     rbf_node.createwallet(wallet_name="signer", disable_private_keys=False, blank=True)

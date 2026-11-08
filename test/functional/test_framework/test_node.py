@@ -203,18 +203,18 @@ class TestNode():
     PRIV_KEYS_BY_CHAIN = {
         'regtest': [
             # address , privkey
-            AddressKeyPair('mjTkW3DjgyZck4KbiRusZsqTgaYTxdSz6z', 'cVpF924EspNh8KjYsfhgY96mmxvT6DgdWiTYMtMjuM74hJaU5psW'),
-            AddressKeyPair('msX6jQXvxiNhx3Q62PKeLPrhrqZQdSimTg', 'cUxsWyKyZ9MAQTaAhUQWJmBbSvHMwSmuv59KgxQV7oZQU3PXN3KE'),
-            AddressKeyPair('mnonCMyH9TmAsSj3M59DsbH8H63U3RKoFP', 'cTrh7dkEAeJd6b3MRX9bZK8eRmNqVCMH3LSUkE3dSFDyzjU38QxK'),
-            AddressKeyPair('mqJupas8Dt2uestQDvV2NH3RU8uZh2dqQR', 'cVuKKa7gbehEQvVq717hYcbE9Dqmq7KEBKqWgWrYBa2CKKrhtRim'),
-            AddressKeyPair('msYac7Rvd5ywm6pEmkjyxhbCDKqWsVeYws', 'cQDCBuKcjanpXDpCqacNSjYfxeQj8G6CAtH1Dsk3cXyqLNC4RPuh'),
-            AddressKeyPair('n2rnuUnwLgXqf9kk2kjvVm8R5BZK1yxQBi', 'cQakmfPSLSqKHyMFGwAqKHgWUiofJCagVGhiB4KCainaeCSxeyYq'),
-            AddressKeyPair('myzuPxRwsf3vvGzEuzPfK9Nf2RfwauwYe6', 'cQMpDLJwA8DBe9NcQbdoSb1BhmFxVjWD5gRyrLZCtpuF9Zi3a9RK'),
-            AddressKeyPair('mumwTaMtbxEPUswmLBBN3vM9oGRtGBrys8', 'cSXmRKXVcoouhNNVpcNKFfxsTsToY5pvB9DVsFksF1ENunTzRKsy'),
-            AddressKeyPair('mpV7aGShMkJCZgbW7F6iZgrvuPHjZjH9qg', 'cSoXt6tm3pqy43UMabY6eUTmR3eSUYFtB2iNQDGgb3VUnRsQys2k'),
-            AddressKeyPair('mq4fBNdckGtvY2mijd9am7DRsbRB4KjUkf', 'cN55daf1HotwBAgAKWVgDcoppmUNDtQSfb7XLutTLeAgVc3u8hik'),
-            AddressKeyPair('mpFAHDjX7KregM3rVotdXzQmkbwtbQEnZ6', 'cT7qK7g1wkYEMvKowd2ZrX1E5f6JQ7TM246UfqbCiyF7kZhorpX3'),
-            AddressKeyPair('mzRe8QZMfGi58KyWCse2exxEFry2sfF2Y7', 'cPiRWE8KMjTRxH1MWkPerhfoHFn5iHPWVK5aPqjW8NxmdwenFinJ'),
+            AddressKeyPair('rABPLEVuVxfFjprYz3aNuFq7c8NqnR2H3X', 'eRMSa7jw9pHUo3uY4eqHtQL71cXvwfD5dTZEdnryHZuKMcCJ3LCz'),
+            AddressKeyPair('rJEjZbp6mhULwow3Hzz9fmrMnPPnV2NoJ5', 'eQW4x51fq9Fx5Bk9tTY7f2QvgZtqntJN2pF1xruiW2Mf8LvrnrKH'),
+            AddressKeyPair('rDXR2ZFSxSrosDFzcgojCyGnCdsqv97qtd', 'ePPtYjRvSeDQmKDLcWHCuaMyfQzKLdsjA5YB28YrpU2Ef34mToC6'),
+            AddressKeyPair('rG2Yen9J2s8YeeRMVY9Xhf35PgjwVdo28n', 'eRSWkfoNsec25efpHzFJtspZNsTFgYqgJ4wCxRMmZnpSydWAXUUv'),
+            AddressKeyPair('rJGDSJi6S55aksMC3NQVJ5ar8sftkA3ZKM', 'eKkPd11K1ahcBwzC2Zjynzn1CJ2CyhceHdNhVnFGzkn5zfm8bfiS'),
+            AddressKeyPair('rTaRjg579fdUevHhJNQRq984zjPgpoYNvb', 'eL7xCm58cSk6xhXETvJSfYuqiNR99e78c1oQSxpRxwaqJW6h2mgk'),
+            AddressKeyPair('rQiYE9i7ge9Zv3XCBc4AeXNJwyWKRmMWvW', 'eKu1eRzdS87yJsYbbamQnrEWwQsSMB2fCRXg8F4SH3hVosNBGG21'),
+            AddressKeyPair('rLVaHme4QwL2UeUibnqsPJLoipGG3HaPrh', 'eN4xrRDBtoihN6YV1bVvbwCChX5HPXMNHtKC9AG6dE2da65XUWUP'),
+            AddressKeyPair('rFCkQTisAjPqZT8TNrmDu4rapw87TxSqjm', 'eNLjKCaTKpkkimeLmafhzjh6ehFvKynLHmp4g7muyGHjSjZXojeD'),
+            AddressKeyPair('rFnJ1ZunZFzZXoJg1Ep66VD5o9FYsdeb2P', 'eHcH4gLhZooiqtr9WVdHZt3A4R5r5KvtnLDDcpPgirxw9ugypfVx'),
+            AddressKeyPair('rExo7R1gvJxHg7aomRZ8sNQRg9nGP1Pc5m', 'eNf2kDMiDkT22eVo8cABCnEZKJhnFYyo8oCAwk6S7C3NQsN9iiPF'),
+            AddressKeyPair('rR9GxbqXUFoi86WTUVJXzLwtBQoQca3zK6', 'eKFcwKp1djNDd1BLhjXGCxu8WuPZZiuxc4BGfkEjWbm2JFHvyJFJ'),
         ],
         'signet': [
             # address , privkey

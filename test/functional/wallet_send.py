@@ -209,8 +209,8 @@ class WalletSendTest(BitcoinTestFramework):
         # w2 contains the private keys for w3
         self.nodes[1].createwallet(wallet_name="w2", blank=True)
         w2 = self.nodes[1].get_wallet_rpc("w2")
-        xpriv = "tprv8ZgxMBicQKsPfHCsTwkiM1KT56RXbGGTqvc2hgqzycpwbHqqpcajQeMRZoBD35kW4RtyCemu6j34Ku5DEspmgjKdt2qe4SvRch5Kk8B8A2v"
-        xpub = "tpubD6NzVbkrYhZ4YkEfMbRJkQyZe7wTkbTNRECozCtJPtdLRn6cT1QKb8yHjwAPcAr26eHBFYs5iLiFFnCbwPRsncCKUKCfubHDMGKzMVcN1Jg"
+        xpriv = "tpruZLtDPZhDAKMtyMPaKTENBvTw17hkZnQF1buJmAKFXsmHkY9MVCZNss9tGMWgxZUpNZtSkjBTbk45QbHkAHobPCaqkChdymBgwFhNUkhsiJy"
+        xpub = "tpuadsaFXyjTJh3ZrpRND6txbL83a9Dgj7b9auW63gMYx9Zgb2Q87bNy4MmkSVVsXeaLQnGeodGeDMjGLUR8roQhV5TXLV4fpuYUfpx36A97CMf"
         w2.importdescriptors([{
             "desc": descsum_create("wpkh(" + xpriv + "/0/0/*)"),
             "timestamp": "now",
@@ -397,7 +397,7 @@ class WalletSendTest(BitcoinTestFramework):
         res = self.test_send(from_wallet=w0, to_wallet=w1, amount=1, add_to_wallet=False, change_type="legacy", change_position=0)
         assert res["complete"]
         change_address = self.nodes[0].decodepsbt(res["psbt"])["tx"]["vout"][0]["scriptPubKey"]["address"]
-        assert change_address[0] == "m" or change_address[0] == "n"
+        assert change_address[0] == "r"
 
         self.log.info("Set lock time...")
         height = self.nodes[0].getblockchaininfo()["blocks"]

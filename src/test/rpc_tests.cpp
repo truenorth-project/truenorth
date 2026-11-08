@@ -405,22 +405,22 @@ BOOST_AUTO_TEST_CASE(rpc_convert_values_generatetoaddress)
 {
     UniValue result;
 
-    BOOST_CHECK_NO_THROW(result = RPCConvertValues("generatetoaddress", {"101", "mkESjLZW66TmHhiFX8MCaBjrhZ543PPh9a"}));
+    BOOST_CHECK_NO_THROW(result = RPCConvertValues("generatetoaddress", {"101", "rAx5ZXqfu5ZQHUFCnk1huZjWd6uRrv1MUn"}));
     BOOST_CHECK_EQUAL(result[0].getInt<int>(), 101);
-    BOOST_CHECK_EQUAL(result[1].get_str(), "mkESjLZW66TmHhiFX8MCaBjrhZ543PPh9a");
+    BOOST_CHECK_EQUAL(result[1].get_str(), "rAx5ZXqfu5ZQHUFCnk1huZjWd6uRrv1MUn");
 
-    BOOST_CHECK_NO_THROW(result = RPCConvertValues("generatetoaddress", {"101", "mhMbmE2tE9xzJYCV9aNC8jKWN31vtGrguU"}));
+    BOOST_CHECK_NO_THROW(result = RPCConvertValues("generatetoaddress", {"101", "r85EbRK4394dJJjSRC2hU7KAHarJkQJ1kG"}));
     BOOST_CHECK_EQUAL(result[0].getInt<int>(), 101);
-    BOOST_CHECK_EQUAL(result[1].get_str(), "mhMbmE2tE9xzJYCV9aNC8jKWN31vtGrguU");
+    BOOST_CHECK_EQUAL(result[1].get_str(), "r85EbRK4394dJJjSRC2hU7KAHarJkQJ1kG");
 
-    BOOST_CHECK_NO_THROW(result = RPCConvertValues("generatetoaddress", {"1", "mkESjLZW66TmHhiFX8MCaBjrhZ543PPh9a", "9"}));
+    BOOST_CHECK_NO_THROW(result = RPCConvertValues("generatetoaddress", {"1", "rAx5ZXqfu5ZQHUFCnk1huZjWd6uRrv1MUn", "9"}));
     BOOST_CHECK_EQUAL(result[0].getInt<int>(), 1);
-    BOOST_CHECK_EQUAL(result[1].get_str(), "mkESjLZW66TmHhiFX8MCaBjrhZ543PPh9a");
+    BOOST_CHECK_EQUAL(result[1].get_str(), "rAx5ZXqfu5ZQHUFCnk1huZjWd6uRrv1MUn");
     BOOST_CHECK_EQUAL(result[2].getInt<int>(), 9);
 
-    BOOST_CHECK_NO_THROW(result = RPCConvertValues("generatetoaddress", {"1", "mhMbmE2tE9xzJYCV9aNC8jKWN31vtGrguU", "9"}));
+    BOOST_CHECK_NO_THROW(result = RPCConvertValues("generatetoaddress", {"1", "r85EbRK4394dJJjSRC2hU7KAHarJkQJ1kG", "9"}));
     BOOST_CHECK_EQUAL(result[0].getInt<int>(), 1);
-    BOOST_CHECK_EQUAL(result[1].get_str(), "mhMbmE2tE9xzJYCV9aNC8jKWN31vtGrguU");
+    BOOST_CHECK_EQUAL(result[1].get_str(), "r85EbRK4394dJJjSRC2hU7KAHarJkQJ1kG");
     BOOST_CHECK_EQUAL(result[2].getInt<int>(), 9);
 }
 

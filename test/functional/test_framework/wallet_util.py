@@ -121,7 +121,7 @@ WIF_PREFIX_BY_CHAIN = {
     'test': 253,
     'testnet4': 254,
     'signet': 255,
-    'regtest': 239,
+    'regtest': 252,
 }
 
 def bytes_to_wif(b, compressed=True, chain='regtest'):

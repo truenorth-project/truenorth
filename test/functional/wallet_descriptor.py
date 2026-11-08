@@ -172,7 +172,7 @@ class WalletDescriptorTest(BitcoinTestFramework):
         self.log.info("Test that unlock is needed when deriving only hardened keys in an encrypted wallet")
         with WalletUnlock(send_wrpc, "pass"):
             send_wrpc.importdescriptors([{
-                "desc": "wpkh(tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK/0h/*h)#y4dfsj7n",
+                "desc": "wpkh(tpruZLtDPZhDAKMtwBfMwezyrT6Bhka2nzQRyoaBJBmU82Xm9M6anvmNG2ersDwoUytjv2RNDrkAo6NR6s6pXpH1ttjpDbnm8o1EZKzXFedzDsu/0h/*h)#afkr3gf6",
                 "timestamp": "now",
                 "range": [0,10],
                 "active": True

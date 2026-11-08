@@ -794,13 +794,18 @@ public:
             .dTxRate = 0.001, // Set a non-zero rate to make it testable
         };
 
-        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,111);
-        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,196);
-        base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,239);
-        base58Prefixes[EXT_PUBLIC_KEY] = {0x04, 0x35, 0x87, 0xCF};
-        base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x35, 0x83, 0x94};
+        // Distinct from Bitcoin's regtest and testnet and from every other
+        // TrueNorth chain, so an address or key from any of them fails to
+        // decode here instead of being accepted. P2PKH and P2SH addresses
+        // start with 'r'. The WIF and extended-key versions continue the
+        // testnets' sequence down from Bitcoin's testnet values.
+        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 122);
+        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 123);
+        base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1, 252);
+        base58Prefixes[EXT_PUBLIC_KEY] = {0x04, 0x35, 0x87, 0xCB};
+        base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x35, 0x83, 0x90};
 
-        bech32_hrp = "bcrt";
+        bech32_hrp = "rnorth";
     }
 };
 
