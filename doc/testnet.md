@@ -61,7 +61,8 @@ Either download the tarball from the releases page:
 
     https://github.com/truenorth-project/truenorth/releases
 
-(verify the included `.sha256` against the tarball before extracting)
+(before extracting, check the tarball against `SHA256SUMS` and that file's
+signature, `SHA256SUMS.asc`; each release's notes give the commands)
 
 Or build from source. The README at the repo root has dependencies and the
 cmake invocation. A from-scratch build takes 10-30 minutes depending on CPU.
