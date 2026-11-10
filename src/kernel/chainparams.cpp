@@ -258,12 +258,13 @@ public:
         vFixedSeeds = std::vector<uint8_t>(std::begin(chainparams_seed_main), std::end(chainparams_seed_main));
 
         vSeeds.clear();
-        // No DNS seeds yet: no operator has published a crawler hostname for
-        // mainnet. Bootstrap therefore rests on the fixed seeds above plus
-        // -addnode. Adding one later is a one-line emplace_back here, and is
-        // preferable to a new fixed seed for any endpoint whose address may
-        // change -- DNS resolves at runtime and degrades gracefully when the
-        // host is down, whereas a stale fixed seed ships until the next tag.
+        // DNS seeds resolve at runtime and degrade gracefully when a host is
+        // down, whereas a stale fixed seed ships until the next tag. The
+        // client queries x9.<name> (SeedsServiceFlags), so an operator's
+        // record must cover that label as well as the bare name.
+        // seed.tor.tncoin.xyz is a wildcard record for its operator's
+        // mainnet node, not a crawler, so it returns that one address.
+        vSeeds.emplace_back("seed.tor.tncoin.xyz.");
 
         fDefaultConsistencyChecks = false;
         m_is_mockable_chain = false;

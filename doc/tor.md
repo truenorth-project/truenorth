@@ -27,9 +27,12 @@ Verify it worked:
 
     truenorth-cli getpeerinfo | grep '"addr"'
 
-There are **no DNS seeds** on either chain. `vSeeds` is empty in
-`src/kernel/chainparams.cpp`, so peer discovery is entirely fixed seeds plus
-`addr` gossip from the peers those give you. Two consequences worth knowing:
+Mainnet has one DNS seed, `seed.tor.tncoin.xyz`; testnet4 has none. With
+`proxy=` set, the node looks the seed up through Tor rather than with a local
+DNS query. With `onlynet=onion` the node skips DNS seeds entirely, since they
+return clearnet addresses, so for an onion-only node peer discovery is fixed
+seeds plus `addr` gossip from the peers those give you. Two consequences
+worth knowing:
 
 - A fresh node with no reachable fixed seed has nothing to bootstrap from. If
   all of them are down, pass `-addnode=<host>.onion:9555` with any endpoint you
