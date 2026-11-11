@@ -1,7 +1,7 @@
 # TrueNorth (NORTH) v1 Coin Specification
 
 > **Status:** v1, shipped. Mainnet live since **2026-10-12 00:00:00 UTC**.
-> Public testnet4 live since 2026-08. Describes TrueNorth Core v30.5.2.
+> Public testnet4 live since 2026-08. Describes TrueNorth Core v30.5.3.
 > **Name / Ticker:** TrueNorth / NORTH. Canadian-themed.
 > **Base codebase:** fork of Bitcoin Core.
 >
@@ -134,8 +134,9 @@ common algorithms can be rented cheaply.
   enforced on testnet, signet or regtest (`nLaunchTime = 0`).
 - **Checkpoints.** Inherited mechanism: a node rejects any chain whose block at a
   checkpointed height has a different hash, whatever its work. Mainnet carries
-  checkpoints at heights 5,000, 10,000 and 15,000 as of v30.5.2, and each release
-  adds a recent one per [`doc/checkpoint-process.md`](doc/checkpoint-process.md).
+  checkpoints at heights 5,000, 10,000, 15,000 and 20,000 as of v30.5.3, and
+  each release adds a recent one per
+  [`doc/checkpoint-process.md`](doc/checkpoint-process.md).
   A checkpoint protects only nodes running a release that contains it, including
   a node syncing from scratch.
 - **Exchange guidance.** A fixed deposit depth of 100 confirmations, above the
