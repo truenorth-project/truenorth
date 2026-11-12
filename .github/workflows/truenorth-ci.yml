@@ -25,7 +25,10 @@ jobs:
     name: Lint -- clang-format + codespell on TrueNorth additions
     # Ubuntu runners are the 1x billing tier; macos-latest is 10x. Lint has
     # no platform-specific reason to live on macOS.
-    runs-on: ubuntu-latest
+    # All jobs are pinned to ubuntu-24.04, the image release.yml builds on,
+    # so CI tests the compiler and CPU baseline that ship. ubuntu-latest's
+    # 26.04 image builds for x86-64-v3; see release.yml.
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
 
     steps:
@@ -86,7 +89,7 @@ jobs:
     # we ever want belt-and-suspenders cross-platform coverage, add a
     # separate scheduled macOS build (weekly, on a cron) rather than burning
     # 10x minutes on every push.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     steps:
@@ -132,7 +135,7 @@ jobs:
         # proof-of-work on a hosted runner. The scripts that run it are local
         # only -- see the note further down.
         # test_bitcoin is the Boost.Test runner for the unit suite.
-        # Bounded -j: GitHub Actions runners (7 GiB RAM on ubuntu-latest)
+        # Bounded -j: GitHub Actions runners (7 GiB RAM on Linux runners)
         # OOM-kill cc1plus when -j is unbounded on a from-scratch build.
         run: cmake --build build --parallel 4 --target truenorthd truenorth-cli truenorth-miner test_bitcoin
 
@@ -194,7 +197,7 @@ jobs:
     # too slow to gate every push; the unit suite and the four regression
     # scripts above carry the per-push signal.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 300
 
     steps:
