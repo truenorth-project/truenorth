@@ -127,6 +127,11 @@ No other changes in the same commit.
 - `test_bitcoin --run_test="checkpoints_tests"` still passes
 - `test_bitcoin --run_test="truenorth_tests"` still passes
 - Any relevant regression scripts under `test/truenorth/` still pass
+- A fresh node built from the release candidate syncs mainnet headers to
+  the tip on one slow core, connected to several peers, not one. Raising
+  `nMinimumChainWork` lengthens the header presync, which hashes every
+  header with RandomX; a sync from a single local peer on a fast core
+  does not show a stall there (#36)
 - Cut the tag, push to origin, let CI produce signed release binaries
 
 ### 6. Coordinate with seed nodes

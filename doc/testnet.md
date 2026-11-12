@@ -18,7 +18,7 @@ will look like at launch.
 | Seed (Tor onion) | `3guf2wvltezb6w3tjjveumtt6lsnb7bjpts6ornk4hj4wlod4s7n53id.onion:49555` |
 
 The clearnet and onion seeds serve the same chain — pick whichever suits
-your operator setup, or use both. There's no DNS seeder yet. From v30.5.3
+your operator setup, or use both. There's no DNS seeder yet. From v30.5.4
 the compiled-in seeds include both endpoints, so a fresh node finds peers
 automatically; on v30.5.2 and earlier the compiled-in list isn't used, so add
 the seeds with `addnode=` (see [Configuration](#configuration)). See
@@ -93,7 +93,7 @@ rpcpassword=GENERATE_YOUR_OWN
 fallbackfee=0.00002
 ```
 
-From v30.5.3 the compiled-in seed list includes both clearnet and onion
+From v30.5.4 the compiled-in seed list includes both clearnet and onion
 endpoints, so `addnode=` lines are not required: the daemon finds peers
 automatically. **On v30.5.2 and earlier** the compiled-in list isn't used and a
 fresh node stays at 0 connections, so add the seeds to the `[testnet4]` block:
@@ -106,7 +106,7 @@ addnode=3guf2wvltezb6w3tjjveumtt6lsnb7bjpts6ornk4hj4wlod4s7n53id.onion:49555   #
 **Tor-only variant.** If you want to refuse clearnet peer connections
 entirely (privacy-motivated operators, hidden-service seed operators):
 add `onlynet=onion` in the `[testnet4]` block. This works because the
-compiled-in seeds include onion endpoints too (from v30.5.3; on earlier
+compiled-in seeds include onion endpoints too (from v30.5.4; on earlier
 versions keep the onion `addnode=` line above). If Tor is disrupted or your
 SOCKS daemon isn't reachable, the node will have no peers — that's the
 tradeoff you're opting into.
