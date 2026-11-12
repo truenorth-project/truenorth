@@ -101,8 +101,9 @@ static constexpr auto HEADERS_DOWNLOAD_TIMEOUT_BASE = 15min;
 static constexpr auto HEADERS_DOWNLOAD_TIMEOUT_PER_HEADER = 150ms;
 /** A low-work headers sync that has accepted a batch more recently than this
  *  counts as in progress, and no other peer's low-work sync is started while
- *  one is. Long enough for a slow core to hash a full batch; short enough that
- *  a peer that stops serving headers doesn't hold up the sync for long. */
+ *  one is, except our initial headers sync peer's. Long enough for a slow core
+ *  to hash a full batch; short enough that a peer that stops serving headers
+ *  doesn't hold up the sync for long. */
 static constexpr auto LOW_WORK_HEADERS_SYNC_STALL_TIME{10min};
 /** How long to wait for a peer to respond to a getheaders request */
 static constexpr auto HEADERS_RESPONSE_TIME{2min};
@@ -2709,7 +2710,15 @@ bool PeerManagerImpl::TryLowWorkHeadersSync(Peer& peer, CNode& pfrom, const CBlo
             // syncs split the CPU and on a slow machine none of them finishes.
             // Deferred peers are not penalized; once the active sync completes,
             // their next announcement connects or starts a sync of its own.
-            {
+            //
+            // Our initial headers sync peer is never deferred. Otherwise a peer
+            // that serves a low-work chain one batch at a time, each inside
+            // the stall window, would defer every honest peer while the sync
+            // peer timeout dropped them one after another. The sync peer is
+            // bounded by that timeout instead.
+            const bool is_initial_sync_peer{peer.m_headers_sync_timeout > 0us &&
+                                            peer.m_headers_sync_timeout < std::chrono::microseconds::max()};
+            if (!is_initial_sync_peer) {
                 LOCK(m_headers_presync_mutex);
                 const auto now{GetTime<std::chrono::seconds>()};
                 for (const auto& [other_id, last_progress] : m_headers_sync_last_progress) {

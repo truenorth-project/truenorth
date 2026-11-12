@@ -35,14 +35,15 @@ class RejectLowDifficultyHeadersTest(BitcoinTestFramework):
         # machine one batch has held it past the 4x timeout this test used.
         self.rpc_timeout *= 10
         self.setup_clean_chain = True
-        self.num_nodes = 4
+        self.num_nodes = 5
         # Node0 has no required chainwork; node1 requires 15 blocks on top of the genesis block; node2 requires 2047
-        self.extra_args = [["-minimumchainwork=0x0", "-checkblockindex=0"], ["-minimumchainwork=0x1f", "-checkblockindex=0"], ["-minimumchainwork=0x1000", "-checkblockindex=0"], ["-minimumchainwork=0x1000", "-checkblockindex=0", "-whitelist=noban@127.0.0.1"]]
+        # Node4 stays unconnected at genesis for the initial-sync-peer case.
+        self.extra_args = [["-minimumchainwork=0x0", "-checkblockindex=0"], ["-minimumchainwork=0x1f", "-checkblockindex=0"], ["-minimumchainwork=0x1000", "-checkblockindex=0"], ["-minimumchainwork=0x1000", "-checkblockindex=0", "-whitelist=noban@127.0.0.1"], ["-minimumchainwork=0x1000", "-checkblockindex=0"]]
 
     def setup_network(self):
         self.setup_nodes()
         self.reconnect_all()
-        self.sync_all()
+        self.sync_all(self.nodes[0:4])
 
     def disconnect_all(self):
         self.disconnect_nodes(0, 1)
@@ -114,7 +115,7 @@ class RejectLowDifficultyHeadersTest(BitcoinTestFramework):
         self.log.info("Verify that node2 and node3 will sync the chain when it gets long enough")
         sync_start = time.time()
         # Each header is RandomX-checked during presync and again on acceptance.
-        self.sync_blocks(timeout=600)
+        self.sync_blocks(self.nodes[0:4], timeout=600)
         self.log.info(f"Synced {NODE2_BLOCKS_REQUIRED} blocks in {time.time() - sync_start:.1f}s")
 
     def test_peerinfo_includes_headers_presync_height(self):
@@ -165,10 +166,23 @@ class RejectLowDifficultyHeadersTest(BitcoinTestFramework):
         assert_equal(sorted(p['presynced_headers'] for p in node.getpeerinfo()), [2000, 2000])
         node.setmocktime(0)
 
+        self.log.info("Test that our initial headers sync peer's low-work sync is never deferred")
+        # A fresh node whose best header is more than a day old picks one
+        # initial headers sync peer and times it out if it stalls. A peer
+        # holding the low-work sync must not be able to defer it.
+        fresh = self.nodes[4]
+        sync_peer = fresh.add_p2p_connection(P2PInterface())
+        sync_peer.wait_for_getheaders()
+        other = fresh.add_p2p_connection(P2PInterface())
+        other.send_and_ping(headers_message, timeout=300)
+        with fresh.assert_debug_log(expected_msgs=[], unexpected_msgs=["Deferring low-work headers sync with peer="]):
+            sync_peer.send_and_ping(headers_message, timeout=300)
+        assert_equal(sorted(p['presynced_headers'] for p in fresh.getpeerinfo()), [2000, 2000])
+
     def test_large_reorgs_can_succeed(self):
         self.log.info("Test that a 2000+ block reorg, starting from a point that is more than 2000 blocks before a locator entry, can succeed")
 
-        self.sync_all() # Ensure all nodes are synced.
+        self.sync_all(self.nodes[0:4]) # Ensure all connected nodes are synced.
         self.disconnect_all()
 
         # locator(block at height T) will have heights:
