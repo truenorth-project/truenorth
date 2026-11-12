@@ -91,9 +91,19 @@ TRACEPOINT_SEMAPHORE(net, inbound_message);
 TRACEPOINT_SEMAPHORE(net, misbehaving_connection);
 
 /** Headers download timeout.
- *  Timeout = base + per_header * (expected number of headers) */
+ *  Timeout = base + per_header * (expected number of headers)
+ *  Bitcoin allows 1 ms per header, sized for SHA256. Every TrueNorth header
+ *  costs a RandomX light-mode hash, 20-30 ms on a slow core, and a low-work
+ *  sync hashes each one up to three times (presync, redownload, acceptance).
+ *  At 1 ms per header a fresh node on modest hardware was disconnected from its
+ *  sync peer before it could finish, and restarted from height 0 every time. */
 static constexpr auto HEADERS_DOWNLOAD_TIMEOUT_BASE = 15min;
-static constexpr auto HEADERS_DOWNLOAD_TIMEOUT_PER_HEADER = 1ms;
+static constexpr auto HEADERS_DOWNLOAD_TIMEOUT_PER_HEADER = 150ms;
+/** A low-work headers sync that has accepted a batch more recently than this
+ *  counts as in progress, and no other peer's low-work sync is started while
+ *  one is. Long enough for a slow core to hash a full batch; short enough that
+ *  a peer that stops serving headers doesn't hold up the sync for long. */
+static constexpr auto LOW_WORK_HEADERS_SYNC_STALL_TIME{10min};
 /** How long to wait for a peer to respond to a getheaders request */
 static constexpr auto HEADERS_RESPONSE_TIME{2min};
 /** Protect at least this many outbound peers from disconnection due to slow/
@@ -880,6 +890,9 @@ private:
     using HeadersPresyncStats = std::pair<arith_uint256, std::optional<std::pair<int64_t, uint32_t>>>;
     /** Statistics for all peers in low-work headers sync. */
     std::map<NodeId, HeadersPresyncStats> m_headers_presync_stats GUARDED_BY(m_headers_presync_mutex) {};
+    /** When each peer's low-work headers sync last accepted a batch. Same
+     *  lifetime as m_headers_presync_stats. */
+    std::map<NodeId, std::chrono::seconds> m_headers_sync_last_progress GUARDED_BY(m_headers_presync_mutex) {};
     /** The peer with the most-work entry in m_headers_presync_stats. */
     NodeId m_headers_presync_bestpeer GUARDED_BY(m_headers_presync_mutex) {-1};
     /** The m_headers_presync_stats improved, and needs signalling. */
@@ -1670,6 +1683,7 @@ void PeerManagerImpl::FinalizeNode(const CNode& node)
     {
         LOCK(m_headers_presync_mutex);
         m_headers_presync_stats.erase(nodeid);
+        m_headers_sync_last_progress.erase(nodeid);
     }
     LogDebug(BCLog::NET, "Cleared nodestate for peer=%d\n", nodeid);
 }
@@ -2607,6 +2621,7 @@ bool PeerManagerImpl::IsContinuationOfLowWorkHeadersSync(Peer& peer, CNode& pfro
             // by the next peer that triggers the else{} branch below.
             LOCK(m_headers_presync_mutex);
             m_headers_presync_stats.erase(pfrom.GetId());
+            m_headers_sync_last_progress.erase(pfrom.GetId());
         } else {
             // Build statistics for this peer's sync.
             HeadersPresyncStats stats;
@@ -2619,6 +2634,9 @@ bool PeerManagerImpl::IsContinuationOfLowWorkHeadersSync(Peer& peer, CNode& pfro
             // Update statistics in stats.
             LOCK(m_headers_presync_mutex);
             m_headers_presync_stats[pfrom.GetId()] = stats;
+            if (result.success) {
+                m_headers_sync_last_progress[pfrom.GetId()] = GetTime<std::chrono::seconds>();
+            }
             auto best_it = m_headers_presync_stats.find(m_headers_presync_bestpeer);
             bool best_updated = false;
             if (best_it == m_headers_presync_stats.end()) {
@@ -2684,6 +2702,24 @@ bool PeerManagerImpl::TryLowWorkHeadersSync(Peer& peer, CNode& pfrom, const CBlo
             // this logic in that case. So even if the first header in this set
             // of headers is known, some header in this set must be new, so
             // advancing to the first unknown header would be a small effect.
+            //
+            // Run one low-work sync at a time. Upstream starts one for every
+            // peer whose announcement doesn't connect, which costs little with
+            // SHA256; with RandomX each sync hashes every header, so parallel
+            // syncs split the CPU and on a slow machine none of them finishes.
+            // Deferred peers are not penalized; once the active sync completes,
+            // their next announcement connects or starts a sync of its own.
+            {
+                LOCK(m_headers_presync_mutex);
+                const auto now{GetTime<std::chrono::seconds>()};
+                for (const auto& [other_id, last_progress] : m_headers_sync_last_progress) {
+                    if (other_id != pfrom.GetId() && now - last_progress < LOW_WORK_HEADERS_SYNC_STALL_TIME) {
+                        LogDebug(BCLog::NET, "Deferring low-work headers sync with peer=%d: one is in progress with peer=%d\n", pfrom.GetId(), other_id);
+                        headers = {};
+                        return true;
+                    }
+                }
+            }
             LOCK(peer.m_headers_sync_mutex);
             peer.m_headers_sync.reset(new HeadersSyncState(peer.m_id, m_chainparams.GetConsensus(),
                 chain_start_header, minimum_chain_work));
@@ -2868,6 +2904,7 @@ void PeerManagerImpl::ProcessHeadersMessage(CNode& pfrom, Peer& peer,
             peer.m_headers_sync.reset(nullptr);
             LOCK(m_headers_presync_mutex);
             m_headers_presync_stats.erase(pfrom.GetId());
+            m_headers_sync_last_progress.erase(pfrom.GetId());
         }
         // A headers message with no headers cannot be an announcement, so assume
         // it is a response to our last getheaders request, if there is one.

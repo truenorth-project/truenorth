@@ -57,7 +57,7 @@ class RejectLowDifficultyHeadersTest(BitcoinTestFramework):
 
     def test_chains_sync_when_long_enough(self):
         self.log.info("Generate blocks on the node with no required chainwork, and verify nodes 1 and 2 have no new headers in their headers tree")
-        with self.nodes[1].assert_debug_log(expected_msgs=["[net] Ignoring low-work chain (height=14)"]), self.nodes[2].assert_debug_log(expected_msgs=["[net] Ignoring low-work chain (height=14)"]), self.nodes[3].assert_debug_log(expected_msgs=["Synchronizing blockheaders, height: 14"]):
+        with self.nodes[1].assert_debug_log(expected_msgs=["[net] Ignoring low-work chain (height=14)"], timeout=60), self.nodes[2].assert_debug_log(expected_msgs=["[net] Ignoring low-work chain (height=14)"], timeout=60), self.nodes[3].assert_debug_log(expected_msgs=["Synchronizing blockheaders, height: 14"], timeout=60):
             self.generate(self.nodes[0], NODE1_BLOCKS_REQUIRED-1, sync_fun=self.no_op)
 
         # Node3 should always allow headers due to noban permissions
@@ -86,7 +86,7 @@ class RejectLowDifficultyHeadersTest(BitcoinTestFramework):
             } in chaintips
 
         self.log.info("Generate more blocks to satisfy node1's minchainwork requirement, and verify node2 still has no new headers in headers tree")
-        with self.nodes[2].assert_debug_log(expected_msgs=["[net] Ignoring low-work chain (height=15)"]), self.nodes[3].assert_debug_log(expected_msgs=["Synchronizing blockheaders, height: 15"]):
+        with self.nodes[2].assert_debug_log(expected_msgs=["[net] Ignoring low-work chain (height=15)"], timeout=60), self.nodes[3].assert_debug_log(expected_msgs=["Synchronizing blockheaders, height: 15"], timeout=60):
             self.generate(self.nodes[0], NODE1_BLOCKS_REQUIRED - self.nodes[0].getblockcount(), sync_fun=self.no_op)
         self.sync_blocks(self.nodes[0:2]) # node3 will sync headers (noban permissions) but not blocks (due to minchainwork)
 
@@ -143,10 +143,24 @@ class RejectLowDifficultyHeadersTest(BitcoinTestFramework):
             hashPrevBlock = block.hash_int
 
         headers_message = msg_headers(headers=new_blocks)
-        p2p.send_and_ping(headers_message)
+        # The node RandomX-checks all 2000 headers before it answers the ping.
+        p2p.send_and_ping(headers_message, timeout=300)
 
         # getpeerinfo should show a sync in progress
         assert_equal(node.getpeerinfo()[0]['presynced_headers'], 2000)
+
+        self.log.info("Test that a second peer's low-work sync is deferred while one is in progress")
+        p2p2 = node.add_p2p_connection(P2PInterface())
+        with node.assert_debug_log(expected_msgs=["Deferring low-work headers sync with peer="]):
+            p2p2.send_and_ping(headers_message, timeout=300)
+        assert_equal(sorted(p['presynced_headers'] for p in node.getpeerinfo()), [-1, 2000])
+
+        self.log.info("Test that a stalled low-work sync no longer blocks another peer's")
+        node.setmocktime(int(time.time()) + 10 * 60 + 1)
+        with node.assert_debug_log(expected_msgs=[], unexpected_msgs=["Deferring low-work headers sync with peer="]):
+            p2p2.send_and_ping(headers_message, timeout=300)
+        assert_equal(sorted(p['presynced_headers'] for p in node.getpeerinfo()), [2000, 2000])
+        node.setmocktime(0)
 
     def test_large_reorgs_can_succeed(self):
         self.log.info("Test that a 2000+ block reorg, starting from a point that is more than 2000 blocks before a locator entry, can succeed")

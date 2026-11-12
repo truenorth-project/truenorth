@@ -115,6 +115,8 @@ HeadersSyncState::ProcessingResult HeadersSyncState::ProcessNextHeaders(const
         }
 
         if (ret.success) {
+            LogInfo("Re-downloading blockheaders, height: %i of %i\n", m_redownload_buffer_last_height, m_current_height);
+
             // Return any headers that are ready for acceptance.
             ret.pow_validated_headers = PopHeadersReadyForAcceptance();
 
@@ -173,6 +175,9 @@ bool HeadersSyncState::ValidateAndStoreHeadersCommitments(const std::vector<CBlo
         m_redownload_chain_work = m_chain_start->nChainWork;
         m_download_state = State::REDOWNLOAD;
         LogDebug(BCLog::NET, "Initial headers sync transition with peer=%d: reached sufficient work at height=%i, redownloading from height=%i\n", m_id, m_current_height, m_redownload_buffer_last_height);
+        // Nothing reaches the block index until the redownload buffer fills,
+        // so without this the node looks stalled for the whole second pass.
+        LogInfo("Pre-synchronization reached the minimum chain work at height %i; downloading the headers again to store them\n", m_current_height);
     }
     return true;
 }
