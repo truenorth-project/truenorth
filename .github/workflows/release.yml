@@ -30,7 +30,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          # Pinned, not ubuntu-latest: the 26.04 image's GCC builds for
+          # x86-64-v3 (AVX2, BMI2), and v30.5.4's first Linux build would
+          # not start on older CPUs or VMs that hide AVX2. The smoke test
+          # below fails the job if that happens again.
+          - os: ubuntu-24.04
             platform: linux-x86_64
             jobs: 4
           # macOS arm64 (Apple Silicon). GitHub Actions is free for public
@@ -42,11 +46,11 @@ jobs:
             jobs: 3
           # Windows binaries are cross-compiled from Linux using mingw-w64
           # via the depends system. Same runner tier as native Linux
-          # (ubuntu-latest is 1x). The depends build (Boost + libevent +
+          # (Linux runners are 1x). The depends build (Boost + libevent +
           # sqlite3 as Windows static libs) takes 30-60 min from scratch;
           # the depends output is cached across runs so tag pushes stay
           # fast when the depends inputs haven't changed.
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             platform: windows-x86_64
             jobs: 4
             host: x86_64-w64-mingw32
@@ -69,7 +73,7 @@ jobs:
           echo "Building tag: $TAG"
 
       - name: Install apt deps (native Linux)
-        if: matrix.os == 'ubuntu-latest' && matrix.host == ''
+        if: matrix.os == 'ubuntu-24.04' && matrix.host == ''
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq \
@@ -258,6 +262,16 @@ jobs:
           # single-socket, so nodes=1 is correct there and indistinguishable
           # from the stub. Check the dynamic link instead.
           if [ "$RUNNER_OS" = "Linux" ]; then
+              echo "--- binaries must run on any x86-64 CPU ---"
+              for b in truenorthd truenorth-cli truenorth-miner; do
+                  if readelf -n "./build/bin/$b" | grep -q 'x86-64-v[234]'; then
+                      echo "FAIL: $b needs a newer CPU than baseline x86-64:"
+                      readelf -n "./build/bin/$b" | grep 'ISA needed'
+                      exit 1
+                  fi
+              done
+              echo "OK: baseline x86-64"
+
               echo "--- miner must be linked against libnuma ---"
               if ldd ./build/bin/truenorth-miner | grep -q 'libnuma\.so'; then
                   echo "OK: libnuma linked"
@@ -330,6 +344,8 @@ jobs:
           name: ${{ steps.tag.outputs.tag }}
           generateReleaseNotes: true
           allowUpdates: true
+          # A re-run against a published release keeps its edited body.
+          omitBodyDuringUpdate: true
           artifactErrorsFailBuild: true
           replacesArtifacts: true
           # Don't mark soft-launch tags as prerelease -- they're the canonical
