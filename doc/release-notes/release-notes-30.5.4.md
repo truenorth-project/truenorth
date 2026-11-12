@@ -1,13 +1,41 @@
-# TrueNorth Core v30.5.3
+# TrueNorth Core v30.5.4
 
-Fixes a miner defect that cost hashrate after every RandomX seed rotation,
-stops the node taking huge pages the miner needs, and lets a fresh testnet4
-node find peers on its own. Upgrading is recommended for every miner, and
-especially for anyone running a node and a miner on the same machine. It also
-adds a mainnet checkpoint at height 20,000 and the first mainnet DNS seed.
+Fixes the initial headers sync, which on a slow machine never finished on a
+fresh mainnet node, and a miner defect that cost hashrate after every RandomX
+seed rotation. It also stops the node taking huge pages the miner needs and
+lets a fresh testnet4 node find peers on its own. Upgrading is recommended for
+everyone, and especially for anyone syncing a new node or running a node and a
+miner on the same machine. It adds a mainnet checkpoint at height 20,000 and
+the first mainnet DNS seed.
+
+v30.5.3 was tagged but not released, because its higher minimum chain work
+would have made the sync problem worse. Everything it contained is in this
+release.
 
 Binaries for linux-x86_64, macos-arm64 and windows-x86_64 are attached, with
 `SHA256SUMS` and `SHA256SUMS.asc`.
+
+## Headers sync
+
+A fresh mainnet node now finishes its headers sync on slow hardware (`adac644`,
+#36). Since the first checkpoints, a new node checks the work of the whole
+header chain before storing any of it, and each header costs a RandomX hash
+where Bitcoin's costs a SHA256 one. Three things inherited from Bitcoin then
+combined: the node ran a separate check for every peer, all on the same CPU;
+the sync peer was dropped after 15 minutes plus 1 ms per header, and its
+replacement started again from height 0; and the second pass over the headers
+logged nothing, so the node looked stalled. On a 2 vCPU shared VM the sync
+never finished.
+
+The timeout now allows 150 ms per header, only one of these checks runs at a
+time, and the second pass logs its progress. On one slow core, headers reach
+the tip in about 30 minutes.
+
+On v30.5.2, starting the first sync with `-minimumchainwork=0` works around
+the problem. Remove it once the node has synced.
+
+Reported in #36 by RuojiRuoli, with logs and an analysis that pointed at the
+cause.
 
 ## Mining
 
