@@ -30,7 +30,10 @@ NODE2_BLOCKS_REQUIRED = 2047
 
 class RejectLowDifficultyHeadersTest(BitcoinTestFramework):
     def set_test_params(self):
-        self.rpc_timeout *= 4  # To avoid timeout when generating BLOCKS_TO_MINE
+        # Accepting each 2000-header batch RandomX-checks every header under
+        # cs_main, which blocks the RPC calls sync_blocks makes. On a loaded
+        # machine one batch has held it past the 4x timeout this test used.
+        self.rpc_timeout *= 10
         self.setup_clean_chain = True
         self.num_nodes = 4
         # Node0 has no required chainwork; node1 requires 15 blocks on top of the genesis block; node2 requires 2047
