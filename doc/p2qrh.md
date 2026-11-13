@@ -74,7 +74,8 @@ witness stack (bottom to top):
   [scheme_id]  (1 byte)
 ```
 
-**Script-path spend** (Taproot-analogous):
+**Script-path spend** (Taproot-analogous; not yet active, so consensus
+rejects any P2QRH witness that isn't a key-path spend):
 
 ```
 witness stack (bottom to top):
@@ -200,6 +201,32 @@ enables P2SH, WITNESS, and TAPROOT unconditionally.
    cannot sign its own P2QRH input in a PSBT that also spends inputs it
    doesn't know until the PSBT carries UTXO data (`witness_utxo`) for all
    inputs. This matches Taproot's behavior in Bitcoin Core.
+
+## Test vectors
+
+`src/test/data/p2qrh_wallet_vectors.json` covers what a wallet implementing
+P2QRH needs to match, for `scheme_id=0x01` key-path spends:
+
+- commitment preimage, commitment, scriptPubKey and address on every chain,
+  for raw x-only keys;
+- addresses a wallet must reject, and a witness v2 address with a 20-byte
+  program that is valid but is not P2QRH;
+- BIP32 derivation from the standard BIP39 test mnemonic on the `88h` path,
+  for mainnet and testnet4: extended keys with TrueNorth's version bytes,
+  `qrh()` descriptors, and the first receive and change keys and addresses;
+- signed spends, one with `SIGHASH_DEFAULT` and one with every sighash type,
+  with the BIP-341 intermediate hashes, the signature message, the sighash,
+  the witness and the final transaction;
+- witnesses consensus must reject, with the script error for each.
+
+Signatures use 32 zero bytes as BIP-340 `aux_rand`, as TrueNorth Core does, so
+a wallet that does the same reproduces them byte for byte. Any `aux_rand`
+gives a valid signature.
+
+`contrib/testgen/gen_p2qrh_vectors.py` generates the file from the functional
+test framework's Python implementation; `src/test/p2qrh_vector_tests.cpp`
+checks every value against TrueNorth Core's descriptor, signing and script
+code.
 
 ## Rationale — key design decisions
 
