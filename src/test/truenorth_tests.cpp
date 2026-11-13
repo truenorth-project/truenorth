@@ -40,6 +40,7 @@
 #include <util/chaintype.h>
 #include <util/strencodings.h>
 #include <validation.h>
+#include <versionbits.h>
 
 #include <boost/test/unit_test.hpp>
 
@@ -978,6 +979,66 @@ BOOST_AUTO_TEST_CASE(qrh_sign_step_without_spend_data_fails)
     ProduceSignature(provider, creator, f->scriptPubKey, sigdata);
     BOOST_CHECK(!sigdata.complete);
     BOOST_CHECK(sigdata.scriptWitness.stack.empty());
+}
+
+// =========================================================================
+// I. Skipping the repeat RandomX check in AcceptBlockHeader
+// =========================================================================
+
+BOOST_AUTO_TEST_CASE(checked_pow_cache_keys_on_seed_and_evicts_oldest)
+{
+    CheckedPoWCache cache{2};
+    const uint256 a{1}, b{2}, c{3}, seed{9}, other_seed{10};
+    cache.Insert(a, seed);
+    BOOST_CHECK(cache.Contains(a, seed));
+    BOOST_CHECK(!cache.Contains(a, other_seed));
+    BOOST_CHECK(!cache.Contains(b, seed));
+
+    // A repeat insert doesn't take a second slot.
+    cache.Insert(a, seed);
+    cache.Insert(b, seed);
+    BOOST_CHECK(cache.Contains(a, seed));
+    BOOST_CHECK(cache.Contains(b, seed));
+
+    cache.Insert(c, seed);
+    BOOST_CHECK(!cache.Contains(a, seed));
+    BOOST_CHECK(cache.Contains(b, seed));
+    BOOST_CHECK(cache.Contains(c, seed));
+}
+
+// The header here FAILS proof of work, so being accepted shows the check was
+// skipped and being rejected shows it ran. It is only skipped when recorded
+// with the seed AcceptBlockHeader derives from the block index.
+BOOST_FIXTURE_TEST_CASE(accept_block_header_skips_pow_only_for_matching_seed, TestingSetup)
+{
+    ChainstateManager& chainman{*m_node.chainman};
+    const Consensus::Params& params{chainman.GetConsensus()};
+    const CBlockIndex* genesis{WITH_LOCK(::cs_main, return chainman.ActiveChain().Tip())};
+    const uint256 seed{truenorth::SeedKeyForChild(genesis)};
+    const uint256 wrong_seed{uint256::ONE};
+    BOOST_REQUIRE(seed != wrong_seed);
+
+    CBlockHeader header;
+    header.nVersion = VERSIONBITS_TOP_BITS;
+    header.hashPrevBlock = genesis->GetBlockHash();
+    header.nTime = genesis->GetBlockTime() + 1;
+    header.nBits = GetNextWorkRequired(genesis, &header, params);
+    while (CheckProofOfWork(header.GetPoWHash(seed), header.nBits, params)) {
+        ++header.nNonce;
+    }
+
+    BlockValidationState state;
+    BOOST_CHECK(!chainman.ProcessNewBlockHeaders({{header}}, /*min_pow_checked=*/true, state));
+    BOOST_CHECK_EQUAL(state.GetRejectReason(), "high-hash");
+
+    chainman.m_checked_pow.Insert(header.GetHash(), wrong_seed);
+    state = BlockValidationState{};
+    BOOST_CHECK(!chainman.ProcessNewBlockHeaders({{header}}, /*min_pow_checked=*/true, state));
+    BOOST_CHECK_EQUAL(state.GetRejectReason(), "high-hash");
+
+    chainman.m_checked_pow.Insert(header.GetHash(), seed);
+    state = BlockValidationState{};
+    BOOST_CHECK(chainman.ProcessNewBlockHeaders({{header}}, /*min_pow_checked=*/true, state));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

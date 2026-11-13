@@ -39,6 +39,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
+#include <deque>
 #include <map>
 #include <memory>
 #include <functional>
@@ -47,6 +48,7 @@
 #include <span>
 #include <string>
 #include <type_traits>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -442,12 +444,41 @@ struct UnanchoredHeadersPoWContext {
     std::function<std::optional<uint256>(int64_t)> hash_at_height;
 };
 
+/** Enough to cover a low-work sync's redownload buffer (15009 headers, see
+ *  headerssync.cpp) plus a full batch, with room for a second peer's sync. */
+static constexpr size_t CHECKED_POW_CACHE_SIZE{32768};
+
+/** Bounded record of headers that passed the RandomX proof-of-work check,
+ *  keyed by block hash and seed key. HasValidProofOfWork fills it outside
+ *  cs_main so AcceptBlockHeader needn't hash the same header again under
+ *  cs_main. AcceptBlockHeader skips the hash only if the seed it derives
+ *  from the block index matches the recorded one, so a header that was
+ *  never checked, or was checked against a different seed, is hashed as
+ *  before. Oldest entries are evicted first; a miss only costs the hash. */
+class CheckedPoWCache
+{
+public:
+    explicit CheckedPoWCache(size_t max_entries) : m_max_entries{max_entries} {}
+
+    void Insert(const uint256& block_hash, const uint256& seed_key) EXCLUSIVE_LOCKS_REQUIRED(!m_mutex);
+    bool Contains(const uint256& block_hash, const uint256& seed_key) const EXCLUSIVE_LOCKS_REQUIRED(!m_mutex);
+
+private:
+    static uint256 Key(const uint256& block_hash, const uint256& seed_key);
+
+    mutable Mutex m_mutex;
+    const size_t m_max_entries;
+    std::unordered_set<uint256, SaltedUint256Hasher> m_entries GUARDED_BY(m_mutex);
+    std::deque<uint256> m_insertion_order GUARDED_BY(m_mutex);
+};
+
 /** Check with the proof of work on each blockheader matches the value in
  *  nBits, using the per-epoch RandomX seed key for each header's height.
  *  Intended for anti-DoS pre-validation of an inbound peer header batch;
  *  deeper validation in AcceptBlockHeader runs the same check with the same
- *  seed. Headers already in `blockman`'s index are skipped: they passed this
- *  check when accepted.
+ *  seed, skipping headers recorded in `checked` with that seed. Headers
+ *  already in `blockman`'s index are skipped: they passed this check when
+ *  accepted.
  *  If the batch connects to `blockman`'s index, seeds come from the index.
  *  Otherwise they come from `unanchored` when given (e.g. an in-progress
  *  headers sync with this peer). With neither, the correct seed can't be
@@ -458,7 +489,8 @@ struct UnanchoredHeadersPoWContext {
 bool HasValidProofOfWork(const std::vector<CBlockHeader>& headers,
                          const node::BlockManager& blockman,
                          const Consensus::Params& consensusParams,
-                         const std::optional<UnanchoredHeadersPoWContext>& unanchored = std::nullopt);
+                         const std::optional<UnanchoredHeadersPoWContext>& unanchored = std::nullopt,
+                         CheckedPoWCache* checked = nullptr);
 
 /** Check if a block has been mutated (with respect to its merkle root and witness commitments). */
 bool IsBlockMutated(const CBlock& block, bool check_witness_root);
@@ -1121,6 +1153,10 @@ public:
         In case of multiple best headers with the same work, it could point to any
         because CBlockIndexWorkComparator tiebreaker rules are not applied. */
     CBlockIndex* m_best_header GUARDED_BY(::cs_main){nullptr};
+
+    //! Headers whose RandomX proof of work HasValidProofOfWork already
+    //! checked, so AcceptBlockHeader can skip it.
+    CheckedPoWCache m_checked_pow{CHECKED_POW_CACHE_SIZE};
 
     //! The total number of bytes available for us to use across all in-memory
     //! coins caches. This will be split somehow across chainstates.

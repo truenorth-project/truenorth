@@ -2527,7 +2527,7 @@ bool PeerManagerImpl::CheckHeadersPoW(const std::vector<CBlockHeader>& headers, 
                 };
             }
         }
-        pow_ok = HasValidProofOfWork(headers, m_chainman.m_blockman, consensusParams, unanchored);
+        pow_ok = HasValidProofOfWork(headers, m_chainman.m_blockman, consensusParams, unanchored, &m_chainman.m_checked_pow);
     }
     if (!pow_ok) {
         Misbehaving(peer, "header with invalid proof of work");

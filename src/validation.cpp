@@ -4168,10 +4168,35 @@ std::vector<unsigned char> ChainstateManager::GenerateCoinbaseCommitment(CBlock&
     return commitment;
 }
 
+uint256 CheckedPoWCache::Key(const uint256& block_hash, const uint256& seed_key)
+{
+    return (HashWriter{} << block_hash << seed_key).GetSHA256();
+}
+
+void CheckedPoWCache::Insert(const uint256& block_hash, const uint256& seed_key)
+{
+    const uint256 key{Key(block_hash, seed_key)};
+    LOCK(m_mutex);
+    if (!m_entries.insert(key).second) return;
+    m_insertion_order.push_back(key);
+    while (m_insertion_order.size() > m_max_entries) {
+        m_entries.erase(m_insertion_order.front());
+        m_insertion_order.pop_front();
+    }
+}
+
+bool CheckedPoWCache::Contains(const uint256& block_hash, const uint256& seed_key) const
+{
+    const uint256 key{Key(block_hash, seed_key)};
+    LOCK(m_mutex);
+    return m_entries.contains(key);
+}
+
 bool HasValidProofOfWork(const std::vector<CBlockHeader>& headers,
                          const node::BlockManager& blockman,
                          const Consensus::Params& consensusParams,
-                         const std::optional<UnanchoredHeadersPoWContext>& unanchored)
+                         const std::optional<UnanchoredHeadersPoWContext>& unanchored,
+                         CheckedPoWCache* checked)
 {
     if (headers.empty()) return true;
 
@@ -4246,7 +4271,9 @@ bool HasValidProofOfWork(const std::vector<CBlockHeader>& headers,
         if (!CheckProofOfWork(header.GetPoWHash(cached_seed_key), header.nBits, consensusParams)) {
             return false;
         }
-        in_batch_hashes[next_height] = header.GetHash();
+        const uint256 hash{header.GetHash()};
+        if (checked) checked->Insert(hash, cached_seed_key);
+        in_batch_hashes[next_height] = hash;
         ++next_height;
     }
     return true;
@@ -4471,7 +4498,10 @@ bool ChainstateManager::AcceptBlockHeader(const CBlockHeader& block, BlockValida
         }
 
         const uint256 seed_key{truenorth::SeedKeyForChild(pindexPrev)};
-        if (!CheckBlockHeader(block, state, GetConsensus(), seed_key)) {
+        // HasValidProofOfWork has usually hashed this header already, outside
+        // cs_main. Trust that only if it used the seed derived above.
+        const bool pow_checked{m_checked_pow.Contains(hash, seed_key)};
+        if (!CheckBlockHeader(block, state, GetConsensus(), seed_key, /*fCheckPOW=*/!pow_checked)) {
             LogDebug(BCLog::VALIDATION, "%s: Consensus::CheckBlockHeader: %s, %s\n", __func__, hash.ToString(), state.ToString());
             return false;
         }
