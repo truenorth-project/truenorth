@@ -1963,10 +1963,10 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
         execdata.m_annex_init = true;
 
         // Top of remaining stack is scheme_id (exactly 1 byte).
-        if (stack.size() < 2) return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH);
+        if (stack.size() < 2) return set_error(serror, SCRIPT_ERR_QRH_WITNESS_SIZE);
         const valtype& scheme_id_bytes = SpanPopBack(stack);
         if (scheme_id_bytes.size() != 1) {
-            return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH);
+            return set_error(serror, SCRIPT_ERR_QRH_SCHEME_SIZE);
         }
         const uint8_t scheme_id = scheme_id_bytes[0];
 
@@ -1974,19 +1974,19 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
         // land via soft fork; unknown scheme_ids are consensus-invalid to
         // avoid script-upgrade skew across nodes.
         if (scheme_id != truenorth::QRH_SCHEME_SCHNORR) {
-            return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH);
+            return set_error(serror, SCRIPT_ERR_QRH_SCHEME_UNKNOWN);
         }
 
         // Stage-5 scope: key-path only. Witness (post-annex, post-scheme_id)
         // is exactly [signature, pubkey]. Script-path spending lands in a
         // later soft-fork extension.
-        if (stack.size() != 2) return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH);
+        if (stack.size() != 2) return set_error(serror, SCRIPT_ERR_QRH_WITNESS_SIZE);
         const valtype& signature = stack.front();
         const valtype& pubkey = stack.back();
 
         // Schnorr x-only pubkey is 32 bytes.
         if (pubkey.size() != 32) {
-            return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH);
+            return set_error(serror, SCRIPT_ERR_QRH_PUBKEY_SIZE);
         }
 
         // Recompute the commitment from the revealed pubkey and verify it

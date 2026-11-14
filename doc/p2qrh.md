@@ -99,6 +99,24 @@ verifier to dispatch before parsing the rest of the witness.
    hash-based, safe for all scheme_ids), then dispatch to the tapscript
    interpreter (defined per-scheme; scheme_id=0x01 reuses BIP-342).
 
+Each rule a key-path witness can break has its own script error, so a reject
+reason says which one failed:
+
+| Script error                    | Reject reason                                            |
+|---------------------------------|----------------------------------------------------------|
+| `WITNESS_PROGRAM_WITNESS_EMPTY` | Witness program was passed an empty witness              |
+| `QRH_WITNESS_SIZE`              | P2QRH key-path witness must have exactly three elements  |
+| `QRH_SCHEME_SIZE`               | P2QRH scheme id must be exactly one byte                 |
+| `QRH_SCHEME_UNKNOWN`            | P2QRH scheme id is not active                            |
+| `QRH_PUBKEY_SIZE`               | P2QRH public key has the wrong size for its scheme       |
+| `WITNESS_PROGRAM_MISMATCH`      | Witness program hash mismatch                            |
+| `SCHNORR_SIG_SIZE`              | Invalid Schnorr signature size                           |
+| `SCHNORR_SIG_HASHTYPE`          | Invalid Schnorr signature hash type                      |
+| `SCHNORR_SIG`                   | Invalid Schnorr signature                                |
+
+Releases up to v30.5.4 return `WITNESS_PROGRAM_MISMATCH` for all of these except
+an empty witness and a bad signature.
+
 ## Scheme registry
 
 | scheme_id | Signature scheme            | Pubkey  | Sig     | Status                        |

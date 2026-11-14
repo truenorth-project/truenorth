@@ -115,6 +115,14 @@ std::string ScriptErrorString(const ScriptError serror)
             return "Using OP_CODESEPARATOR in non-witness script";
         case SCRIPT_ERR_SIG_FINDANDDELETE:
             return "Signature is found in scriptCode";
+        case SCRIPT_ERR_QRH_WITNESS_SIZE:
+            return "P2QRH key-path witness must have exactly three elements";
+        case SCRIPT_ERR_QRH_SCHEME_SIZE:
+            return "P2QRH scheme id must be exactly one byte";
+        case SCRIPT_ERR_QRH_SCHEME_UNKNOWN:
+            return "P2QRH scheme id is not active";
+        case SCRIPT_ERR_QRH_PUBKEY_SIZE:
+            return "P2QRH public key has the wrong size for its scheme";
         case SCRIPT_ERR_UNKNOWN_ERROR:
         case SCRIPT_ERR_ERROR_COUNT:
         default: break;

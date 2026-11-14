@@ -786,6 +786,7 @@ BOOST_AUTO_TEST_CASE(qrh_unknown_scheme_id_rejects)
     stack[2] = {0x02}; // reserved for future PQ scheme; unknown at launch
     const auto [ok, err] = RunVerify(*f, stack, f->scriptPubKey);
     BOOST_CHECK(!ok);
+    BOOST_CHECK_EQUAL(err, SCRIPT_ERR_QRH_SCHEME_UNKNOWN);
 }
 
 BOOST_AUTO_TEST_CASE(qrh_scheme_id_zero_rejects)
@@ -795,6 +796,7 @@ BOOST_AUTO_TEST_CASE(qrh_scheme_id_zero_rejects)
     stack[2] = {truenorth::QRH_SCHEME_RESERVED_ZERO};
     const auto [ok, err] = RunVerify(*f, stack, f->scriptPubKey);
     BOOST_CHECK(!ok);
+    BOOST_CHECK_EQUAL(err, SCRIPT_ERR_QRH_SCHEME_UNKNOWN);
 }
 
 BOOST_AUTO_TEST_CASE(qrh_scheme_id_wrong_byte_length_rejects)
@@ -804,6 +806,7 @@ BOOST_AUTO_TEST_CASE(qrh_scheme_id_wrong_byte_length_rejects)
     stack[2] = {0x01, 0x00}; // 2 bytes instead of 1
     const auto [ok, err] = RunVerify(*f, stack, f->scriptPubKey);
     BOOST_CHECK(!ok);
+    BOOST_CHECK_EQUAL(err, SCRIPT_ERR_QRH_SCHEME_SIZE);
 }
 
 BOOST_AUTO_TEST_CASE(qrh_wrong_pubkey_size_rejects)
@@ -813,6 +816,7 @@ BOOST_AUTO_TEST_CASE(qrh_wrong_pubkey_size_rejects)
     stack[1].pop_back(); // 31 bytes instead of 32
     const auto [ok, err] = RunVerify(*f, stack, f->scriptPubKey);
     BOOST_CHECK(!ok);
+    BOOST_CHECK_EQUAL(err, SCRIPT_ERR_QRH_PUBKEY_SIZE);
 }
 
 BOOST_AUTO_TEST_CASE(qrh_commitment_mismatch_rejects)
@@ -824,6 +828,7 @@ BOOST_AUTO_TEST_CASE(qrh_commitment_mismatch_rejects)
     stack[1][0] ^= 0x01;
     const auto [ok, err] = RunVerify(*f, stack, f->scriptPubKey);
     BOOST_CHECK(!ok);
+    BOOST_CHECK_EQUAL(err, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH);
 }
 
 BOOST_AUTO_TEST_CASE(qrh_invalid_signature_rejects)
@@ -833,6 +838,7 @@ BOOST_AUTO_TEST_CASE(qrh_invalid_signature_rejects)
     stack[0][0] ^= 0xFF; // corrupt the signature
     const auto [ok, err] = RunVerify(*f, stack, f->scriptPubKey);
     BOOST_CHECK(!ok);
+    BOOST_CHECK_EQUAL(err, SCRIPT_ERR_SCHNORR_SIG);
 }
 
 BOOST_AUTO_TEST_CASE(qrh_empty_witness_rejects)
@@ -850,6 +856,7 @@ BOOST_AUTO_TEST_CASE(qrh_too_few_stack_items_rejects)
     stack.pop_back(); // drop scheme_id -> only 2 items left
     const auto [ok, err] = RunVerify(*f, stack, f->scriptPubKey);
     BOOST_CHECK(!ok);
+    BOOST_CHECK_EQUAL(err, SCRIPT_ERR_QRH_SCHEME_SIZE);
 }
 
 BOOST_AUTO_TEST_CASE(qrh_extra_stack_items_rejects)
@@ -861,6 +868,7 @@ BOOST_AUTO_TEST_CASE(qrh_extra_stack_items_rejects)
     stack.insert(stack.begin(), {0xDE, 0xAD});
     const auto [ok, err] = RunVerify(*f, stack, f->scriptPubKey);
     BOOST_CHECK(!ok);
+    BOOST_CHECK_EQUAL(err, SCRIPT_ERR_QRH_WITNESS_SIZE);
 }
 
 BOOST_AUTO_TEST_CASE(qrh_flag_off_passes_through)

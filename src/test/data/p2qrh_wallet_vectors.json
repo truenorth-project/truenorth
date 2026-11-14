@@ -435,7 +435,7 @@
                 "0a4c0d6bddea7e0f4cfd2f0bcab13e97e3033e71155467a5f6ca930e190f8994",
                 "00"
             ],
-            "scriptError": "WITNESS_PROGRAM_MISMATCH",
+            "scriptError": "QRH_SCHEME_UNKNOWN",
             "comment": "scheme_id 0x00 is reserved and never valid"
         },
         {
@@ -444,7 +444,7 @@
                 "0a4c0d6bddea7e0f4cfd2f0bcab13e97e3033e71155467a5f6ca930e190f8994",
                 "02"
             ],
-            "scriptError": "WITNESS_PROGRAM_MISMATCH",
+            "scriptError": "QRH_SCHEME_UNKNOWN",
             "comment": "scheme_id 0x02 (ML-DSA-44) is not active"
         },
         {
@@ -453,7 +453,7 @@
                 "0a4c0d6bddea7e0f4cfd2f0bcab13e97e3033e71155467a5f6ca930e190f8994",
                 "ff"
             ],
-            "scriptError": "WITNESS_PROGRAM_MISMATCH",
+            "scriptError": "QRH_SCHEME_UNKNOWN",
             "comment": "scheme_id 0xff is the invalid sentinel"
         },
         {
@@ -462,7 +462,7 @@
                 "0a4c0d6bddea7e0f4cfd2f0bcab13e97e3033e71155467a5f6ca930e190f8994",
                 "0100"
             ],
-            "scriptError": "WITNESS_PROGRAM_MISMATCH",
+            "scriptError": "QRH_SCHEME_SIZE",
             "comment": "scheme_id must be exactly one byte"
         },
         {
@@ -480,7 +480,7 @@
                 "020a4c0d6bddea7e0f4cfd2f0bcab13e97e3033e71155467a5f6ca930e190f8994",
                 "01"
             ],
-            "scriptError": "WITNESS_PROGRAM_MISMATCH",
+            "scriptError": "QRH_PUBKEY_SIZE",
             "comment": "33-byte compressed pubkey; P2QRH scheme 0x01 takes the 32-byte x-only key"
         },
         {
@@ -488,7 +488,7 @@
                 "0a4c0d6bddea7e0f4cfd2f0bcab13e97e3033e71155467a5f6ca930e190f8994",
                 "01"
             ],
-            "scriptError": "WITNESS_PROGRAM_MISMATCH",
+            "scriptError": "QRH_WITNESS_SIZE",
             "comment": "signature missing"
         },
         {
@@ -498,7 +498,7 @@
                 "0a4c0d6bddea7e0f4cfd2f0bcab13e97e3033e71155467a5f6ca930e190f8994",
                 "01"
             ],
-            "scriptError": "WITNESS_PROGRAM_MISMATCH",
+            "scriptError": "QRH_WITNESS_SIZE",
             "comment": "extra witness element; script-path spends are not active"
         },
         {
@@ -526,7 +526,7 @@
                 "01",
                 "0a4c0d6bddea7e0f4cfd2f0bcab13e97e3033e71155467a5f6ca930e190f8994"
             ],
-            "scriptError": "WITNESS_PROGRAM_MISMATCH",
+            "scriptError": "QRH_SCHEME_SIZE",
             "comment": "scheme_id must be the top witness element"
         }
     ]

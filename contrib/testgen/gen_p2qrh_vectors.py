@@ -301,17 +301,17 @@ def invalid_spend_vectors(simple):
     bad_sig = bytes([sig[0] ^ 1]) + sig[1:]
     full_pubkey = compressed_pubkey(bytes.fromhex(simple["inputSpending"][0]["given"]["privkey"]))
     cases = [
-        ([sig, pubkey, b"\x00"], "WITNESS_PROGRAM_MISMATCH", "scheme_id 0x00 is reserved and never valid"),
-        ([sig, pubkey, b"\x02"], "WITNESS_PROGRAM_MISMATCH", "scheme_id 0x02 (ML-DSA-44) is not active"),
-        ([sig, pubkey, b"\xff"], "WITNESS_PROGRAM_MISMATCH", "scheme_id 0xff is the invalid sentinel"),
-        ([sig, pubkey, b"\x01\x00"], "WITNESS_PROGRAM_MISMATCH", "scheme_id must be exactly one byte"),
+        ([sig, pubkey, b"\x00"], "QRH_SCHEME_UNKNOWN", "scheme_id 0x00 is reserved and never valid"),
+        ([sig, pubkey, b"\x02"], "QRH_SCHEME_UNKNOWN", "scheme_id 0x02 (ML-DSA-44) is not active"),
+        ([sig, pubkey, b"\xff"], "QRH_SCHEME_UNKNOWN", "scheme_id 0xff is the invalid sentinel"),
+        ([sig, pubkey, b"\x01\x00"], "QRH_SCHEME_SIZE", "scheme_id must be exactly one byte"),
         ([sig, other_pubkey, scheme], "WITNESS_PROGRAM_MISMATCH", "pubkey does not match the commitment"),
-        ([sig, full_pubkey, scheme], "WITNESS_PROGRAM_MISMATCH", "33-byte compressed pubkey; P2QRH scheme 0x01 takes the 32-byte x-only key"),
-        ([pubkey, scheme], "WITNESS_PROGRAM_MISMATCH", "signature missing"),
-        ([b"\x01", sig, pubkey, scheme], "WITNESS_PROGRAM_MISMATCH", "extra witness element; script-path spends are not active"),
+        ([sig, full_pubkey, scheme], "QRH_PUBKEY_SIZE", "33-byte compressed pubkey; P2QRH scheme 0x01 takes the 32-byte x-only key"),
+        ([pubkey, scheme], "QRH_WITNESS_SIZE", "signature missing"),
+        ([b"\x01", sig, pubkey, scheme], "QRH_WITNESS_SIZE", "extra witness element; script-path spends are not active"),
         ([bad_sig, pubkey, scheme], "SCHNORR_SIG", "signature does not verify"),
         ([sig + b"\x01", pubkey, scheme], "SCHNORR_SIG", "SIGHASH_ALL appended to a signature made with SIGHASH_DEFAULT"),
-        ([sig, pubkey, scheme, pubkey], "WITNESS_PROGRAM_MISMATCH", "scheme_id must be the top witness element"),
+        ([sig, pubkey, scheme, pubkey], "QRH_SCHEME_SIZE", "scheme_id must be the top witness element"),
     ]
     return [{"witness": [w.hex() for w in witness], "scriptError": error, "comment": comment}
             for witness, error, comment in cases]
