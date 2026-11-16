@@ -88,6 +88,15 @@ witness stack (bottom to top):
 The `scheme_id` at the top of the stack lets the interpreter know which
 verifier to dispatch before parsing the rest of the witness.
 
+**Annex.** As in BIP-341, if the witness has at least two elements and the top
+one starts with `0x50`, that element is an annex. It is removed before
+`scheme_id` is read, and its hash is committed in the signature hash. Consensus
+accepts an annex on a P2QRH spend so that a future soft fork can give it a
+meaning; policy refuses one, so such a transaction is not relayed or mined by
+default nodes. Wallets must not add an annex. Because the annex check comes
+first, a `scheme_id` of `0x50` would always be read as an annex, so `0x50` is
+excluded from the scheme registry.
+
 ## Consensus validation
 
 1. Read top of stack: `scheme_id`. If not in the registered set, fail.
@@ -126,7 +135,9 @@ an empty witness and a bad signature.
 | `0x02`    | ML-DSA-44                   | ~1.3 KB | ~2.4 KB | Reserved (future soft fork)   |
 | `0x03`    | Falcon-512                  | ~900 B  | ~650 B  | Reserved (future soft fork)   |
 | `0x04`    | SLH-DSA-128s                | 32 B    | ~8 KB   | Reserved (future soft fork)   |
-| `0x05-0xFE` | Reserved for future schemes | —     | —       | —                             |
+| `0x05-0x4F` | Reserved for future schemes | —     | —       | —                             |
+| `0x50`    | Unusable (annex tag)        | —       | —       | Never assigned                |
+| `0x51-0xFE` | Reserved for future schemes | —     | —       | —                             |
 | `0xFF`    | INVALID (sentinel)          | —       | —       | Reject at consensus           |
 
 At launch, `scheme_id=0x01` is the only accepted value at consensus. Any other
@@ -245,6 +256,13 @@ gives a valid signature.
 test framework's Python implementation; `src/test/p2qrh_vector_tests.cpp`
 checks every value against TrueNorth Core's descriptor, signing and script
 code.
+
+An independent set is maintained at
+<https://github.com/severka-monitor/truenorth-cold-address/tree/main/vectors>.
+It was computed with code that shares nothing with TrueNorth Core and checked
+against a running node: its spends were accepted and mined, and it includes
+descriptors with private keys in the form `importdescriptors` takes. The two
+sets agree everywhere they overlap.
 
 ## Rationale — key design decisions
 

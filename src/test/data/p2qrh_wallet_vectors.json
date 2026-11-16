@@ -528,6 +528,54 @@
             ],
             "scriptError": "QRH_SCHEME_SIZE",
             "comment": "scheme_id must be the top witness element"
+        },
+        {
+            "witness": [],
+            "scriptError": "WITNESS_PROGRAM_WITNESS_EMPTY",
+            "comment": "empty witness"
+        },
+        {
+            "witness": [
+                "de6489e3e025331f6abab7f650082bfcd502aab8aa4efa61891341a3038aa463503de794abe4f57ad726a79500bc069af998b38757a74881a51b7b2c0df305e1"
+            ],
+            "scriptError": "QRH_WITNESS_SIZE",
+            "comment": "a single witness element"
+        },
+        {
+            "witness": [
+                "de6489e3e025331f6abab7f650082bfcd502aab8aa4efa61891341a3038aa463503de794abe4f57ad726a79500bc069af998b38757a74881a51b7b2c0df305",
+                "0a4c0d6bddea7e0f4cfd2f0bcab13e97e3033e71155467a5f6ca930e190f8994",
+                "01"
+            ],
+            "scriptError": "SCHNORR_SIG_SIZE",
+            "comment": "63-byte signature"
+        },
+        {
+            "witness": [
+                "de6489e3e025331f6abab7f650082bfcd502aab8aa4efa61891341a3038aa463503de794abe4f57ad726a79500bc069af998b38757a74881a51b7b2c0df305e100",
+                "0a4c0d6bddea7e0f4cfd2f0bcab13e97e3033e71155467a5f6ca930e190f8994",
+                "01"
+            ],
+            "scriptError": "SCHNORR_SIG_HASHTYPE",
+            "comment": "explicit hash type 0x00; SIGHASH_DEFAULT must be implicit"
+        },
+        {
+            "witness": [
+                "de6489e3e025331f6abab7f650082bfcd502aab8aa4efa61891341a3038aa463503de794abe4f57ad726a79500bc069af998b38757a74881a51b7b2c0df305e104",
+                "0a4c0d6bddea7e0f4cfd2f0bcab13e97e3033e71155467a5f6ca930e190f8994",
+                "01"
+            ],
+            "scriptError": "SCHNORR_SIG_HASHTYPE",
+            "comment": "hash type 0x04 is undefined"
+        },
+        {
+            "witness": [
+                "de6489e3e025331f6abab7f650082bfcd502aab8aa4efa61891341a3038aa463503de794abe4f57ad726a79500bc069af998b38757a74881a51b7b2c0df305e1",
+                "0a4c0d6bddea7e0f4cfd2f0bcab13e97e3033e71155467a5f6ca930e190f8994",
+                "50"
+            ],
+            "scriptError": "QRH_SCHEME_SIZE",
+            "comment": "a top element starting with 0x50 is an annex, so the pubkey is read as the scheme_id"
         }
     ]
 }

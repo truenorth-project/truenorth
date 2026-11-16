@@ -312,6 +312,13 @@ def invalid_spend_vectors(simple):
         ([bad_sig, pubkey, scheme], "SCHNORR_SIG", "signature does not verify"),
         ([sig + b"\x01", pubkey, scheme], "SCHNORR_SIG", "SIGHASH_ALL appended to a signature made with SIGHASH_DEFAULT"),
         ([sig, pubkey, scheme, pubkey], "QRH_SCHEME_SIZE", "scheme_id must be the top witness element"),
+        ([], "WITNESS_PROGRAM_WITNESS_EMPTY", "empty witness"),
+        ([sig], "QRH_WITNESS_SIZE", "a single witness element"),
+        ([sig[:-1], pubkey, scheme], "SCHNORR_SIG_SIZE", "63-byte signature"),
+        ([sig + b"\x00", pubkey, scheme], "SCHNORR_SIG_HASHTYPE", "explicit hash type 0x00; SIGHASH_DEFAULT must be implicit"),
+        ([sig + b"\x04", pubkey, scheme], "SCHNORR_SIG_HASHTYPE", "hash type 0x04 is undefined"),
+        ([sig, pubkey, b"\x50"], "QRH_SCHEME_SIZE",
+         "a top element starting with 0x50 is an annex, so the pubkey is read as the scheme_id"),
     ]
     return [{"witness": [w.hex() for w in witness], "scriptError": error, "comment": comment}
             for witness, error, comment in cases]
