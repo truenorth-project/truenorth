@@ -200,8 +200,8 @@ public:
         // Minimum chain work and assumeValid track the most recent
         // checkpoint in m_checkpoint_data below. Update all three
         // together per doc/checkpoint-process.md.
-        consensus.nMinimumChainWork = uint256{"00000000000000000000000000000000000000000000000000000181e8a45ac7"}; // block 20000
-        consensus.defaultAssumeValid = uint256{"e889ca9299bf4409fdbb5ad0590401be374da9c3dc63cd6ecd9decb7b1411993"}; // block 20000
+        consensus.nMinimumChainWork = uint256{"000000000000000000000000000000000000000000000000000001a1da3a0363"}; // block 25000
+        consensus.defaultAssumeValid = uint256{"ca80003d688a166d331b9f838cf75fd8fac419a4ab8dd899c34ca99e27b5ae4c"}; // block 25000
         // Reorg-depth cap: reject any reorg deeper than 72 blocks
         // (~2h 24min at 2-minute block time). Defence-in-depth
         // between checkpoints. See src/consensus/params.h.
@@ -220,6 +220,7 @@ public:
                 {10000, uint256{"977134e7389adb12a64894ecad657c5ed35b5afb3b7a433e7f22a01af9a0e991"}},
                 {15000, uint256{"9d4a1eccf44f0d32dbc93c84c9cf5b437993cb969a2a0d55154a2ab3503c4506"}},
                 {20000, uint256{"e889ca9299bf4409fdbb5ad0590401be374da9c3dc63cd6ecd9decb7b1411993"}},
+                {25000, uint256{"ca80003d688a166d331b9f838cf75fd8fac419a4ab8dd899c34ca99e27b5ae4c"}},
             },
         };
 
