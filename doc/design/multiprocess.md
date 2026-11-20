@@ -10,7 +10,7 @@ The TrueNorth Core software has historically employed a monolithic architecture.
 
 ## Current Architecture
 
-The current system features two primary executables: `truenorthd` and `bitcoin-qt`. `truenorthd` combines a Bitcoin P2P node with an integrated JSON-RPC server, wallet, and indexes. `bitcoin-qt` extends this by incorporating a Qt-based GUI. This monolithic structure, although robust, presents challenges such as limited operational flexibility and increased security risks due to the tight integration of components.
+The current system features two primary executables: `truenorthd` and `truenorth-qt`. `truenorthd` combines a Bitcoin P2P node with an integrated JSON-RPC server, wallet, and indexes. `truenorth-qt` extends this by incorporating a Qt-based GUI. This monolithic structure, although robust, presents challenges such as limited operational flexibility and increased security risks due to the tight integration of components.
 
 ## Proposed Architecture
 
@@ -18,7 +18,7 @@ The new architecture divides the existing code into three specialized executable
 
 - `truenorth-node`: Manages the P2P node, indexes, and JSON-RPC server.
 - `truenorth-wallet`: Handles all wallet functionality.
-- `bitcoin-gui`: Provides a standalone Qt-based GUI.
+- `truenorth-gui`: Provides a standalone Qt-based GUI.
 
 This modular approach is designed to enhance security through component isolation and improve usability by allowing independent operation of each module. This allows for new use-cases, such as running the node on a dedicated machine and operating wallets and GUIs on separate machines with the flexibility to start and stop them as needed.
 
@@ -30,7 +30,7 @@ This subdivision could be extended in the future. For example, indexes could be 
 flowchart LR
     node[truenorth-node] -- listens on --> socket["&lt;datadir&gt;/node.sock"]
     wallet[truenorth-wallet] -- connects to --> socket
-    gui[bitcoin-gui] -- connects to --> socket
+    gui[truenorth-gui] -- connects to --> socket
 ```
 
 </td></tr><tr><td>

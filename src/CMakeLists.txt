@@ -213,7 +213,7 @@ if(ENABLE_WALLET)
 endif()
 
 
-# P2P and RPC server functionality used by `truenorthd` and `bitcoin-qt` executables.
+# P2P and RPC server functionality used by `truenorthd` and `truenorth-qt` executables.
 add_library(bitcoin_node STATIC EXCLUDE_FROM_ALL
   addrdb.cpp
   addrman.cpp

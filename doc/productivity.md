@@ -45,7 +45,7 @@ Obviously, it is important to build and run the tests at appropriate times -- bu
 
 ```sh
 cmake --build build --target truenorthd truenorth-cli
-cmake --build build --target bitcoin-qt
+cmake --build build --target truenorth-qt
 cmake --build build --target bench_bitcoin
 ```
 

@@ -7,13 +7,13 @@
 | *libbitcoin_consensus*   | Consensus functionality used by *libbitcoin_node* and *libbitcoin_wallet*. |
 | *libbitcoin_crypto*      | Hardware-optimized functions for data encryption, hashing, message authentication, and key derivation. |
 | *libbitcoin_kernel*      | Consensus engine and support library used for validation by *libbitcoin_node*. |
-| *libbitcoinqt*           | GUI functionality used by *bitcoin-qt* and *bitcoin-gui* executables. |
-| *libbitcoin_ipc*         | IPC functionality used by *truenorth-node* and *bitcoin-gui* executables to communicate when [`-DENABLE_IPC=ON`](multiprocess.md) is used. |
-| *libbitcoin_node*        | P2P and RPC server functionality used by *bitcoind* and *bitcoin-qt* executables. |
+| *libbitcoinqt*           | GUI functionality used by *truenorth-qt* and *truenorth-gui* executables. |
+| *libbitcoin_ipc*         | IPC functionality used by *truenorth-node* and *truenorth-gui* executables to communicate when [`-DENABLE_IPC=ON`](multiprocess.md) is used. |
+| *libbitcoin_node*        | P2P and RPC server functionality used by *bitcoind* and *truenorth-qt* executables. |
 | *libbitcoin_util*        | Home for common functionality shared by different executables and libraries. Similar to *libbitcoin_common*, but lower-level (see [Dependencies](#dependencies)). |
 | *libbitcoin_wallet*      | Wallet functionality used by *bitcoind* and *truenorth-wallet* executables. |
 | *libbitcoin_wallet_tool* | Lower-level wallet functionality used by *truenorth-wallet* executable. |
-| *libbitcoin_zmq*         | [ZeroMQ](../zmq.md) functionality used by *bitcoind* and *bitcoin-qt* executables. |
+| *libbitcoin_zmq*         | [ZeroMQ](../zmq.md) functionality used by *bitcoind* and *truenorth-qt* executables. |
 
 ## Conventions
 
@@ -44,9 +44,9 @@ truenorth-cli[truenorth-cli]-->libbitcoin_cli;
 truenorthd[bitcoind]-->libbitcoin_node;
 truenorthd[bitcoind]-->libbitcoin_wallet;
 
-bitcoin-qt[bitcoin-qt]-->libbitcoin_node;
-bitcoin-qt[bitcoin-qt]-->libbitcoinqt;
-bitcoin-qt[bitcoin-qt]-->libbitcoin_wallet;
+truenorth-qt[truenorth-qt]-->libbitcoin_node;
+truenorth-qt[truenorth-qt]-->libbitcoinqt;
+truenorth-qt[truenorth-qt]-->libbitcoin_wallet;
 
 truenorth-wallet[truenorth-wallet]-->libbitcoin_wallet;
 truenorth-wallet[truenorth-wallet]-->libbitcoin_wallet_tool;
@@ -83,7 +83,7 @@ libbitcoin_wallet_tool-->libbitcoin_wallet;
 libbitcoin_wallet_tool-->libbitcoin_util;
 
 classDef bold stroke-width:2px, font-weight:bold, font-size: smaller;
-class bitcoin-qt,bitcoind,truenorth-cli,truenorth-wallet bold
+class truenorth-qt,bitcoind,truenorth-cli,truenorth-wallet bold
 ```
 </td></tr><tr><td>
 
