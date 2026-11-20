@@ -87,7 +87,19 @@ jobs:
         run: |
           # llvm dropped: Homebrew LLVM 22+ headers don't compose with the
           # Xcode macOS SDK. We use Apple Clang instead (see Configure step).
-          brew install --quiet cmake boost libevent sqlite ccache
+          # libevent is NOT installed from Homebrew: its dylib lives under
+          # /opt/homebrew, so binaries linked against it fail to start on a
+          # Mac without Homebrew. The next step builds it statically.
+          brew install --quiet cmake boost sqlite ccache
+          if brew list --formula libevent >/dev/null 2>&1; then
+              brew uninstall --ignore-dependencies libevent
+          fi
+
+      - name: Build static libevent (macOS)
+        if: matrix.os == 'macos-latest'
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "13.0"
+        run: contrib/macdeploy/build-static-libevent.sh "$GITHUB_WORKSPACE/../libevent-static"
 
       - name: Install cross-compile toolchain (Windows via mingw-w64)
         if: matrix.host == 'x86_64-w64-mingw32'
@@ -153,6 +165,13 @@ jobs:
           ARGS=( -DCMAKE_BUILD_TYPE=Release -DENABLE_IPC=OFF
                  -DCMAKE_C_COMPILER_LAUNCHER=ccache
                  -DCMAKE_CXX_COMPILER_LAUNCHER=ccache )
+          # Without an explicit deployment target the binaries claim the
+          # runner's macOS (26.x). 13.0 matches OSX_MIN_VERSION in
+          # depends/hosts/darwin.mk.
+          if [ "$RUNNER_OS" = "macOS" ]; then
+              ARGS+=( -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
+                      -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/../libevent-static" )
+          fi
           cmake -B build "${ARGS[@]}"
 
       - name: Configure (cross-compile)
@@ -281,6 +300,22 @@ jobs:
                   echo "Install libnuma-dev in the apt step above."
                   exit 1
               fi
+          fi
+
+          if [ "$RUNNER_OS" = "macOS" ]; then
+              echo "--- binaries must run on a stock Mac, macOS 13 or newer ---"
+              for b in truenorthd truenorth-cli truenorth-miner; do
+                  if otool -L "./build/bin/$b" | tail -n +2 | grep -vE '^[[:space:]]+/(usr/lib|System/Library)/'; then
+                      echo "FAIL: $b links a library outside the base system (above)."
+                      exit 1
+                  fi
+                  MINOS=$(otool -l "./build/bin/$b" | awk '/LC_BUILD_VERSION/{f=1} f && $1=="minos"{print $2; exit}')
+                  if [ "$MINOS" != "13.0" ]; then
+                      echo "FAIL: $b has minos=$MINOS, expected 13.0"
+                      exit 1
+                  fi
+              done
+              echo "OK: system libraries only, minos 13.0"
           fi
           [ "$COUNT" = "1" ] || { echo "FAIL: smoke produced $COUNT blocks"; exit 1; }
 
