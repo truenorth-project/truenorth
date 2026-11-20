@@ -21,13 +21,13 @@ const TranslateFn G_TRANSLATION_FUN{nullptr};
 static constexpr auto HELP_USAGE = R"(Usage: %s [OPTIONS] COMMAND...
 
 Options:
-  -m, --multiprocess     Run multiprocess binaries truenorth-node, bitcoin-gui.
-  -M, --monolithic       Run monolithic binaries truenorthd, bitcoin-qt. (Default behavior)
+  -m, --multiprocess     Run multiprocess binaries truenorth-node, truenorth-gui.
+  -M, --monolithic       Run monolithic binaries truenorthd, truenorth-qt. (Default behavior)
   -v, --version          Show version information
   -h, --help             Show full help message
 
 Commands:
-  gui [ARGS]     Start GUI, equivalent to running 'bitcoin-qt [ARGS]' or 'bitcoin-gui [ARGS]'.
+  gui [ARGS]     Start GUI, equivalent to running 'truenorth-qt [ARGS]' or 'truenorth-gui [ARGS]'.
   node [ARGS]    Start node, equivalent to running 'truenorthd [ARGS]' or 'truenorth-node [ARGS]'.
   rpc [ARGS]     Call RPC method, equivalent to running 'truenorth-cli -named [ARGS]'.
   wallet [ARGS]  Call wallet command, equivalent to running 'truenorth-wallet [ARGS]'.
@@ -80,7 +80,7 @@ int main(int argc, char* argv[])
                 return EXIT_FAILURE;
             }
         } else if (cmd.command == "gui") {
-            args.emplace_back(UseMultiprocess(cmd) ? "bitcoin-gui" : "bitcoin-qt");
+            args.emplace_back(UseMultiprocess(cmd) ? "truenorth-gui" : "truenorth-qt");
         } else if (cmd.command == "node") {
             args.emplace_back(UseMultiprocess(cmd) ? "truenorth-node" : "truenorthd");
         } else if (cmd.command == "rpc") {
@@ -169,12 +169,12 @@ bool UseMultiprocess(const CommandLine& cmd)
     return args.IsArgSet("-ipcbind") || args.IsArgSet("-ipcconnect") || args.IsArgSet("-ipcfd");
 }
 
-//! Execute the specified truenorthd, bitcoin-qt or other command line in `args`
+//! Execute the specified truenorthd, truenorth-qt or other command line in `args`
 //! using src, bin and libexec directory paths relative to this executable, where
 //! the path to this executable is specified in `wrapper_argv0`.
 //!
 //! @param args Command line arguments to execute, where first argument should
-//!             be a relative path to a truenorthd, bitcoin-qt or other executable
+//!             be a relative path to a truenorthd, truenorth-qt or other executable
 //!             that will be located on the PATH or relative to wrapper_argv0.
 //!
 //! @param wrapper_argv0 String containing first command line argument passed to

@@ -518,15 +518,15 @@ fs::path static StartupShortcutPath()
 {
     ChainType chain = gArgs.GetChainType();
     if (chain == ChainType::MAIN)
-        return GetSpecialFolderPath(CSIDL_STARTUP) / "Bitcoin.lnk";
+        return GetSpecialFolderPath(CSIDL_STARTUP) / "TrueNorth.lnk";
     if (chain == ChainType::TESTNET) // Remove this special case when testnet CBaseChainParams::DataDir() is incremented to "testnet4"
-        return GetSpecialFolderPath(CSIDL_STARTUP) / "Bitcoin (testnet).lnk";
-    return GetSpecialFolderPath(CSIDL_STARTUP) / fs::u8path(strprintf("Bitcoin (%s).lnk", ChainTypeToString(chain)));
+        return GetSpecialFolderPath(CSIDL_STARTUP) / "TrueNorth (testnet).lnk";
+    return GetSpecialFolderPath(CSIDL_STARTUP) / fs::u8path(strprintf("TrueNorth (%s).lnk", ChainTypeToString(chain)));
 }
 
 bool GetStartOnSystemStartup()
 {
-    // check for Bitcoin*.lnk
+    // check for TrueNorth*.lnk
     return fs::exists(StartupShortcutPath());
 }
 
@@ -601,8 +601,8 @@ fs::path static GetAutostartFilePath()
 {
     ChainType chain = gArgs.GetChainType();
     if (chain == ChainType::MAIN)
-        return GetAutostartDir() / "bitcoin.desktop";
-    return GetAutostartDir() / fs::u8path(strprintf("bitcoin-%s.desktop", ChainTypeToString(chain)));
+        return GetAutostartDir() / "truenorth.desktop";
+    return GetAutostartDir() / fs::u8path(strprintf("truenorth-%s.desktop", ChainTypeToString(chain)));
 }
 
 bool GetStartOnSystemStartup()
@@ -643,13 +643,13 @@ bool SetStartOnSystemStartup(bool fAutoStart)
         if (!optionFile.good())
             return false;
         ChainType chain = gArgs.GetChainType();
-        // Write a bitcoin.desktop file to the autostart directory:
+        // Write a truenorth.desktop file to the autostart directory:
         optionFile << "[Desktop Entry]\n";
         optionFile << "Type=Application\n";
         if (chain == ChainType::MAIN)
-            optionFile << "Name=Bitcoin\n";
+            optionFile << "Name=TrueNorth\n";
         else
-            optionFile << strprintf("Name=Bitcoin (%s)\n", ChainTypeToString(chain));
+            optionFile << strprintf("Name=TrueNorth (%s)\n", ChainTypeToString(chain));
         optionFile << "Exec=" << pszExePath << strprintf(" -min -chain=%s\n", ChainTypeToString(chain));
         optionFile << "Terminal=false\n";
         optionFile << "Hidden=false\n";

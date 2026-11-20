@@ -10,9 +10,9 @@ SIGNAPPLE=signapple
 TEMPDIR=sign.temp
 
 BUNDLE_ROOT=dist
-BUNDLE_NAME="Bitcoin-Qt.app"
+BUNDLE_NAME="TrueNorth-Qt.app"
 UNSIGNED_BUNDLE="${BUNDLE_ROOT}/${BUNDLE_NAME}"
-UNSIGNED_BINARY="${UNSIGNED_BUNDLE}/Contents/MacOS/Bitcoin-Qt"
+UNSIGNED_BINARY="${UNSIGNED_BUNDLE}/Contents/MacOS/TrueNorth-Qt"
 
 ARCH=$(${SIGNAPPLE} info ${UNSIGNED_BINARY} | head -n 1 | cut -d " " -f 1)
 
