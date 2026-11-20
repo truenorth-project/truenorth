@@ -44,6 +44,20 @@ std::atomic<bool> g_dataset_allocated{false};
 // this flag set will drive. Callers should retry without it if the
 // alloc fails (RandomX returns nullptr rather than aborting when the
 // huge page allocation is denied).
+// Remedy shown when a huge-page allocation falls back. macOS has no
+// operator-side setting that makes RandomX's huge-page path succeed on
+// Apple Silicon, so don't point Mac users at Linux/Windows knobs.
+const char* LargePagesHint()
+{
+#if defined(__linux__)
+    return "(configure vm.nr_hugepages to get the ~10-20% hashrate boost)";
+#elif defined(_WIN32)
+    return "(grant SeLockMemoryPrivilege to get the ~10-20% hashrate boost)";
+#else
+    return "(huge pages are not available on this platform; nothing to configure)";
+#endif
+}
+
 randomx_flags FlagsForMode(RandomXMode mode, bool with_large_pages)
 {
     randomx_flags flags = randomx_get_flags() | RANDOMX_FLAG_V2;
@@ -83,9 +97,8 @@ public:
             if (must_have_large || g_fallback_notices) {
                 std::fprintf(stderr,
                              "TrueNorth: [%s] randomx_alloc_cache failed with LARGE_PAGES; "
-                             "retrying without huge pages (configure vm.nr_hugepages on Linux, "
-                             "or SeLockMemoryPrivilege on Windows, to get the ~10-20%% hashrate boost)\n",
-                             must_have_large ? "ERROR" : "INFO");
+                             "retrying without huge pages %s\n",
+                             must_have_large ? "ERROR" : "INFO", LargePagesHint());
             }
             try_large = false;
             flags = FlagsForMode(mode, try_large);

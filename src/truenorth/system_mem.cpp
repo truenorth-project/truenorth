@@ -41,9 +41,16 @@ std::uint64_t AvailableMemoryMiB()
     std::fclose(f);
     return kb / 1024; // KiB -> MiB
 #elif defined(__APPLE__)
-    // XNU's vm_stat reports pages by category; "free + inactive" is the
-    // closest analogue to Linux's MemAvailable (inactive is reclaimable
-    // without pressure). host_page_size + host_statistics64 wall.
+    // macOS keeps free + inactive small on purpose: file cache sits in the
+    // active queue and idle anonymous memory goes to the compressor, so
+    // that sum reads ~2-3 GiB on a 16 GiB machine with plenty to spare and
+    // pushed auto mode to light. Use Activity Monitor's accounting instead:
+    // available = physical - app memory (anonymous minus purgeable)
+    //                      - wired - compressor-occupied pages.
+    // File-backed cache is reclaimable, so it counts as available.
+    std::uint64_t total_bytes = 0;
+    size_t len = sizeof(total_bytes);
+    if (sysctlbyname("hw.memsize", &total_bytes, &len, nullptr, 0) != 0) return 0;
     vm_size_t page_size = 0;
     if (host_page_size(mach_host_self(), &page_size) != KERN_SUCCESS) return 0;
     vm_statistics64_data_t stats;
@@ -52,9 +59,10 @@ std::uint64_t AvailableMemoryMiB()
                           reinterpret_cast<host_info64_t>(&stats), &count) != KERN_SUCCESS) {
         return 0;
     }
-    const std::uint64_t free_bytes = static_cast<std::uint64_t>(stats.free_count) * page_size;
-    const std::uint64_t inactive_bytes = static_cast<std::uint64_t>(stats.inactive_count) * page_size;
-    return (free_bytes + inactive_bytes) / (1024ULL * 1024ULL);
+    const std::uint64_t app_pages = stats.internal_page_count > stats.purgeable_count ? stats.internal_page_count - stats.purgeable_count : 0;
+    const std::uint64_t used_bytes =
+        (app_pages + stats.wire_count + stats.compressor_page_count) * static_cast<std::uint64_t>(page_size);
+    return used_bytes < total_bytes ? (total_bytes - used_bytes) / (1024ULL * 1024ULL) : 0;
 #elif defined(_WIN32)
     MEMORYSTATUSEX status;
     status.dwLength = sizeof(status);
