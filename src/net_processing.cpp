@@ -576,7 +576,7 @@ public:
 
 private:
     /** Consider evicting an outbound peer based on the amount of time they've been behind our tip */
-    void ConsiderEviction(CNode& pto, Peer& peer, std::chrono::seconds time_in_seconds) EXCLUSIVE_LOCKS_REQUIRED(cs_main, g_msgproc_mutex);
+    void ConsiderEviction(CNode& pto, Peer& peer, std::chrono::seconds time_in_seconds) EXCLUSIVE_LOCKS_REQUIRED(cs_main, g_msgproc_mutex, !m_headers_presync_mutex);
 
     /** If we have extra outbound peers, try to disconnect the one with the oldest block announcement */
     void EvictExtraOutboundPeers(std::chrono::seconds now) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
@@ -5134,7 +5134,29 @@ void PeerManagerImpl::ConsiderEviction(CNode& pto, Peer& peer, std::chrono::seco
 
     CNodeState &state = *State(pto.GetId());
 
-    if (!state.m_chain_sync.m_protect && pto.IsOutboundOrBlockRelayConn() && state.fSyncStarted) {
+    // Our initial headers sync peer is not behind while its low-work headers
+    // sync is making progress, even though we know none of its headers yet:
+    // nothing is stored until the sync has reached the minimum chain work and
+    // re-downloaded about 15000 headers, which with RandomX can take longer
+    // than CHAIN_SYNC_TIMEOUT on a slow core. Restart its timer instead. That
+    // peer is already bounded by the headers sync timeout.
+    const bool is_initial_sync_peer{peer.m_headers_sync_timeout > 0us &&
+                                    peer.m_headers_sync_timeout < std::chrono::microseconds::max()};
+    bool low_work_sync_progressing{false};
+    if (is_initial_sync_peer) {
+        LOCK(m_headers_presync_mutex);
+        const auto it{m_headers_sync_last_progress.find(pto.GetId())};
+        low_work_sync_progressing = it != m_headers_sync_last_progress.end() &&
+                                    time_in_seconds - it->second < LOW_WORK_HEADERS_SYNC_STALL_TIME;
+    }
+
+    if (low_work_sync_progressing) {
+        if (state.m_chain_sync.m_timeout != 0s) {
+            state.m_chain_sync.m_timeout = 0s;
+            state.m_chain_sync.m_work_header = nullptr;
+            state.m_chain_sync.m_sent_getheaders = false;
+        }
+    } else if (!state.m_chain_sync.m_protect && pto.IsOutboundOrBlockRelayConn() && state.fSyncStarted) {
         // This is an outbound peer subject to disconnection if they don't
         // announce a block with as much work as the current tip within
         // CHAIN_SYNC_TIMEOUT + HEADERS_RESPONSE_TIME seconds (note: if

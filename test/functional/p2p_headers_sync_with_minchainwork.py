@@ -35,10 +35,12 @@ class RejectLowDifficultyHeadersTest(BitcoinTestFramework):
         # machine one batch has held it past the 4x timeout this test used.
         self.rpc_timeout *= 10
         self.setup_clean_chain = True
-        self.num_nodes = 5
+        self.num_nodes = 6
         # Node0 has no required chainwork; node1 requires 15 blocks on top of the genesis block; node2 requires 2047
         # Node4 stays unconnected at genesis for the initial-sync-peer case.
-        self.extra_args = [["-minimumchainwork=0x0", "-checkblockindex=0"], ["-minimumchainwork=0x1f", "-checkblockindex=0"], ["-minimumchainwork=0x1000", "-checkblockindex=0"], ["-minimumchainwork=0x1000", "-checkblockindex=0", "-whitelist=noban@127.0.0.1"], ["-minimumchainwork=0x1000", "-checkblockindex=0"]]
+        # Node5 also stays unconnected, and requires more work than the
+        # low-work chain in the eviction case can reach.
+        self.extra_args = [["-minimumchainwork=0x0", "-checkblockindex=0"], ["-minimumchainwork=0x1f", "-checkblockindex=0"], ["-minimumchainwork=0x1000", "-checkblockindex=0"], ["-minimumchainwork=0x1000", "-checkblockindex=0", "-whitelist=noban@127.0.0.1"], ["-minimumchainwork=0x1000", "-checkblockindex=0"], ["-minimumchainwork=0x10000", "-checkblockindex=0"]]
 
     def setup_network(self):
         self.setup_nodes()
@@ -179,6 +181,66 @@ class RejectLowDifficultyHeadersTest(BitcoinTestFramework):
             sync_peer.send_and_ping(headers_message, timeout=300)
         assert_equal(sorted(p['presynced_headers'] for p in fresh.getpeerinfo()), [2000, 2000])
 
+    def test_initial_sync_peer_not_evicted_during_low_work_sync(self):
+        self.log.info("Test that our initial headers sync peer is not evicted as behind while its low-work sync progresses")
+        # No header from a low-work sync is stored until it reaches the minimum
+        # chain work and re-downloads a buffer of headers, so the peer's best
+        # known block stays unset. With RandomX that can outlast the 20 minute
+        # outbound chain sync timeout on a slow core.
+        node = self.nodes[5]
+        tmpl = self.nodes[0].getblocktemplate(NORMAL_GBT_REQUEST_PARAMS)
+        blocks = []
+        hash_prev = int(node.getblockhash(0), 16)
+        for height in range(1, 6001):
+            block = create_block(hashprev=hash_prev, ntime=tmpl['curtime'] + height, tmpl=tmpl)
+            seed_height = randomx.seed_height_for_height(height)
+            block.pow_seed = randomx.GENESIS_SEED if seed_height == 0 else blocks[seed_height - 1].hash_int.to_bytes(32, 'little')
+            block.solve()
+            blocks.append(block)
+            hash_prev = block.hash_int
+
+        # Timeouts from net_processing.cpp.
+        CHAIN_SYNC_TIMEOUT = 20 * 60
+        HEADERS_RESPONSE_TIME = 2 * 60
+        LOW_WORK_HEADERS_SYNC_STALL_TIME = 10 * 60
+
+        def step_to(t):
+            node.setmocktime(t)
+            peer.sync_with_ping()
+
+        start = int(time.time())
+        node.setmocktime(start)
+        peer = node.add_outbound_p2p_connection(P2PInterface(), p2p_idx=0)
+        # The chain sync timer starts now: without the exemption, a check after
+        # start + CHAIN_SYNC_TIMEOUT sends a getheaders, and one more than
+        # HEADERS_RESPONSE_TIME later disconnects.
+        peer.wait_for_getheaders()
+
+        # One batch every 7 minutes, so each check falls inside the stall window.
+        for i in range(3):
+            if i:
+                step_to(start + i * 7 * 60)
+            peer.send_and_ping(msg_headers(headers=blocks[2000 * i:2000 * (i + 1)]), timeout=300)
+            assert_equal(node.getpeerinfo()[0]['presynced_headers'], 2000 * (i + 1))
+        last_progress = start + 2 * 7 * 60
+        step_to(start + CHAIN_SYNC_TIMEOUT + 1)
+        step_to(start + CHAIN_SYNC_TIMEOUT + HEADERS_RESPONSE_TIME + 2)
+        assert start + CHAIN_SYNC_TIMEOUT + HEADERS_RESPONSE_TIME + 2 - last_progress < LOW_WORK_HEADERS_SYNC_STALL_TIME
+        assert peer.is_connected
+
+        self.log.info("Test that the same peer is evicted once its low-work sync stalls")
+        # The first check outside the stall window starts a new timer. Steps
+        # stay under the 20 minute inactivity timeout, so only the chain sync
+        # timeout can disconnect the peer.
+        stalled = last_progress + LOW_WORK_HEADERS_SYNC_STALL_TIME + 1
+        step_to(stalled)
+        step_to(stalled + CHAIN_SYNC_TIMEOUT // 2)
+        step_to(stalled + CHAIN_SYNC_TIMEOUT + 1)
+        with node.assert_debug_log(expected_msgs=["Outbound peer has old chain"]):
+            node.setmocktime(stalled + CHAIN_SYNC_TIMEOUT + HEADERS_RESPONSE_TIME + 2)
+            peer.wait_for_disconnect()
+        node.setmocktime(0)
+
     def test_large_reorgs_can_succeed(self):
         self.log.info("Test that a 2000+ block reorg, starting from a point that is more than 2000 blocks before a locator entry, can succeed")
 
@@ -219,6 +281,8 @@ class RejectLowDifficultyHeadersTest(BitcoinTestFramework):
         self.test_large_reorgs_can_succeed()
 
         self.test_peerinfo_includes_headers_presync_height()
+
+        self.test_initial_sync_peer_not_evicted_during_low_work_sync()
 
 
 
