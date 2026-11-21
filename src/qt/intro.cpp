@@ -46,6 +46,8 @@ Intro::Intro(QWidget *parent, int64_t blockchain_size_gb, int64_t chain_state_si
     ui->setupUi(this);
     ui->welcomeLabel->setText(ui->welcomeLabel->text().arg(CLIENT_NAME));
     ui->storageLabel->setText(ui->storageLabel->text().arg(CLIENT_NAME));
+    // Say where the default is, as plain text under its option; the box below is for a custom location.
+    ui->defaultDataDirLabel->setText(GUIUtil::getDefaultDataDirectory());
 
     ui->lblExplanation1->setText(ui->lblExplanation1->text()
         .arg(CLIENT_NAME)

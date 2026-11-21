@@ -11,7 +11,7 @@ add_executable(test_bitcoin-qt
   test_main.cpp
   uritests.cpp
   util.cpp
-  ../../init/bitcoin-qt.cpp
+  ../../init/truenorth-qt.cpp
 )
 
 target_link_libraries(test_bitcoin-qt
