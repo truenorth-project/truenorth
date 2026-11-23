@@ -42,7 +42,7 @@ rejections. Regtest is similarly checkpoint-free.
 
 ## Requirements
 
-- Linux x86_64, macOS arm64, or Windows x86_64 (all supported by the pre-built release binaries; Windows operators should follow [`doc/windows-testnet.md`](windows-testnet.md) instead of the shell commands below); or build-from-source on anything else
+- Linux x86_64, macOS arm64 (13 or later), or Windows x86_64 (all supported by the pre-built release binaries; Windows operators should follow [`doc/windows-testnet.md`](windows-testnet.md) instead of the shell commands below); or build-from-source on anything else
 - Roughly 1 GiB RAM, 4 GiB disk, any always-on internet connection
 - **Optional:** Tor 0.4.x or later running locally with SOCKS on 127.0.0.1:9050, if you want to route peer traffic through Tor
 
@@ -278,10 +278,10 @@ When filing, include:
 
 ## Known issues
 
-- Release binaries ship for Linux x86_64 and Windows x86_64. macOS arm64
-  is in the release workflow but may not be present on every tag. Source
-  builds work on all platforms (see `doc/build-*.md`). Windows operators:
-  see [`doc/windows-testnet.md`](windows-testnet.md) for
+- Release binaries ship for Linux x86_64, macOS arm64 and Windows x86_64.
+  The macOS binaries need macOS 13 or later and nothing from Homebrew.
+  Source builds work on all platforms (see `doc/build-*.md`). Windows
+  operators: see [`doc/windows-testnet.md`](windows-testnet.md) for
   PowerShell-specific setup (Tor, paths, unattended mining).
 - Block 0 through about block 2113 exercises the genesis-epoch seed (kept at
   zero); first rotation happens at the boundary. Rotation transitions are
