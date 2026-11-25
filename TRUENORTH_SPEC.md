@@ -96,8 +96,9 @@ All values live in `src/kernel/chainparams.cpp`.
   `SHA256("TrueNorth/QRH/v1" || scheme_id || pubkey || script_root)` rather than
   to a public key, so unspent coins do not expose their keys. A one-byte
   `scheme_id` selects the signature verifier; only `0x01` (BIP340 Schnorr) is
-  valid today, and post-quantum schemes are reserved for activation by soft fork
-  without a new address format. Active from genesis on every chain, and the
+  valid in witness v2, and only as a key-path spend; every other v2 witness is
+  consensus-invalid. Script paths and post-quantum schemes are planned for a
+  witness-v3 output type activated by soft fork. Active from genesis on every chain, and the
   wallet default address type. Full specification:
   [`doc/p2qrh.md`](doc/p2qrh.md).
 

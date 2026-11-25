@@ -8,21 +8,26 @@
 
 A new SegWit witness version 2 output type where the on-chain commitment is a
 hash covering `(scheme_id, pubkey, script_root)` — not the pubkey itself. A
-`scheme_id` byte in the spend witness selects the signature verifier, allowing
-new signature schemes (including post-quantum) to be added via soft fork
-without changing the output type, address format, or wallet code.
+`scheme_id` byte in the spend witness selects the signature verifier.
+
+Witness version 2 accepts exactly one kind of spend: a secp256k1 Schnorr
+key-path spend with `scheme_id=0x01`. Every other witness is consensus-invalid,
+so v2 cannot gain script paths or new signature schemes by soft fork. Those are
+planned for a new output type, witness version 3, activated by soft fork; see
+[Upgrade path](#upgrade-path).
 
 ## Design goals
 
 1. Coins-at-rest are quantum-safe — a CRQC cannot recover the pubkey from an
    unspent P2QRH output.
-2. Signature scheme is not pre-committed at launch — start with secp256k1
-   Schnorr; add PQ schemes later via soft fork without disturbing existing
-   UTXOs.
-3. One address format forever — users don't migrate addresses when new
-   signature schemes are added.
+2. Signature scheme is not pre-committed in the commitment format — the
+   commitment carries a `scheme_id`, so a post-quantum scheme fits the same
+   32-byte commitment as Schnorr. In v2 only Schnorr is valid; new schemes
+   arrive in the v3 output type.
+3. Fixed address size — the commitment is 32 bytes whatever the scheme, so
+   kilobyte-sized post-quantum keys never reach the address.
 4. Reuse Taproot script-path infrastructure via a Merkle tree of alternate
-   spend conditions.
+   spend conditions — planned for v3; v2 has no script path.
 
 ## Output format
 
@@ -33,8 +38,9 @@ scriptPubKey: OP_2 <32-byte-commitment>
 Where `OP_2` marks witness version 2 (previously unused; v0 = P2WPKH/P2WSH,
 v1 = Taproot).
 
-The commitment is 32 bytes regardless of signature scheme. Address size is
-fixed forever, even when adding PQ schemes with kilobyte-sized pubkeys.
+The commitment is 32 bytes regardless of signature scheme, so the address
+length does not depend on the scheme, even for PQ schemes with kilobyte-sized
+pubkeys.
 
 ## Address encoding
 
@@ -55,13 +61,13 @@ commitment = SHA256("TrueNorth/QRH/v1" || scheme_id || pubkey_bytes || script_ro
 ```
 
 - **Domain separation string** `"TrueNorth/QRH/v1"` prevents cross-protocol
-  collisions and enables safe versioning if the commitment format ever needs
-  to change (v2 would prefix `"TrueNorth/QRH/v2"`).
+  collisions and enables safe versioning: a changed commitment format, or a
+  new output type, uses a new tag.
 - `scheme_id` is 1 byte.
 - `pubkey_bytes` is scheme-defined (32 B for Schnorr x-only; ~1.3 KB for
   ML-DSA; etc.).
-- `script_root` is 32 bytes: root of the taptree, or `0x00…00` when no script
-  tree exists (mirroring Taproot convention).
+- `script_root` is 32 bytes. Witness v2 has no script path, so for v2 it is
+  always `0x00…00` (`QRH_EMPTY_SCRIPT_ROOT`).
 
 ## Witness format
 
@@ -74,16 +80,9 @@ witness stack (bottom to top):
   [scheme_id]  (1 byte)
 ```
 
-**Script-path spend** (Taproot-analogous; not yet active, so consensus
-rejects any P2QRH witness that isn't a key-path spend):
-
-```
-witness stack (bottom to top):
-  [script args]
-  [tapscript-analog script]
-  [control block]  (33 + 32k bytes, k = tree depth)
-  [scheme_id]  (1 byte)
-```
+This is the only valid witness for a v2 output, apart from an optional annex
+(below). There is no script-path spend in v2; any other witness is
+consensus-invalid.
 
 The `scheme_id` at the top of the stack lets the interpreter know which
 verifier to dispatch before parsing the rest of the witness.
@@ -99,14 +98,18 @@ excluded from the scheme registry.
 
 ## Consensus validation
 
-1. Read top of stack: `scheme_id`. If not in the registered set, fail.
-2. Recompute `commitment = SHA256("TrueNorth/QRH/v1" || scheme_id || pubkey || script_root)`.
-3. Verify recomputed commitment equals the 32 bytes in the scriptPubKey.
-4. **Key-path**: dispatch to `scheme_id`'s signature verifier with
-   `(sighash, pubkey, signature)`.
-5. **Script-path**: verify Merkle proof against `script_root` (universal —
-   hash-based, safe for all scheme_ids), then dispatch to the tapscript
-   interpreter (defined per-scheme; scheme_id=0x01 reuses BIP-342).
+1. Remove an annex, if present.
+2. Read top of stack: `scheme_id`. It must be exactly one byte, and it must be
+   `0x01`; any other value fails.
+3. Exactly two elements must remain: `[signature, pubkey]`.
+4. The pubkey must be a 32-byte x-only key.
+5. Recompute `commitment = SHA256("TrueNorth/QRH/v1" || 0x01 || pubkey || 0x00…00)`
+   and verify it equals the 32 bytes in the scriptPubKey.
+6. Verify the BIP-340 Schnorr signature over the BIP-341 sighash.
+
+Every step can only fail. No v2 spend succeeds without a valid Schnorr
+signature from the committed key, which is why a new kind of v2 spend could
+only be added by a hard fork (see [Upgrade path](#upgrade-path)).
 
 Each rule a key-path witness can break has its own script error, so a reject
 reason says which one failed:
@@ -132,16 +135,18 @@ an empty witness and a bad signature.
 |-----------|-----------------------------|---------|---------|-------------------------------|
 | `0x00`    | RESERVED                    | —       | —       | Never valid                   |
 | `0x01`    | secp256k1 Schnorr (BIP-340) | 32 B    | 64 B    | Active at launch              |
-| `0x02`    | ML-DSA-44                   | ~1.3 KB | ~2.4 KB | Reserved (future soft fork)   |
-| `0x03`    | Falcon-512                  | ~900 B  | ~650 B  | Reserved (future soft fork)   |
-| `0x04`    | SLH-DSA-128s                | 32 B    | ~8 KB   | Reserved (future soft fork)   |
+| `0x02`    | ML-DSA-44                   | ~1.3 KB | ~2.4 KB | Reserved (invalid in v2)      |
+| `0x03`    | Falcon-512                  | ~900 B  | ~650 B  | Reserved (invalid in v2)      |
+| `0x04`    | SLH-DSA-128s                | 32 B    | ~8 KB   | Reserved (invalid in v2)      |
 | `0x05-0x4F` | Reserved for future schemes | —     | —       | —                             |
 | `0x50`    | Unusable (annex tag)        | —       | —       | Never assigned                |
 | `0x51-0xFE` | Reserved for future schemes | —     | —       | —                             |
 | `0xFF`    | INVALID (sentinel)          | —       | —       | Reject at consensus           |
 
-At launch, `scheme_id=0x01` is the only accepted value at consensus. Any other
-value fails validation. Future soft forks add scheme_ids.
+In witness v2, `scheme_id=0x01` is the only accepted value at consensus, and
+any other value fails validation permanently: making one valid would be a hard
+fork. The registry keeps its numbering for the v3 output type, where new
+schemes are to be added by soft fork.
 
 ## Signature aggregation
 
@@ -162,11 +167,12 @@ to prevent scheme-substitution attacks.
 
 ## Standardness / mempool policy
 
-- Only `scheme_id=0x01` accepted at launch
-- Reserved scheme_ids rejected as non-standard until their respective
-  activation
-- Non-`OP_2`-formatted outputs pretending to be v2 are non-standard but not
-  consensus-invalid (upgradable-witness convention)
+- Only `scheme_id=0x01` key-path spends are valid; policy additionally refuses
+  an annex.
+- Witness v2 programs of any length other than 32 bytes are not P2QRH.
+  Consensus accepts any spend of them and policy refuses to relay one
+  (upgradable-witness convention). The same holds for witness v3 until the v3
+  output type activates.
 
 ## Weight and fee implications
 
@@ -174,7 +180,7 @@ to prevent scheme-substitution attacks.
   Taproot. **No UTXO-set growth.**
 - **Witness (scheme_id=0x01, key-path)**: ~99 bytes (32 pubkey + 64 sig +
   1 scheme_id + length prefixes). +3 bytes vs Taproot; negligible.
-- **Witness (PQ schemes)**: significantly larger per-spend, but spend-time
+- **Witness (PQ schemes, v3)**: significantly larger per-spend, but spend-time
   cost only. Standard witness weight discount (1 wu/byte) applies.
 
 ## Activation
@@ -193,6 +199,46 @@ turn from valid to invalid.
 Concretely, `SCRIPT_VERIFY_QRH` is included in the base flag set constructed
 by `GetBlockScriptFlags()` in `src/validation.cpp` — the same code path that
 enables P2SH, WITNESS, and TAPROOT unconditionally.
+
+## Upgrade path
+
+A soft fork can only make the rules stricter. Every v2 spend other than the
+Schnorr key path is already invalid, so a new kind of v2 spend — a script
+path, or a new `scheme_id` — would be a hard fork, which every node and miner
+must adopt before anyone uses it.
+
+Script paths and new signature schemes are therefore planned for a new output
+type, **witness version 3** (`north1r…` on mainnet), activated by soft fork at
+a height. Today's nodes already treat any witness v3 spend as valid at
+consensus and refuse to relay one, the upgradable-witness convention of
+BIP-141, which is what makes adding it a soft fork. Its specification is a
+separate document. It must meet these requirements:
+
+- **Key path and script path**, reusing BIP-341/342 (tapscript) rather than
+  new interpreter logic.
+- **Upgrade hooks.** An unknown `scheme_id`, or an unknown leaf version,
+  succeeds once the commitment (and, for a script path, the Merkle proof)
+  checks out, as Taproot treats unknown leaf versions. Later schemes are then
+  soft forks. The commitment binds `scheme_id`, pubkey and `script_root`, so
+  an existing output cannot be spent through any other scheme or tree.
+- **Its own domain separation tag**, so the same key never yields related
+  v2 and v3 commitments.
+- **No mainnet use before activation.** Until v3 activates, consensus does not
+  protect v3 outputs: any miner can spend them. Wallets must not create them on
+  mainnet before then, and must never create an address for a scheme that is
+  not active.
+
+v2 outputs stay valid and spendable with `scheme_id=0x01` permanently. An
+address fixes its scheme and script tree when it is created, so using a new
+scheme or a script path means moving coins to a new address with an ordinary
+transaction, under any upgrade design.
+
+Until v3 activates, n-of-n multisig is available on v2 through MuSig2 key
+aggregation (below); k-of-n multisig, timelocks and escrow need the v3 script
+path.
+
+The options considered, the precedent, and the risks this plan has to manage
+are in [`doc/design/p2qrh-upgrade-path.md`](design/p2qrh-upgrade-path.md).
 
 ## Wallet implications
 
@@ -274,16 +320,16 @@ existing tooling. It's the cleanest place to put a new output type.
 **Why not ship a PQ signature scheme at launch?** The signature-scheme
 ecosystem hasn't converged (ML-DSA vs Falcon vs SLH-DSA vs future schemes).
 PQ implementations are still hardening. PQ sig sizes are 10-100× Schnorr's,
-imposing immediate throughput cost for a threat 10-25 years away. The envelope
-lets us wait for ecosystem convergence and soft-fork the winner in without
-disrupting existing UTXOs.
+imposing immediate throughput cost for a threat 10-25 years away. The
+commitment format lets us wait for ecosystem convergence and add the winner
+later, in the v3 output type, without disrupting existing UTXOs.
 
 **Why domain-separate the hash with a version-tagged string?** Two reasons.
 First: prevents accidental cross-protocol collisions if anyone reuses SHA256
 elsewhere with similar structure. Second: gives us a clean escape hatch — if
 the commitment format itself ever needs to change (e.g., we discover we should
-have included additional metadata), we bump to `"TrueNorth/QRH/v2"` as a new
-envelope, without disturbing v1.
+have included additional metadata), a new tag defines a new envelope without
+disturbing outputs that use `"TrueNorth/QRH/v1"`.
 
 **Why is `scheme_id` at the TOP of the witness stack rather than the bottom?**
 The interpreter reads it first without needing to know per-scheme witness

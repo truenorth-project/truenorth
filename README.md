@@ -312,8 +312,8 @@ The protocol is RandomX-based, so any miner that supports RandomX with a custom 
 TrueNorth ships mainnet with **P2QRH (Pay-to-Quantum-Resistant-Hash) as the default wallet address type**. The on-chain scriptPubKey commits to a 32-byte SHA256 hash of `(scheme_id, pubkey, script_root)` rather than the pubkey itself.
 
 - **Coins-at-rest are quantum-safe.** A cryptographically-relevant quantum computer cannot recover the pubkey from an unspent P2QRH output — the hash commitment stands between the attacker and the pubkey.
-- **Signature scheme is not pre-committed.** Launch uses secp256k1 Schnorr under the commitment (same signature crypto as Taproot, hidden behind the hash). Post-quantum schemes — ML-DSA, Falcon, SLH-DSA — get reserved `scheme_id` bytes and can be added via soft fork **without disturbing existing UTXOs or changing the address format**.
-- **Address format is fixed forever.** `north1z…` on mainnet, `tnorth41z…` on testnet, `rnorth1z…` on regtest. Adding PQ signatures later does not require users to migrate addresses.
+- **Signature scheme is not pre-committed in the commitment format.** Launch uses secp256k1 Schnorr under the commitment (same signature crypto as Taproot, hidden behind the hash). Post-quantum schemes — ML-DSA, Falcon, SLH-DSA — have reserved `scheme_id` bytes and fit the same 32-byte commitment.
+- **Upgrades come in a new output type.** Today's P2QRH addresses (`north1z…` on mainnet, `tnorth41z…` on testnet4, `rnorth1z…` on regtest, witness version 2) accept only Schnorr key-path spends, permanently. Script paths and post-quantum schemes are planned for witness version 3, activated by soft fork; existing outputs are not disturbed, and coins move to the new type with an ordinary transaction. See [Upgrade path](doc/p2qrh.md#upgrade-path).
 
 Bitcoin will eventually need a PQ transition and will spend years debating one because of its legacy pubkey-exposing outputs. TrueNorth launches with none of that debt: no historical P2QRH outputs to preserve, no legacy commitment format to grandfather. See [`doc/p2qrh.md`](doc/p2qrh.md) for the full protocol spec — output format, scheme registry, sighash, activation, and rationale for every design decision.
 
@@ -414,7 +414,7 @@ Bitcoin's architecture isn't the only way. Block time, PoW algorithm, subsidy sc
 - **ASIC-resistant**: RandomX is intentionally hostile to specialized hardware.
 - **Perpetual security**: tail emission keeps miners paid past the last halving.
 - **Faster confirmations**: 2-minute blocks for usability without sacrificing security relative to other small PoW coins.
-- **Quantum-resistant by default**: P2QRH addresses commit to a hash of the pubkey, not the pubkey itself; post-quantum signature schemes plug in via soft fork without disturbing existing UTXOs.
+- **Quantum-resistant by default**: P2QRH addresses commit to a hash of the pubkey, not the pubkey itself; post-quantum signature schemes are planned for a new output type, added by soft fork without disturbing existing UTXOs.
 - **Canadian**: A cryptocurrency for all of Canada.
 
 Not a meme launch. No presale. No premined treasury. Just a CPU-mineable coin with Bitcoin-style monetary policy plus tail emission.
